@@ -13,10 +13,12 @@
     "clsx": "^2.1.1",
     "firebase": "^12.1.0",
     "next": "14.2.31",
+    "playwright": "^1.54.2",
     "react": "^18",
     "react-dom": "^18"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

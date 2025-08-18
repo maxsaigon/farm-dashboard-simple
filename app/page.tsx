@@ -8,11 +8,15 @@ import {
   PlusIcon,
   CameraIcon
 } from '@heroicons/react/24/outline'
-import { onAuthStateChange, signOutUser } from '../lib/auth'
+import { signOutUser } from '../lib/auth'
 import { subscribeToTrees, calculateDashboardStats, getTreesNeedingAttention } from '../lib/firestore'
-import { Tree, DashboardStats } from '../lib/types'
-import { User as FirebaseUser } from 'firebase/auth'
+import { Tree, DashboardStats, Farm } from '../lib/types'
 import UserInfo from '../components/UserInfo'
+import { FarmSelector } from '../components/FarmSelector'
+import { MigrationPrompt } from '../components/MigrationPrompt'
+import { AdminBanner } from '../components/AdminBanner'
+import { AdminDashboard } from '../components/AdminDashboard'
+import { useAuth } from '../lib/auth-context'
 
 // Demo data fallback
 const demoData = {
@@ -21,7 +25,9 @@ const demoData = {
     totalTrees: 5,
     healthyTrees: 4, 
     treesNeedingAttention: 1,
-    totalFruits: 83
+    totalFruits: 83,
+    gpsCoverage: 0.8,
+    zonesCount: 2
   },
   treesNeedingAttention: [
     {
@@ -87,21 +93,22 @@ function FarmStats({ stats }: { stats: DashboardStats }) {
 function QuickActions() {
   const actions = [
     {
+      name: "Quản Lý Cây",
+      description: "Xem và quản lý danh sách cây", 
+      icon: MapIcon,
+      color: "bg-green-600 hover:bg-green-700",
+      href: "/trees"
+    },
+    {
       name: "Thêm Cây Mới",
       description: "Trồng cây sầu riêng mới", 
       icon: PlusIcon,
-      color: "bg-green-600 hover:bg-green-700"
+      color: "bg-blue-600 hover:bg-blue-700"
     },
     {
       name: "Chụp Ảnh",
       description: "Chụp ảnh kiểm tra cây",
       icon: CameraIcon, 
-      color: "bg-blue-600 hover:bg-blue-700"
-    },
-    {
-      name: "Xem Bản Đồ",
-      description: "Tìm cây trên bản đồ",
-      icon: MapIcon,
       color: "bg-purple-600 hover:bg-purple-700"
     }
   ]
@@ -113,24 +120,28 @@ function QuickActions() {
       </h2>
       
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {actions.map((action, index) => (
-          <button
-            key={index}
-            className={`${action.color} text-white p-6 rounded-xl text-center transition-all duration-200 transform active:scale-95 hover:scale-105 shadow-md hover:shadow-lg touch-manipulation select-none`}
-            style={{ 
-              minHeight: '120px', 
-              minWidth: '44px',
-              WebkitTapHighlightColor: 'transparent',
-              WebkitTouchCallout: 'none'
-            }}
-          >
-            <div className="flex justify-center mb-4">
-              <action.icon className="h-10 w-10" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">{action.name}</h3>
-            <p className="text-sm opacity-90">{action.description}</p>
-          </button>
-        ))}
+        {actions.map((action, index) => {
+          const ActionComponent = action.href ? 'a' : 'button'
+          return (
+            <ActionComponent
+              key={index}
+              href={action.href}
+              className={`${action.color} text-white p-6 rounded-xl text-center transition-all duration-200 transform active:scale-95 hover:scale-105 shadow-md hover:shadow-lg touch-manipulation select-none block`}
+              style={{ 
+                minHeight: '120px', 
+                minWidth: '44px',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTouchCallout: 'none'
+              }}
+            >
+              <div className="flex justify-center mb-4">
+                <action.icon className="h-10 w-10" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">{action.name}</h3>
+              <p className="text-sm opacity-90">{action.description}</p>
+            </ActionComponent>
+          )
+        })}
       </div>
     </div>
   )
@@ -189,34 +200,31 @@ function AttentionList({ trees }: { trees: Tree[] }) {
 }
 
 export default function HomePage() {
-  const [user, setUser] = useState<FirebaseUser | null>(null)
+  const { user, loading, currentFarm, setCurrentFarm, isAdmin } = useAuth()
   const [stats, setStats] = useState<DashboardStats>(demoData.stats)
   const [attentionTrees, setAttentionTrees] = useState<Tree[]>([])
-  const [loading, setLoading] = useState(true)
+  const [dataLoading, setDataLoading] = useState(false)
 
   useEffect(() => {
-    // Listen for auth state changes
-    const unsubscribeAuth = onAuthStateChange((firebaseUser) => {
-      setUser(firebaseUser)
-      setLoading(false)
-      
-      if (firebaseUser) {
-        // Subscribe to real-time tree updates
-        const unsubscribeTrees = subscribeToTrees(firebaseUser.uid, (updatedTrees) => {
-          setStats(calculateDashboardStats(updatedTrees))
-          setAttentionTrees(getTreesNeedingAttention(updatedTrees))
-        })
-        
-        return () => unsubscribeTrees()
-      } else {
-        // Use demo data when not authenticated
-        setStats(demoData.stats)
-        setAttentionTrees(demoData.treesNeedingAttention as Tree[])
-      }
-    })
+    if (!user || !currentFarm) {
+      // Use demo data when not authenticated or no farm selected
+      setStats(demoData.stats)
+      setAttentionTrees(demoData.treesNeedingAttention as Tree[])
+      setDataLoading(false)
+      return
+    }
 
-    return () => unsubscribeAuth()
-  }, [])
+    setDataLoading(true)
+    
+    // Subscribe to real-time tree updates for the current farm
+    const unsubscribeTrees = subscribeToTrees(currentFarm.id, user.uid, (updatedTrees) => {
+      setStats(calculateDashboardStats(updatedTrees))
+      setAttentionTrees(getTreesNeedingAttention(updatedTrees))
+      setDataLoading(false)
+    })
+    
+    return unsubscribeTrees
+  }, [user, currentFarm])
 
   if (loading) {
     return (
@@ -227,6 +235,10 @@ export default function HomePage() {
         </div>
       </div>
     )
+  }
+
+  const handleFarmChange = (farmId: string, farm: Farm) => {
+    setCurrentFarm(farm)
   }
 
   const farmerName = user?.displayName || user?.email?.split('@')[0] || "Demo User"
@@ -276,9 +288,16 @@ export default function HomePage() {
           <div className="mt-3 inline-flex items-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded-full">
             <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-sm font-medium">
-              {isDemo ? "Demo Mode" : "Đồng Bộ Thời Gian Thực"}
+              {isDemo ? "Demo Mode" : isAdmin ? "Admin Mode - Full Access" : dataLoading ? "Đang tải dữ liệu..." : "Đồng Bộ Thời Gian Thực"}
             </span>
           </div>
+          
+          {/* Current Farm Display */}
+          {!isDemo && currentFarm && (
+            <div className="mt-2 text-sm text-gray-600">
+              Nông trại: <span className="font-medium text-gray-900">{currentFarm.name}</span>
+            </div>
+          )}
         </div>
 
         {/* Demo Banner */}
@@ -296,7 +315,7 @@ export default function HomePage() {
                 </h3>
                 <div className="mt-2 text-sm text-blue-700">
                   <p>
-                    Đăng nhập để xem dữ liệu thực tế từ ứng dụng iOS của bạn.
+                    Đăng nhập để xem dữ liệu thực tế từ ứng dụng iOS của bạn và quản lý nhiều nông trại.
                   </p>
                   <div className="mt-3">
                     <a
@@ -311,6 +330,25 @@ export default function HomePage() {
             </div>
           </div>
         )}
+
+        {/* Admin Banner */}
+        {!isDemo && <AdminBanner />}
+
+        {/* Migration Prompt (when authenticated) */}
+        {!isDemo && <MigrationPrompt />}
+
+        {/* Farm Selection (when authenticated) */}
+        {!isDemo && (
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <FarmSelector 
+              selectedFarmId={currentFarm?.id}
+              onFarmChange={handleFarmChange}
+            />
+          </div>
+        )}
+
+        {/* Admin Dashboard (when admin) */}
+        {!isDemo && isAdmin && <AdminDashboard />}
 
         {/* User Info (when authenticated) */}
         {!isDemo && <UserInfo />}
