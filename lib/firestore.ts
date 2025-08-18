@@ -1,12 +1,9 @@
 import { 
   collection, 
-  doc, 
-  getDocs, 
   onSnapshot, 
   query, 
   where, 
-  orderBy,
-  Timestamp 
+  orderBy
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { Tree, DashboardStats } from './types'

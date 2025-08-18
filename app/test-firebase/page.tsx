@@ -9,7 +9,7 @@ export default function TestFirebasePage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [testResults, setTestResults] = useState<any[]>([])
+  const [testResults, setTestResults] = useState<Array<{ test: string; status: string; data: string }>>([])
   const [error, setError] = useState('')
 
   const testFirebaseConnection = async () => {
@@ -57,13 +57,14 @@ export default function TestFirebasePage() {
         data: `Total trees: ${userTrees.length}, Sample data: ${JSON.stringify(userTrees.slice(0, 2), null, 2)}`
       }])
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Firebase test error:', err)
-      setError(err.message || 'Test failed')
+      const errorMessage = err instanceof Error ? err.message : 'Test failed'
+      setError(errorMessage)
       setTestResults(prev => [...prev, { 
         test: 'Error', 
         status: 'FAILED', 
-        data: err.message
+        data: errorMessage
       }])
     } finally {
       setLoading(false)

@@ -30,18 +30,21 @@ export default function LoginPage() {
     try {
       await signIn(email, password)
       router.push('/')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Login error:', err)
       let errorMessage = 'Đăng nhập thất bại. Vui lòng thử lại.'
       
-      if (err.code === 'auth/user-not-found') {
-        errorMessage = 'Không tìm thấy tài khoản với email này.'
-      } else if (err.code === 'auth/wrong-password') {
-        errorMessage = 'Mật khẩu không đúng.'
-      } else if (err.code === 'auth/invalid-email') {
-        errorMessage = 'Email không hợp lệ.'
-      } else if (err.code === 'auth/too-many-requests') {
-        errorMessage = 'Quá nhiều lần thử. Vui lòng đợi và thử lại.'
+      if (err && typeof err === 'object' && 'code' in err) {
+        const firebaseError = err as { code: string }
+        if (firebaseError.code === 'auth/user-not-found') {
+          errorMessage = 'Không tìm thấy tài khoản với email này.'
+        } else if (firebaseError.code === 'auth/wrong-password') {
+          errorMessage = 'Mật khẩu không đúng.'
+        } else if (firebaseError.code === 'auth/invalid-email') {
+          errorMessage = 'Email không hợp lệ.'
+        } else if (firebaseError.code === 'auth/too-many-requests') {
+          errorMessage = 'Quá nhiều lần thử. Vui lòng đợi và thử lại.'
+        }
       }
       
       setError(errorMessage)
@@ -166,7 +169,7 @@ export default function LoginPage() {
             <div className="text-sm text-blue-700 space-y-1">
               <p>• Sử dụng tài khoản Firebase giống ứng dụng iOS</p>
               <p>• Dữ liệu sẽ đồng bộ thời gian thực với điện thoại</p>
-              <p>• Hoặc chọn "Xem Demo" để xem giao diện mẫu</p>
+              <p>• Hoặc chọn &quot;Xem Demo&quot; để xem giao diện mẫu</p>
             </div>
           </div>
         </div>

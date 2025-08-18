@@ -190,7 +190,6 @@ function AttentionList({ trees }: { trees: Tree[] }) {
 
 export default function HomePage() {
   const [user, setUser] = useState<FirebaseUser | null>(null)
-  const [trees, setTrees] = useState<Tree[]>([])
   const [stats, setStats] = useState<DashboardStats>(demoData.stats)
   const [attentionTrees, setAttentionTrees] = useState<Tree[]>([])
   const [loading, setLoading] = useState(true)
@@ -204,7 +203,6 @@ export default function HomePage() {
       if (firebaseUser) {
         // Subscribe to real-time tree updates
         const unsubscribeTrees = subscribeToTrees(firebaseUser.uid, (updatedTrees) => {
-          setTrees(updatedTrees)
           setStats(calculateDashboardStats(updatedTrees))
           setAttentionTrees(getTreesNeedingAttention(updatedTrees))
         })
@@ -212,7 +210,6 @@ export default function HomePage() {
         return () => unsubscribeTrees()
       } else {
         // Use demo data when not authenticated
-        setTrees([])
         setStats(demoData.stats)
         setAttentionTrees(demoData.treesNeedingAttention as Tree[])
       }

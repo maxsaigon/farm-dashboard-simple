@@ -16,7 +16,8 @@ export default function LoginForm() {
 
     try {
       await signIn(email, password)
-    } catch (err: any) {
+    } catch (err: unknown) {
+      console.error('Login error:', err)
       setError('Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.')
     } finally {
       setLoading(false)
