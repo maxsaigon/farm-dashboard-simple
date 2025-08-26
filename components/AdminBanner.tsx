@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/enhanced-auth-context'
 import { ShieldCheckIcon, CogIcon } from '@heroicons/react/24/outline'
 
 export function AdminBanner() {

@@ -16,7 +16,7 @@ import { FarmSelector } from '../components/FarmSelector'
 import { MigrationPrompt } from '../components/MigrationPrompt'
 import { AdminBanner } from '../components/AdminBanner'
 import { AdminDashboard } from '../components/AdminDashboard'
-import { useAuth } from '../lib/auth-context'
+import { useAuth } from '../lib/enhanced-auth-context'
 
 // Demo data fallback
 const demoData = {
@@ -238,7 +238,8 @@ export default function HomePage() {
   }
 
   const handleFarmChange = (farmId: string, farm: Farm) => {
-    setCurrentFarm(farm)
+    // Cast Farm to EnhancedFarm for backward compatibility
+    setCurrentFarm(farm as any)
   }
 
   const farmerName = user?.displayName || user?.email?.split('@')[0] || "Demo User"

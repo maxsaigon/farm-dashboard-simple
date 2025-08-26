@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/enhanced-auth-context'
 import { AdminService } from '@/lib/admin-service'
 import { Tree, ManualEntry, Photo, Farm } from '@/lib/types'
 import { 

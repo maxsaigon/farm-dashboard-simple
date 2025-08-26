@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Farm } from '@/lib/types'
 import { FarmService } from '@/lib/farm-service'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/enhanced-auth-context'
 
 interface FarmSelectorProps {
   selectedFarmId?: string

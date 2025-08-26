@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/enhanced-auth-context'
 import { subscribeToTrees } from '@/lib/firestore'
 import { Tree } from '@/lib/types'
 import { 
