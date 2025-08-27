@@ -302,7 +302,7 @@ export class FarmService {
             farms.push({
               ...data,
               id: farmDoc.id,
-              createdDate: data.createdDate?.toDate() || new Date()
+              createdDate: convertToDate(data.createdDate) || new Date()
             } as Farm)
           }
         } catch (error) {

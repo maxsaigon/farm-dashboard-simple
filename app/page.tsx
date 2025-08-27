@@ -17,6 +17,7 @@ import { MigrationPrompt } from '../components/MigrationPrompt'
 import { AdminBanner } from '../components/AdminBanner'
 import { AdminDashboard } from '../components/AdminDashboard'
 import { useAuth } from '../lib/enhanced-auth-context'
+import MobileDashboard from '../components/MobileDashboard'
 
 // Demo data fallback
 const demoData = {
@@ -204,6 +205,18 @@ export default function HomePage() {
   const [stats, setStats] = useState<DashboardStats>(demoData.stats)
   const [attentionTrees, setAttentionTrees] = useState<Tree[]>([])
   const [dataLoading, setDataLoading] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile screen
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768) // md breakpoint
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     if (!user || !currentFarm) {
@@ -244,6 +257,11 @@ export default function HomePage() {
 
   const farmerName = user?.displayName || user?.email?.split('@')[0] || "Demo User"
   const isDemo = !user
+
+  // Show mobile dashboard on mobile devices
+  if (isMobile && user) {
+    return <MobileDashboard />
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">

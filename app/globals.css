@@ -18,10 +18,185 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+  /* Prevent text size adjustment on iOS */
+  -webkit-text-size-adjust: 100%;
+  /* Improve touch performance */
+  touch-action: manipulation;
+}
+
+/* Mobile-first optimizations */
+@layer base {
+  /* Ensure proper viewport behavior */
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* Allow text selection for input elements */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  
+  /* Optimize scrolling on iOS */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Better button touch targets */
+  button, [role="button"], input[type="submit"], input[type="button"] {
+    touch-action: manipulation;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  /* Improve form inputs on mobile */
+  input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea, select {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 0;
+  }
+  
+  /* Prevent zoom on focus for iOS */
+  @media screen and (max-width: 768px) {
+    input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea, select {
+      font-size: 16px;
+    }
+  }
+}
+
+@layer components {
+  /* Touch manipulation utility */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Scale animation for button presses */
+  .active\:scale-98:active {
+    transform: scale(0.98);
+    transition-property: transform;
+    transition-duration: 100ms;
+    transition-timing-function: ease-in-out;
+  }
+  
+  /* Safe area utilities for devices with notches */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Minimum touch target size (44px recommended by Apple/Google) */
+  .min-touch {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  /* Scrollable container optimizations */
+  .scroll-touch {
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
+  }
+  
+  /* Hide scrollbar but maintain functionality */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Better text rendering on mobile */
+  .text-optimized {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Card with appropriate mobile touch feedback */
+  .card-mobile {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 touch-manipulation active:scale-98 transition-transform;
+  }
+  
+  /* Mobile-optimized button */
+  .btn-mobile {
+    @apply min-h-touch px-4 py-3 rounded-xl font-medium transition-colors touch-manipulation;
+  }
+  
+  /* Primary mobile button */
+  .btn-primary-mobile {
+    @apply btn-mobile bg-green-600 text-white hover:bg-green-700 active:bg-green-800;
+  }
+  
+  /* Secondary mobile button */
+  .btn-secondary-mobile {
+    @apply btn-mobile border border-gray-300 text-gray-700 hover:bg-gray-50 active:bg-gray-100;
+  }
+  
+  /* Mobile form input */
+  .input-mobile {
+    @apply w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  /* Utility for better mobile tap targets */
+  .tap-highlight-none {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* iOS-style momentum scrolling */
+  .momentum-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent text selection (useful for buttons/cards) */
+  .select-none {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* Allow text selection */
+  .select-text {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+}
+
+/* PWA-specific styles for fullscreen mode */
+@media all and (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Landscape orientation optimizations */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  .mobile-landscape-compact {
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
 }

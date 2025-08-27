@@ -15,6 +15,80 @@ import {
 } from '@heroicons/react/24/outline'
 import { TreeImagePreview } from './TreeImagePreview'
 
+// Demo trees data for non-authenticated users
+const DEMO_TREES: Tree[] = [
+  {
+    id: "demo-tree-1",
+    qrCode: "DEMO-001", 
+    name: "Cây Sầu Riêng 001",
+    variety: "Monthong",
+    zoneCode: "Z01_01",
+    plantingDate: new Date('2020-03-15'),
+    healthStatus: "Excellent",
+    needsAttention: false,
+    manualFruitCount: 25,
+    aiFruitCount: 28,
+    location: { latitude: 10.762622, longitude: 106.660172 },
+    photos: []
+  },
+  {
+    id: "demo-tree-2", 
+    qrCode: "DEMO-002",
+    name: "Cây Sầu Riêng 002",
+    variety: "Kan Yao",
+    zoneCode: "Z01_02", 
+    plantingDate: new Date('2019-08-20'),
+    healthStatus: "Good",
+    needsAttention: false,
+    manualFruitCount: 18,
+    aiFruitCount: 22,
+    location: { latitude: 10.762822, longitude: 106.660372 },
+    photos: []
+  },
+  {
+    id: "demo-tree-3",
+    qrCode: "DEMO-003",
+    name: "Cây Sầu Riêng 003", 
+    variety: "Kan Yao",
+    zoneCode: "Z01_03",
+    plantingDate: new Date('2021-01-10'),
+    healthStatus: "Fair",
+    needsAttention: true,
+    manualFruitCount: 8,
+    aiFruitCount: 5,
+    location: { latitude: 10.763022, longitude: 106.660572 },
+    photos: []
+  },
+  {
+    id: "demo-tree-4",
+    qrCode: "DEMO-004", 
+    name: "Cây Sầu Riêng 004",
+    variety: "Monthong",
+    zoneCode: "Z02_01",
+    plantingDate: new Date('2018-11-05'),
+    healthStatus: "Good",
+    needsAttention: false,
+    manualFruitCount: 35,
+    aiFruitCount: 31,
+    location: { latitude: 10.763222, longitude: 106.660772 },
+    photos: []
+  },
+  {
+    id: "demo-tree-5",
+    qrCode: "DEMO-005",
+    name: "Cây Sầu Riêng 005",
+    variety: "Golden Pillow",
+    zoneCode: "Z02_02", 
+    plantingDate: new Date('2020-06-25'),
+    healthStatus: "Excellent",
+    needsAttention: false,
+    manualFruitCount: 42,
+    aiFruitCount: 38,
+    location: { latitude: 10.763422, longitude: 106.660972 },
+    photos: []
+  }
+];
+
 interface TreeListProps {
   onTreeSelect?: (tree: Tree) => void
   selectedTreeId?: string
@@ -34,17 +108,29 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
 
   useEffect(() => {
     if (!user || !currentFarm) {
+      // Use demo data when not authenticated
+      setTrees(DEMO_TREES)
       setLoading(false)
       return
     }
 
     setLoading(true)
-    const unsubscribe = subscribeToTrees(currentFarm.id, user.uid, (updatedTrees) => {
-      setTrees(updatedTrees)
-      setLoading(false)
-    })
+    try {
+      const unsubscribe = subscribeToTrees(currentFarm.id, user.uid, (updatedTrees) => {
+        setTrees(updatedTrees)
+        setLoading(false)
+      })
 
-    return unsubscribe
+      return () => {
+        if (unsubscribe && typeof unsubscribe === 'function') {
+          unsubscribe()
+        }
+      }
+    } catch (error) {
+      console.error('Error subscribing to trees:', error)
+      setTrees([])
+      setLoading(false)
+    }
   }, [user, currentFarm])
 
   // Get unique varieties for filter
@@ -260,6 +346,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
               <div
                 key={tree.id}
                 onClick={() => onTreeSelect?.(tree)}
+                data-testid="tree-card"
                 className={`p-4 border rounded-lg transition-all duration-200 cursor-pointer hover:shadow-md ${
                   selectedTreeId === tree.id
                     ? 'border-green-500 bg-green-50'

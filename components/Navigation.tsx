@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/lib/enhanced-auth-context'
 import { 
   HomeIcon,
   MapIcon,
@@ -10,12 +11,16 @@ import {
   ChartBarIcon,
   Cog6ToothIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  ViewfinderCircleIcon,
+  RadioIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 
 export function Navigation() {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { isSuperAdmin } = useAuth()
 
   const navigation = [
     {
@@ -26,11 +31,21 @@ export function Navigation() {
     {
       name: 'Quản Lý Cây',
       href: '/trees',
+      icon: ViewfinderCircleIcon
+    },
+    {
+      name: 'Bản Đồ',
+      href: '/map',
       icon: MapIcon
     },
     {
+      name: 'Định Vị',
+      href: '/positioning',
+      icon: RadioIcon
+    },
+    {
       name: 'Chụp Ảnh',
-      href: '/photos',
+      href: '/camera',
       icon: CameraIcon
     },
     {
@@ -45,6 +60,18 @@ export function Navigation() {
     }
   ]
 
+  // Add Super Admin navigation if user is super admin
+  const allNavigation = isSuperAdmin() 
+    ? [
+        ...navigation,
+        {
+          name: 'Super Admin',
+          href: '/admin',
+          icon: ShieldCheckIcon
+        }
+      ]
+    : navigation
+
   return (
     <>
       {/* Desktop Navigation */}
@@ -58,7 +85,7 @@ export function Navigation() {
             </div>
 
             <div className="flex items-center space-x-8">
-              {navigation.map((item) => {
+              {allNavigation.map((item) => {
                 const isActive = pathname === item.href
                 return (
                   <Link
@@ -91,6 +118,8 @@ export function Navigation() {
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+              data-testid="mobile-menu"
+              aria-label="Mobile menu"
             >
               {isMobileMenuOpen ? (
                 <XMarkIcon className="h-6 w-6" />
@@ -103,7 +132,7 @@ export function Navigation() {
           {/* Mobile Menu */}
           {isMobileMenuOpen && (
             <div className="pb-3 space-y-1 border-t border-gray-200">
-              {navigation.map((item) => {
+              {allNavigation.map((item) => {
                 const isActive = pathname === item.href
                 return (
                   <Link

@@ -8,7 +8,7 @@ test.describe('Critical Path Tests', () => {
       // Step 1: Navigate to home
       await page.goto('/');
       await page.waitForLoadState('networkidle');
-      await expect(page).toHaveTitle(/Farm Dashboard/);
+      await expect(page).toHaveTitle(/Farm Manager/);
       
       // Step 2: Navigate to tree management
       const treeManagementLinks = [
@@ -33,13 +33,15 @@ test.describe('Critical Path Tests', () => {
       }
       
       // Step 3: Verify tree list is displayed
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await expect(page).toHaveURL(/.*\/trees/);
       
-      // Check for tree list content
-      await page.waitForTimeout(2000);
-      const hasContent = await page.locator('body').textContent();
-      expect(hasContent).toBeTruthy();
+      // Wait for tree list to appear
+      await expect(page.locator('h2:has-text("Danh Sách Cây")')).toBeVisible({ timeout: 10000 });
+      
+      // Check for tree content
+      const treeList = await page.locator('h3:has-text("Cây Sầu Riêng")').first();
+      await expect(treeList).toBeVisible({ timeout: 5000 });
     });
 
     test('Critical Path 2: Tree Details Flow', async ({ page }) => {

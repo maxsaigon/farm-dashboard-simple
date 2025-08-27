@@ -80,12 +80,24 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         setFirebaseUser(firebaseUser)
         
         if (firebaseUser) {
-          // User is signed in
-          const enhancedUser = await enhancedAuthService.signIn(firebaseUser.email!, '')
-          setUser(enhancedUser)
-          
-          // Load user data
-          await loadUserData(enhancedUser.uid)
+          // User is signed in - load user profile directly without calling signIn
+          try {
+            // Load user profile using the auth service
+            const enhancedUser = await enhancedAuthService.loadUserProfile(firebaseUser.uid)
+            setUser(enhancedUser)
+            
+            // Load user roles and permissions
+            const userRoles = await enhancedAuthService.loadUserRoles(firebaseUser.uid)
+            // Set the current user in the service so permissions work correctly
+            enhancedAuthService.setCurrentUserAndRoles(enhancedUser, userRoles)
+            
+            // Load user data
+            await loadUserData(firebaseUser.uid)
+          } catch (error) {
+            console.error('Error loading user profile:', error)
+            // If loading fails, clear everything
+            clearUserData()
+          }
         } else {
           // User is signed out
           clearUserData()

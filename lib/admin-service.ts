@@ -2,13 +2,19 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
+  deleteDoc,
   collection,
   getDocs,
+  query,
+  where,
   Timestamp
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { FarmService } from './farm-service'
 import { Farm, Tree, ManualEntry, Photo } from './types'
+import { EnhancedUser, EnhancedFarm } from './types-enhanced'
+import { Zone } from './gps-tracking-service'
 
 // Admin user configuration
 export const ADMIN_CONFIG = {
@@ -382,6 +388,160 @@ export class AdminService {
     } catch (error) {
       console.error('Error getting admin info:', error)
       return { isAdmin: true }
+    }
+  }
+
+  // User Management Methods
+  static async getAllUsers(): Promise<EnhancedUser[]> {
+    try {
+      const usersRef = collection(db, 'users')
+      const snapshot = await getDocs(usersRef)
+      const users: EnhancedUser[] = []
+      
+      snapshot.forEach((doc) => {
+        const data = doc.data()
+        users.push({
+          uid: doc.id,
+          email: data.email || '',
+          displayName: data.displayName || '',
+          photoURL: data.photoURL || '',
+          phoneNumber: data.phoneNumber || '',
+          isActive: data.isActive !== false,
+          roles: data.roles || [],
+          currentFarmId: data.currentFarmId || '',
+          preferences: data.preferences || {},
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date()
+        })
+      })
+      
+      return users
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      return []
+    }
+  }
+
+  static async createUser(userData: Partial<EnhancedUser>): Promise<void> {
+    try {
+      const userRef = doc(collection(db, 'users'))
+      await setDoc(userRef, {
+        ...userData,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      })
+    } catch (error) {
+      console.error('Error creating user:', error)
+      throw error
+    }
+  }
+
+  static async updateUser(userId: string, updates: Partial<EnhancedUser>): Promise<void> {
+    try {
+      const userRef = doc(db, 'users', userId)
+      await updateDoc(userRef, {
+        ...updates,
+        updatedAt: Timestamp.now()
+      })
+    } catch (error) {
+      console.error('Error updating user:', error)
+      throw error
+    }
+  }
+
+  static async assignUserToFarm(userId: string, farmId: string, role: string): Promise<void> {
+    try {
+      const userRef = doc(db, 'users', userId)
+      await updateDoc(userRef, {
+        currentFarmId: farmId,
+        roles: [role],
+        updatedAt: Timestamp.now()
+      })
+    } catch (error) {
+      console.error('Error assigning user to farm:', error)
+      throw error
+    }
+  }
+
+  // Zone Management Methods
+  static async getAllZones(): Promise<Zone[]> {
+    try {
+      const zonesRef = collection(db, 'zones')
+      const snapshot = await getDocs(zonesRef)
+      const zones: Zone[] = []
+      
+      snapshot.forEach((doc) => {
+        const data = doc.data()
+        zones.push({
+          id: doc.id,
+          name: data.name || '',
+          farmId: data.farmId || '',
+          boundaries: data.boundaries || [],
+          isActive: data.isActive !== false,
+          alertOnEntry: data.alertOnEntry || false,
+          alertOnExit: data.alertOnExit || false,
+          allowedUserIds: data.allowedUserIds || [],
+          metadata: {
+            soilType: data.metadata?.soilType || '',
+            drainageLevel: data.metadata?.drainageLevel || '',
+            area: data.metadata?.area || 0,
+            perimeter: data.metadata?.perimeter || 0
+          }
+        })
+      })
+      
+      return zones
+    } catch (error) {
+      console.error('Error fetching zones:', error)
+      return []
+    }
+  }
+
+  static async createZone(zoneData: Zone): Promise<void> {
+    try {
+      const zoneRef = doc(collection(db, 'zones'))
+      await setDoc(zoneRef, {
+        ...zoneData,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      })
+    } catch (error) {
+      console.error('Error creating zone:', error)
+      throw error
+    }
+  }
+
+  static async updateZone(zoneId: string, updates: Partial<Zone>): Promise<void> {
+    try {
+      const zoneRef = doc(db, 'zones', zoneId)
+      await updateDoc(zoneRef, {
+        ...updates,
+        updatedAt: Timestamp.now()
+      })
+    } catch (error) {
+      console.error('Error updating zone:', error)
+      throw error
+    }
+  }
+
+  static async deleteZone(zoneId: string): Promise<void> {
+    try {
+      const zoneRef = doc(db, 'zones', zoneId)
+      await deleteDoc(zoneRef)
+    } catch (error) {
+      console.error('Error deleting zone:', error)
+      throw error
+    }
+  }
+
+  // Farm Management Methods
+  static async deleteFarm(farmId: string): Promise<void> {
+    try {
+      const farmRef = doc(db, 'farms', farmId)
+      await deleteDoc(farmRef)
+    } catch (error) {
+      console.error('Error deleting farm:', error)
+      throw error
     }
   }
 }

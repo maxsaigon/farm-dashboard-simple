@@ -13,6 +13,7 @@ import { db } from './firebase'
 import { Tree, Photo, ManualEntry, DashboardStats, FarmStatistics } from './types'
 import { FarmService } from './farm-service'
 import { AdminService } from './admin-service'
+import { safeFirebaseOperation, withTimeout, NetworkError } from './network-utils'
 
 // Convert various date formats to JavaScript Date
 function convertToDate(dateValue: unknown): Date | null {
@@ -60,7 +61,11 @@ function convertToDate(dateValue: unknown): Date | null {
 export function subscribeToTrees(farmId: string, userId: string, callback: (trees: Tree[]) => void) {
   // Admin can access all trees
   if (AdminService.isAdmin(userId)) {
-    AdminService.getAllTrees().then(allTrees => {
+    safeFirebaseOperation(
+      () => AdminService.getAllTrees(),
+      [] as Tree[],
+      { timeout: 15000, retries: 2 }
+    ).then(allTrees => {
       callback(allTrees as Tree[])
     }).catch(error => {
       console.error('Error loading admin trees:', error)
@@ -81,24 +86,33 @@ export function subscribeToTrees(farmId: string, userId: string, callback: (tree
     const q = query(treesRef, orderBy('plantingDate', 'desc'))
     
     return onSnapshot(q, (snapshot) => {
-      const trees: Tree[] = []
-      snapshot.forEach((doc) => {
-        const data = doc.data()
-        trees.push({
-          id: doc.id,
-          ...data,
-          farmId,
-          plantingDate: convertToDate(data.plantingDate),
-          lastCountDate: convertToDate(data.lastCountDate),
-          fertilizedDate: convertToDate(data.fertilizedDate),
-          prunedDate: convertToDate(data.prunedDate),
-          lastSyncDate: convertToDate(data.lastSyncDate),
-          lastAIAnalysisDate: convertToDate(data.lastAIAnalysisDate),
-          createdAt: convertToDate(data.createdAt || data.createdDate),
-          updatedAt: convertToDate(data.updatedAt || data.lastModified),
-        } as Tree)
-      })
-      callback(trees)
+      try {
+        const trees: Tree[] = []
+        snapshot.forEach((doc) => {
+          const data = doc.data()
+          trees.push({
+            id: doc.id,
+            ...data,
+            farmId,
+            plantingDate: convertToDate(data.plantingDate),
+            lastCountDate: convertToDate(data.lastCountDate),
+            fertilizedDate: convertToDate(data.fertilizedDate),
+            prunedDate: convertToDate(data.prunedDate),
+            lastSyncDate: convertToDate(data.lastSyncDate),
+            lastAIAnalysisDate: convertToDate(data.lastAIAnalysisDate),
+            createdAt: convertToDate(data.createdAt || data.createdDate),
+            updatedAt: convertToDate(data.updatedAt || data.lastModified),
+          } as Tree)
+        })
+        callback(trees)
+      } catch (error) {
+        console.error('Error processing tree data:', error)
+        callback([])
+      }
+    }, (error) => {
+      console.error('Firestore subscription error:', error)
+      // Call with empty array on error to prevent infinite loading
+      callback([])
     })
   })
 }

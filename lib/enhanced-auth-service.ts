@@ -156,7 +156,7 @@ export class EnhancedAuthService {
   }
 
   // User Profile Management
-  private async loadUserProfile(uid: string): Promise<EnhancedUser> {
+  async loadUserProfile(uid: string): Promise<EnhancedUser> {
     const userDoc = await getDoc(doc(db, 'users', uid))
     
     if (!userDoc.exists()) {
@@ -509,6 +509,12 @@ export class EnhancedAuthService {
         allowDataExport: true
       }
     }
+  }
+
+  // Internal state management
+  setCurrentUserAndRoles(user: EnhancedUser, roles: UserRole[]): void {
+    this.currentUser = user
+    this.currentRoles = roles
   }
 
   // Getters

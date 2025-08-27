@@ -1,0 +1,169 @@
+{
+  "name": "Farm Manager - Quản lý trang trại thông minh",
+  "short_name": "Farm Manager",
+  "description": "Ứng dụng quản lý trang trại thông minh cho việc theo dõi cây trồng, chụp ảnh AI và phân tích sức khỏe cây.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#16a34a",
+  "background_color": "#ffffff",
+  "lang": "vi-VN",
+  "categories": ["agriculture", "productivity", "business"],
+  "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Chụp ảnh cây",
+      "short_name": "Camera",
+      "description": "Chụp ảnh cây trồng với AI phân tích",
+      "url": "/camera",
+      "icons": [
+        {
+          "src": "/icons/camera-shortcut.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Danh sách cây",
+      "short_name": "Cây trồng",
+      "description": "Xem và quản lý cây trồng",
+      "url": "/trees",
+      "icons": [
+        {
+          "src": "/icons/tree-shortcut.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Bản đồ",
+      "short_name": "Bản đồ",
+      "description": "Xem vị trí cây trồng trên bản đồ",
+      "url": "/map",
+      "icons": [
+        {
+          "src": "/icons/map-shortcut.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-dashboard.jpg",
+      "sizes": "640x1136",
+      "type": "image/jpeg",
+      "platform": "narrow",
+      "label": "Trang chính hiển thị thông tin tổng quan trang trại"
+    },
+    {
+      "src": "/screenshots/mobile-trees.jpg", 
+      "sizes": "640x1136",
+      "type": "image/jpeg",
+      "platform": "narrow",
+      "label": "Danh sách cây trồng với bộ lọc và tìm kiếm"
+    },
+    {
+      "src": "/screenshots/mobile-camera.jpg",
+      "sizes": "640x1136", 
+      "type": "image/jpeg",
+      "platform": "narrow",
+      "label": "Giao diện chụp ảnh cây với AI phân tích"
+    },
+    {
+      "src": "/screenshots/desktop-dashboard.jpg",
+      "sizes": "1280x800",
+      "type": "image/jpeg", 
+      "platform": "wide",
+      "label": "Dashboard tổng quan trên máy tính"
+    }
+  ],
+  "features": [
+    "Cross Platform",
+    "fast",
+    "simple"
+  ],
+  "edge_side_panel": {
+    "preferred_width": 480
+  },
+  "file_handlers": [
+    {
+      "action": "/upload",
+      "accept": {
+        "image/jpeg": [".jpg", ".jpeg"],
+        "image/png": [".png"],
+        "image/webp": [".webp"]
+      }
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+farmmanager",
+      "url": "/handle?url=%s"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.farmmanager.app",
+      "id": "com.farmmanager.app"
+    },
+    {
+      "platform": "itunes", 
+      "url": "https://apps.apple.com/app/farm-manager/id123456789"
+    }
+  ]
+}

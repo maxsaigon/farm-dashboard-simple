@@ -154,15 +154,18 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   const totalFruits = (tree.manualFruitCount || 0) + (tree.aiFruitCount || 0)
 
   return (
-    <div className={`bg-white rounded-xl shadow-lg border border-gray-200 ${className}`}>
+    <div className={`bg-white rounded-xl shadow-lg border border-gray-200 ${className}`} data-testid="tree-detail">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200">
         <div className="flex items-center space-x-4">
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50"
+            title="Quay lại"
+            data-testid="back-button"
           >
             <ArrowLeftIcon className="h-5 w-5" />
+            <span className="text-sm lg:hidden">Quay lại</span>
           </button>
           <div className="flex items-center space-x-3">
             {getHealthIcon(tree.healthStatus)}

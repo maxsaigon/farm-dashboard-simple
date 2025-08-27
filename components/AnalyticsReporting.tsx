@@ -985,7 +985,7 @@ function FinancialTab({ data }: { data: ReportData }) {
                 • Chi phí phân bón chiếm {data.investments.byCategory[0].percentage}% - cần cân nhắc tối ưu
               </div>
               <div className="text-sm text-gray-600">
-                • ROI hiện tại {data.investments.roi > 15 ? 'tốt' : 'cần cải thiện'}, mục tiêu >15%
+                • ROI hiện tại {data.investments.roi > 15 ? 'tốt' : 'cần cải thiện'}, mục tiêu &gt;15%
               </div>
               <div className="text-sm text-gray-600">
                 • Xem xét đầu tư công nghệ để giảm chi phí lao động
