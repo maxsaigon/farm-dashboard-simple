@@ -10,7 +10,6 @@ import {
   Cog6ToothIcon,
   ChartBarIcon,
   ExclamationTriangleIcon,
-  PlusIcon,
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
 import { AdminStatsCard } from '@/components/admin/AdminStatsCard'

@@ -1,7 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/enhanced-auth-context'
+import React, { useState } from 'react'
 import { Tree } from '@/lib/types'
 import { MapWrapper } from '@/components/MapWrapper'
 import { TreeDetail } from '@/components/TreeDetail'
@@ -17,6 +16,7 @@ import {
 const DEMO_TREES: Tree[] = [
   {
     id: "demo-tree-1",
+    farmId: "demo-farm-1",
     qrCode: "DEMO-001", 
     name: "Cây Sầu Riêng 001",
     variety: "Monthong",
@@ -26,11 +26,12 @@ const DEMO_TREES: Tree[] = [
     needsAttention: false,
     manualFruitCount: 25,
     aiFruitCount: 28,
-    location: { latitude: 10.762622, longitude: 106.660172 },
-    photos: []
+    latitude: 10.762622,
+    longitude: 106.660172
   },
   {
     id: "demo-tree-2", 
+    farmId: "demo-farm-1",
     qrCode: "DEMO-002",
     name: "Cây Sầu Riêng 002",
     variety: "Kan Yao",
@@ -40,11 +41,12 @@ const DEMO_TREES: Tree[] = [
     needsAttention: false,
     manualFruitCount: 18,
     aiFruitCount: 22,
-    location: { latitude: 10.763122, longitude: 106.660672 },
-    photos: []
+    latitude: 10.763122,
+    longitude: 106.660672
   },
   {
     id: "demo-tree-3",
+    farmId: "demo-farm-1",
     qrCode: "DEMO-003",
     name: "Cây Sầu Riêng 003", 
     variety: "Kan Yao",
@@ -54,11 +56,12 @@ const DEMO_TREES: Tree[] = [
     needsAttention: true,
     manualFruitCount: 8,
     aiFruitCount: 5,
-    location: { latitude: 10.763622, longitude: 106.661172 },
-    photos: []
+    latitude: 10.763622,
+    longitude: 106.661172
   },
   {
     id: "demo-tree-4",
+    farmId: "demo-farm-1",
     qrCode: "DEMO-004", 
     name: "Cây Sầu Riêng 004",
     variety: "Monthong",
@@ -68,11 +71,12 @@ const DEMO_TREES: Tree[] = [
     needsAttention: false,
     manualFruitCount: 35,
     aiFruitCount: 31,
-    location: { latitude: 10.762122, longitude: 106.659672 },
-    photos: []
+    latitude: 10.762122,
+    longitude: 106.659672
   },
   {
     id: "demo-tree-5",
+    farmId: "demo-farm-1",
     qrCode: "DEMO-005",
     name: "Cây Sầu Riêng 005",
     variety: "Golden Pillow",
@@ -82,14 +86,13 @@ const DEMO_TREES: Tree[] = [
     needsAttention: false,
     manualFruitCount: 42,
     aiFruitCount: 38,
-    location: { latitude: 10.761622, longitude: 106.659172 },
-    photos: []
+    latitude: 10.761622,
+    longitude: 106.659172
   }
 ]
 
 export default function MapPage() {
-  const { user } = useAuth()
-  const [trees, setTrees] = useState<Tree[]>(DEMO_TREES)
+  const [trees] = useState<Tree[]>(DEMO_TREES)
   const [selectedTree, setSelectedTree] = useState<Tree | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')

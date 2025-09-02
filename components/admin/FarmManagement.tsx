@@ -11,6 +11,7 @@ import {
   CalendarIcon
 } from '@heroicons/react/24/outline'
 import { EnhancedFarm, EnhancedUser } from '@/lib/types-enhanced'
+import { Farm } from '@/lib/types'
 import { AdminService } from '@/lib/admin-service'
 
 interface FarmManagementProps {
@@ -18,10 +19,10 @@ interface FarmManagementProps {
 }
 
 export function FarmManagement({ searchQuery }: FarmManagementProps) {
-  const [farms, setFarms] = useState<EnhancedFarm[]>([])
+  const [farms, setFarms] = useState<Farm[]>([])
   const [users, setUsers] = useState<EnhancedUser[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedFarm, setSelectedFarm] = useState<EnhancedFarm | null>(null)
+  const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null)
   const [showFarmModal, setShowFarmModal] = useState(false)
 
   useEffect(() => {
@@ -46,7 +47,6 @@ export function FarmManagement({ searchQuery }: FarmManagementProps) {
 
   const filteredFarms = farms.filter(farm =>
     farm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    farm.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     farm.ownerName?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
@@ -67,11 +67,11 @@ export function FarmManagement({ searchQuery }: FarmManagementProps) {
   }
 
   const getFarmStats = (farm: EnhancedFarm) => {
-    const farmUsers = users.filter(user => user.currentFarmId === farm.id)
+    const farmUsers = users.filter(user => user.uid)
     return {
       totalUsers: farmUsers.length,
-      totalTrees: farm.totalTrees || 0,
-      totalZones: farm.totalZones || 0
+      totalTrees: 0,
+      totalZones: 0
     }
   }
 
