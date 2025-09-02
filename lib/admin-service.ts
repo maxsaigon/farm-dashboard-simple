@@ -535,6 +535,40 @@ export class AdminService {
   }
 
   // Farm Management Methods
+  static async createFarm(farmData: Omit<Farm, 'id' | 'createdDate'>): Promise<string> {
+    try {
+      const farmRef = doc(collection(db, 'farms'))
+      const farm: Farm = {
+        ...farmData,
+        id: farmRef.id,
+        createdDate: new Date()
+      }
+      
+      await setDoc(farmRef, {
+        ...farm,
+        createdDate: Timestamp.fromDate(farm.createdDate)
+      })
+      
+      return farmRef.id
+    } catch (error) {
+      console.error('Error creating farm:', error)
+      throw error
+    }
+  }
+
+  static async updateFarm(farmId: string, updates: Partial<Farm>): Promise<void> {
+    try {
+      const farmRef = doc(db, 'farms', farmId)
+      await updateDoc(farmRef, {
+        ...updates,
+        updatedAt: Timestamp.now()
+      })
+    } catch (error) {
+      console.error('Error updating farm:', error)
+      throw error
+    }
+  }
+
   static async deleteFarm(farmId: string): Promise<void> {
     try {
       const farmRef = doc(db, 'farms', farmId)

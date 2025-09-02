@@ -24,6 +24,7 @@ export function FarmManagement({ searchQuery }: FarmManagementProps) {
   const [loading, setLoading] = useState(true)
   const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null)
   const [showFarmModal, setShowFarmModal] = useState(false)
+  const [farmStats, setFarmStats] = useState<Record<string, { trees: number; zones: number; users: number }>>({})
 
   useEffect(() => {
     loadData()
@@ -38,6 +39,42 @@ export function FarmManagement({ searchQuery }: FarmManagementProps) {
       ])
       setFarms(farmsData)
       setUsers(usersData)
+      
+      // Load statistics for each farm
+      const statsPromises = farmsData.map(async (farm) => {
+        try {
+          const [trees, zones] = await Promise.all([
+            AdminService.getAllTrees().then(trees => trees.filter(t => t.farmId === farm.id)),
+            AdminService.getAllZones().then(zones => zones.filter(z => z.farmId === farm.id))
+          ])
+          
+          // Count users associated with this farm
+          const farmUsers = usersData.filter(user => user.currentFarmId === farm.id)
+          
+          return {
+            farmId: farm.id,
+            stats: {
+              trees: trees.length,
+              zones: zones.length,
+              users: farmUsers.length
+            }
+          }
+        } catch (error) {
+          console.warn(`Error loading stats for farm ${farm.id}:`, error)
+          return {
+            farmId: farm.id,
+            stats: { trees: 0, zones: 0, users: 0 }
+          }
+        }
+      })
+      
+      const statsResults = await Promise.all(statsPromises)
+      const statsMap = statsResults.reduce((acc, { farmId, stats }) => {
+        acc[farmId] = stats
+        return acc
+      }, {} as Record<string, { trees: number; zones: number; users: number }>)
+      
+      setFarmStats(statsMap)
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -50,7 +87,7 @@ export function FarmManagement({ searchQuery }: FarmManagementProps) {
     farm.ownerName?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleEditFarm = (farm: EnhancedFarm) => {
+  const handleEditFarm = (farm: Farm) => {
     setSelectedFarm(farm)
     setShowFarmModal(true)
   }
@@ -66,12 +103,12 @@ export function FarmManagement({ searchQuery }: FarmManagementProps) {
     }
   }
 
-  const getFarmStats = (farm: EnhancedFarm) => {
-    const farmUsers = users.filter(user => user.uid)
+  const getFarmStats = (farm: Farm) => {
+    const stats = farmStats[farm.id] || { trees: 0, zones: 0, users: 0 }
     return {
-      totalUsers: farmUsers.length,
-      totalTrees: 0,
-      totalZones: 0
+      totalUsers: stats.users,
+      totalTrees: stats.trees,
+      totalZones: stats.zones
     }
   }
 
@@ -124,7 +161,7 @@ export function FarmManagement({ searchQuery }: FarmManagementProps) {
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">{farm.name}</h3>
                     <div className="flex items-center text-sm text-gray-600 mb-2">
                       <MapPinIcon className="h-4 w-4 mr-1" />
-                      {farm.location || 'Chưa có địa chỉ'}
+                      {farm.ownerName || 'Chưa có chủ sở hữu'}
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <CalendarIcon className="h-4 w-4 mr-1" />
@@ -180,15 +217,31 @@ export function FarmManagement({ searchQuery }: FarmManagementProps) {
                 </div>
               </div>
 
-              {/* Farm Owner */}
-              {farm.ownerName && (
-                <div className="px-6 pb-4 border-t border-gray-100">
-                  <div className="pt-4">
-                    <p className="text-sm text-gray-500">Chủ nông trại:</p>
-                    <p className="text-sm font-medium text-gray-900">{farm.ownerName}</p>
-                  </div>
+              {/* Farm Details */}
+              <div className="px-6 pb-4 border-t border-gray-100">
+                <div className="pt-4 space-y-2">
+                  {farm.ownerName && (
+                    <div>
+                      <p className="text-sm text-gray-500">Chủ nông trại:</p>
+                      <p className="text-sm font-medium text-gray-900">{farm.ownerName}</p>
+                    </div>
+                  )}
+                  {farm.totalArea && (
+                    <div>
+                      <p className="text-sm text-gray-500">Diện tích:</p>
+                      <p className="text-sm font-medium text-gray-900">{farm.totalArea} ha</p>
+                    </div>
+                  )}
+                  {(farm.centerLatitude && farm.centerLongitude) && (
+                    <div>
+                      <p className="text-sm text-gray-500">Tọa độ:</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {farm.centerLatitude?.toFixed(6)}, {farm.centerLongitude?.toFixed(6)}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Farm Description */}
               {farm.description && (
@@ -250,7 +303,7 @@ export function FarmManagement({ searchQuery }: FarmManagementProps) {
 
 // Farm Modal Component
 interface FarmModalProps {
-  farm: EnhancedFarm | null
+  farm: Farm | null
   onClose: () => void
   onSuccess: () => void
 }
@@ -258,15 +311,11 @@ interface FarmModalProps {
 function FarmModal({ farm, onClose, onSuccess }: FarmModalProps) {
   const [formData, setFormData] = useState({
     name: farm?.name || '',
-    location: farm?.location || '',
-    description: farm?.description || '',
     ownerName: farm?.ownerName || '',
-    ownerEmail: farm?.ownerEmail || '',
-    area: farm?.area || 0,
-    coordinates: {
-      latitude: farm?.coordinates?.latitude || 0,
-      longitude: farm?.coordinates?.longitude || 0
-    }
+    totalArea: farm?.totalArea || 0,
+    centerLatitude: farm?.centerLatitude || 0,
+    centerLongitude: farm?.centerLongitude || 0,
+    boundaryCoordinates: farm?.boundaryCoordinates || ''
   })
   const [loading, setLoading] = useState(false)
 
@@ -276,9 +325,9 @@ function FarmModal({ farm, onClose, onSuccess }: FarmModalProps) {
     
     try {
       if (farm) {
-        await FarmService.updateFarm(farm.id, 'admin', formData)
+        await AdminService.updateFarm(farm.id, formData)
       } else {
-        await FarmService.createFarm('admin', formData)
+        await AdminService.createFarm(formData)
       }
       onSuccess()
     } catch (error) {
@@ -320,8 +369,8 @@ function FarmModal({ farm, onClose, onSuccess }: FarmModalProps) {
                 type="number"
                 step="0.1"
                 min="0"
-                value={formData.area}
-                onChange={(e) => setFormData(prev => ({ ...prev, area: parseFloat(e.target.value) || 0 }))}
+                value={formData.totalArea}
+                onChange={(e) => setFormData(prev => ({ ...prev, totalArea: parseFloat(e.target.value) || 0 }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="0.0"
               />
@@ -330,65 +379,37 @@ function FarmModal({ farm, onClose, onSuccess }: FarmModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Địa chỉ
-            </label>
-            <input
-              type="text"
-              value={formData.location}
-              onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Nhập địa chỉ nông trại"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mô tả
+              Tọa độ ranh giới (JSON)
             </label>
             <textarea
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              value={formData.boundaryCoordinates}
+              onChange={(e) => setFormData(prev => ({ ...prev, boundaryCoordinates: e.target.value }))}
               rows={3}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Mô tả về nông trại..."
+              placeholder='[{"lat": 10.762622, "lng": 106.660172}]'
             />
           </div>
 
           {/* Owner Information */}
           <div className="border-t border-gray-200 pt-6">
             <h4 className="text-md font-medium text-gray-900 mb-4">Thông tin chủ nông trại</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tên chủ nông trại
-                </label>
-                <input
-                  type="text"
-                  value={formData.ownerName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, ownerName: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Nhập tên chủ nông trại"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email chủ nông trại
-                </label>
-                <input
-                  type="email"
-                  value={formData.ownerEmail}
-                  onChange={(e) => setFormData(prev => ({ ...prev, ownerEmail: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="owner@example.com"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tên chủ nông trại
+              </label>
+              <input
+                type="text"
+                value={formData.ownerName}
+                onChange={(e) => setFormData(prev => ({ ...prev, ownerName: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Nhập tên chủ nông trại"
+              />
             </div>
           </div>
 
           {/* Location Coordinates */}
           <div className="border-t border-gray-200 pt-6">
-            <h4 className="text-md font-medium text-gray-900 mb-4">Tọa độ GPS</h4>
+            <h4 className="text-md font-medium text-gray-900 mb-4">Tọa độ trung tâm</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -397,10 +418,10 @@ function FarmModal({ farm, onClose, onSuccess }: FarmModalProps) {
                 <input
                   type="number"
                   step="any"
-                  value={formData.coordinates.latitude}
+                  value={formData.centerLatitude}
                   onChange={(e) => setFormData(prev => ({ 
                     ...prev, 
-                    coordinates: { ...prev.coordinates, latitude: parseFloat(e.target.value) || 0 }
+                    centerLatitude: parseFloat(e.target.value) || 0
                   }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                   placeholder="10.762622"
@@ -414,10 +435,10 @@ function FarmModal({ farm, onClose, onSuccess }: FarmModalProps) {
                 <input
                   type="number"
                   step="any"
-                  value={formData.coordinates.longitude}
+                  value={formData.centerLongitude}
                   onChange={(e) => setFormData(prev => ({ 
                     ...prev, 
-                    coordinates: { ...prev.coordinates, longitude: parseFloat(e.target.value) || 0 }
+                    centerLongitude: parseFloat(e.target.value) || 0
                   }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                   placeholder="106.660172"
