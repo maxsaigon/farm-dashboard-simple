@@ -20,7 +20,7 @@ interface UserManagementProps {
 
 export function UserManagement({ searchQuery }: UserManagementProps) {
   const [users, setUsers] = useState<EnhancedUser[]>([])
-  const [farms, setFarms] = useState<EnhancedFarm[]>([])
+  const [farms, setFarms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<EnhancedUser | null>(null)
   const [showAssignFarmModal, setShowAssignFarmModal] = useState(false)
@@ -60,6 +60,31 @@ export function UserManagement({ searchQuery }: UserManagementProps) {
   const handleEditUser = (user: EnhancedUser) => {
     setSelectedUser(user)
     setShowUserModal(true)
+  }
+
+  const handleDeleteUser = async (user: EnhancedUser) => {
+    if (confirm(`Bạn có chắc chắn muốn xóa người dùng "${user.displayName || user.email}"?`)) {
+      try {
+        await AdminService.deleteUser(user.uid)
+        loadData() // Reload the user list
+      } catch (error) {
+        console.error('Error deleting user:', error)
+        alert('Có lỗi xảy ra khi xóa người dùng')
+      }
+    }
+  }
+
+  const handleRemoveFromFarm = async (user: EnhancedUser) => {
+    const farmName = farms.find(f => f.id === user.currentFarmId)?.name || 'nông trại'
+    if (confirm(`Bạn có chắc chắn muốn gỡ "${user.displayName || user.email}" khỏi ${farmName}?`)) {
+      try {
+        await AdminService.removeUserFromFarm(user.uid)
+        loadData() // Reload the user list
+      } catch (error) {
+        console.error('Error removing user from farm:', error)
+        alert('Có lỗi xảy ra khi gỡ người dùng khỏi nông trại')
+      }
+    }
   }
 
   const getRoleDisplay = (role: string) => {
@@ -202,7 +227,9 @@ export function UserManagement({ searchQuery }: UserManagementProps) {
                       {user.currentFarmId ? (
                         <div className="flex items-center">
                           <BuildingStorefrontIcon className="h-4 w-4 mr-2 text-gray-400" />
-                          <span>Farm {user.currentFarmId.slice(0, 8)}...</span>
+                          <span title={`Farm ID: ${user.currentFarmId}`}>
+                            {farms.find(f => f.id === user.currentFarmId)?.name || `Farm ${user.currentFarmId.slice(0, 8)}...`}
+                          </span>
                         </div>
                       ) : (
                         <span className="text-gray-500">Chưa được gán</span>
@@ -218,13 +245,23 @@ export function UserManagement({ searchQuery }: UserManagementProps) {
                     </td>
                     
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleAssignFarm(user)}
-                        className="text-green-600 hover:text-green-900"
-                        title="Gán nông trại"
-                      >
-                        <BuildingStorefrontIcon className="h-5 w-5" />
-                      </button>
+                      {user.currentFarmId ? (
+                        <button
+                          onClick={() => handleRemoveFromFarm(user)}
+                          className="text-orange-600 hover:text-orange-900"
+                          title="Gỡ khỏi nông trại"
+                        >
+                          <BuildingStorefrontIcon className="h-5 w-5" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAssignFarm(user)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Gán nông trại"
+                        >
+                          <BuildingStorefrontIcon className="h-5 w-5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleEditUser(user)}
                         className="text-blue-600 hover:text-blue-900"
@@ -234,7 +271,7 @@ export function UserManagement({ searchQuery }: UserManagementProps) {
                       </button>
                       {user.roles?.[0] !== 'super_admin' && (
                         <button
-                          onClick={() => {/* Handle delete */}}
+                          onClick={() => handleDeleteUser(user)}
                           className="text-red-600 hover:text-red-900"
                           title="Xóa"
                         >
@@ -299,7 +336,7 @@ export function UserManagement({ searchQuery }: UserManagementProps) {
 // Farm Assignment Modal Component
 interface FarmAssignmentModalProps {
   user: EnhancedUser
-  farms: EnhancedFarm[]
+  farms: any[]
   onClose: () => void
   onSuccess: () => void
 }
@@ -343,7 +380,7 @@ function FarmAssignmentModal({ user, farms, onClose, onSuccess }: FarmAssignment
               <option value="">Chọn nông trại...</option>
               {farms.map((farm) => (
                 <option key={farm.id} value={farm.id}>
-                  {farm.name} - {farm.location}
+                  {farm.name} {farm.ownerName ? `- ${farm.ownerName}` : ''}
                 </option>
               ))}
             </select>

@@ -451,14 +451,88 @@ export class AdminService {
 
   static async assignUserToFarm(userId: string, farmId: string, role: string): Promise<void> {
     try {
+      // Role to permissions mapping
+      const rolePermissions: Record<string, string[]> = {
+        'farm_owner': ['read', 'write', 'delete', 'manage_users', 'manage_zones', 'manage_investments'],
+        'farm_manager': ['read', 'write', 'manage_zones', 'manage_investments'],
+        'farm_worker': ['read', 'write']
+      }
+
+      const permissions = rolePermissions[role] || ['read']
+      
+      // Update user document
       const userRef = doc(db, 'users', userId)
       await updateDoc(userRef, {
         currentFarmId: farmId,
         roles: [role],
         updatedAt: Timestamp.now()
       })
+
+      // Create userFarmAccess record
+      const accessId = `${userId}_${farmId}`
+      const accessRef = doc(db, 'userFarmAccess', accessId)
+      await setDoc(accessRef, {
+        id: accessId,
+        userId,
+        farmId,
+        role,
+        permissions,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      }, { merge: true })
+
+      console.log(`Successfully assigned user ${userId} to farm ${farmId} with role ${role}`)
     } catch (error) {
       console.error('Error assigning user to farm:', error)
+      throw error
+    }
+  }
+
+  static async removeUserFromFarm(userId: string): Promise<void> {
+    try {
+      // Get current user data
+      const userDoc = await getDoc(doc(db, 'users', userId))
+      if (!userDoc.exists()) {
+        throw new Error('User not found')
+      }
+
+      const userData = userDoc.data()
+      const currentFarmId = userData.currentFarmId
+
+      // Update user document
+      const userRef = doc(db, 'users', userId)
+      await updateDoc(userRef, {
+        currentFarmId: '',
+        roles: [],
+        updatedAt: Timestamp.now()
+      })
+
+      // Remove userFarmAccess record if it exists
+      if (currentFarmId) {
+        const accessId = `${userId}_${currentFarmId}`
+        const accessRef = doc(db, 'userFarmAccess', accessId)
+        await deleteDoc(accessRef)
+      }
+
+      console.log(`Successfully removed user ${userId} from farm ${currentFarmId}`)
+    } catch (error) {
+      console.error('Error removing user from farm:', error)
+      throw error
+    }
+  }
+
+  static async deleteUser(userId: string): Promise<void> {
+    try {
+      // First remove user from any assigned farm
+      await this.removeUserFromFarm(userId)
+      
+      // Delete user document
+      const userRef = doc(db, 'users', userId)
+      await deleteDoc(userRef)
+
+      console.log(`Successfully deleted user ${userId}`)
+    } catch (error) {
+      console.error('Error deleting user:', error)
       throw error
     }
   }
