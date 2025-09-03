@@ -243,12 +243,6 @@ export function FarmManagement({ searchQuery }: FarmManagementProps) {
                 </div>
               </div>
 
-              {/* Farm Description */}
-              {farm.description && (
-                <div className="px-6 pb-6">
-                  <p className="text-sm text-gray-600 line-clamp-2">{farm.description}</p>
-                </div>
-              )}
             </div>
           )
         })}

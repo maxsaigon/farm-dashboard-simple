@@ -176,9 +176,9 @@ export default function RealTimeTreePositioning() {
             userId: user.uid,
             farmId: currentFarm!.id,
             coordinate: currentReading,
-            zoneId: currentZone,
+            zoneId: currentZone || undefined,
             isInsideAnyZone: !!currentZone,
-            nearbyTreeIds,
+            nearbyTreeIds: [],
             isOnline: navigator.onLine,
             metadata: {}
           }

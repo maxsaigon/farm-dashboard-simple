@@ -170,7 +170,7 @@ export default function MobileTreeList() {
     }).length
   }
 
-  const zones = [...new Set(trees.map(tree => tree.zone).filter(Boolean))]
+  const zones = Array.from(new Set(trees.map(tree => tree.zone).filter(Boolean)))
   const healthStatuses = ['Good', 'Fair', 'Poor', 'Disease']
   const treeStatuses = ['Young Tree', 'Mature', 'Old Tree', 'Dead']
 

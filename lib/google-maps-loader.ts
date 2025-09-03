@@ -87,7 +87,7 @@ class GoogleMapsLoader {
       // Set up global callback
       window[callbackName] = () => {
         resolve()
-        delete window[callbackName]
+        delete (window as any)[callbackName]
       }
 
       // Create script element
@@ -110,7 +110,7 @@ class GoogleMapsLoader {
       
       script.onerror = () => {
         reject(new Error('Failed to load Google Maps script'))
-        delete window[callbackName]
+        delete (window as any)[callbackName]
       }
 
       // Add script to document head

@@ -12,7 +12,7 @@ import {
   EyeIcon,
   CalendarIcon,
   CurrencyDollarIcon,
-  TreePine,
+  BeakerIcon,
   PhotoIcon
 } from '@heroicons/react/24/outline'
 import { 
@@ -159,7 +159,7 @@ export default function EnhancedDashboard() {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'tree_added': return <TreePine className="h-4 w-4 text-green-600" />
+      case 'tree_added': return <BeakerIcon className="h-4 w-4 text-green-600" />
       case 'photo_uploaded': return <PhotoIcon className="h-4 w-4 text-blue-600" />
       case 'investment_added': return <CurrencyDollarIcon className="h-4 w-4 text-yellow-600" />
       case 'tree_updated': return <PlusIcon className="h-4 w-4 text-purple-600" />
@@ -242,7 +242,7 @@ export default function EnhancedDashboard() {
         <StatsCard
           title="Tổng số cây"
           value={quickStats.totalTrees.toString()}
-          icon={<TreePine className="h-8 w-8 text-green-600" />}
+          icon={<BeakerIcon className="h-8 w-8 text-green-600" />}
           change="+5 tuần này"
           changeType="positive"
         />
@@ -274,7 +274,7 @@ export default function EnhancedDashboard() {
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Tình trạng cây trồng</h3>
-            <TreePine className="h-5 w-5 text-gray-400" />
+            <BeakerIcon className="h-5 w-5 text-gray-400" />
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -397,7 +397,7 @@ function QuickActionCard({
 }) {
   const { hasPermission } = useEnhancedAuth()
 
-  if (permission && !hasPermission(permission)) {
+  if (permission && !hasPermission(permission as any)) {
     return null
   }
 

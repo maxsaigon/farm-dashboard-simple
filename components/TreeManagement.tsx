@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
 import { 
-  TreePine,
+  BeakerIcon,
   MapPinIcon,
   CameraIcon,
   QrCodeIcon,
@@ -17,7 +17,6 @@ import {
   FunnelIcon,
   ArrowDownTrayIcon,
   HeartIcon,
-  BeakerIcon,
   SunIcon,
   PhotoIcon
 } from '@heroicons/react/24/outline'
@@ -277,13 +276,13 @@ export default function TreeManagement() {
       case 'Young Tree':
         return <SunIcon className="h-4 w-4 text-yellow-500" />
       case 'Mature':
-        return <TreePine className="h-4 w-4 text-green-600" />
+        return <BeakerIcon className="h-4 w-4 text-green-600" />
       case 'Old Tree':
-        return <TreePine className="h-4 w-4 text-orange-600" />
+        return <BeakerIcon className="h-4 w-4 text-orange-600" />
       case 'Dead':
         return <XCircleIcon className="h-4 w-4 text-red-500" />
       default:
-        return <TreePine className="h-4 w-4 text-gray-400" />
+        return <BeakerIcon className="h-4 w-4 text-gray-400" />
     }
   }
 
@@ -510,7 +509,7 @@ export default function TreeManagement() {
       {/* Trees Grid/List */}
       {filteredTrees.length === 0 ? (
         <div className="text-center py-8 bg-white rounded-lg shadow">
-          <TreePine className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <BeakerIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Không có cây nào</h3>
           <p className="text-gray-500">
             {searchTerm || Object.keys(filters).length > 0
@@ -842,13 +841,13 @@ function getTreeStatusIcon(status: string) {
     case 'Young Tree':
       return <SunIcon className="h-5 w-5 text-yellow-500" />
     case 'Mature':
-      return <TreePine className="h-5 w-5 text-green-600" />
+      return <BeakerIcon className="h-5 w-5 text-green-600" />
     case 'Old Tree':
-      return <TreePine className="h-5 w-5 text-orange-600" />
+      return <BeakerIcon className="h-5 w-5 text-orange-600" />
     case 'Dead':
       return <XCircleIcon className="h-5 w-5 text-red-500" />
     default:
-      return <TreePine className="h-5 w-5 text-gray-400" />
+      return <BeakerIcon className="h-5 w-5 text-gray-400" />
   }
 }
 

@@ -421,7 +421,7 @@ function UserModal({
             <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
             <select
               value={formData.accountStatus}
-              onChange={(e) => setFormData({...formData, accountStatus: e.target.value})}
+              onChange={(e) => setFormData({...formData, accountStatus: e.target.value as 'active' | 'suspended' | 'pending_verification'})}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="active">Hoạt động</option>
@@ -520,7 +520,7 @@ function RoleManagementModal({
                     <span className="text-sm font-medium">{getRoleDisplayName(role.roleType)}</span>
                     <span className="text-xs text-gray-500 ml-2">({role.scopeType})</span>
                   </div>
-                  {hasPermission('roles:revoke') && (
+                  {hasPermission('roles:revoke' as any) && (
                     <button
                       onClick={() => handleRevokeRole(role.id)}
                       className="text-red-600 hover:text-red-800 text-sm"
@@ -535,7 +535,7 @@ function RoleManagementModal({
         </div>
 
         {/* Grant New Role */}
-        {hasPermission('roles:assign') && (
+        {hasPermission('roles:assign' as any) && (
           <div className="mb-6">
             <h4 className="text-sm font-medium text-gray-700 mb-2">Cấp vai trò mới</h4>
             <div className="space-y-3">

@@ -9,9 +9,9 @@ import {
   CalendarIcon,
   FunnelIcon,
   ChartPieIcon,
-  TrendingUpIcon,
+  ArrowTrendingUpIcon,
   CurrencyDollarIcon,
-  TreePine,
+  BeakerIcon,
   PhotoIcon,
   MapIcon,
   ClockIcon,
@@ -439,8 +439,8 @@ export default function AnalyticsReporting() {
         <nav className="-mb-px flex space-x-8">
           {[
             { id: 'overview', name: 'Tổng quan', icon: ChartBarIcon },
-            { id: 'health', name: 'Sức khỏe cây', icon: TreePine },
-            { id: 'productivity', name: 'Năng suất', icon: TrendingUpIcon },
+            { id: 'health', name: 'Sức khỏe cây', icon: BeakerIcon },
+            { id: 'productivity', name: 'Năng suất', icon: ArrowTrendingUpIcon },
             { id: 'financial', name: 'Tài chính', icon: CurrencyDollarIcon },
             { id: 'zones', name: 'Khu vực', icon: MapIcon }
           ].map((tab) => (
@@ -489,7 +489,7 @@ function OverviewTab({ data }: { data: ReportData }) {
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <TreePine className="h-8 w-8 text-green-600" />
+              <BeakerIcon className="h-8 w-8 text-green-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Tổng số cây</p>
@@ -644,7 +644,7 @@ function OverviewTab({ data }: { data: ReportData }) {
             <div key={index} className="flex items-start space-x-3">
               <div className="flex-shrink-0 mt-1">
                 {activity.type === 'photo_analysis' && <PhotoIcon className="h-4 w-4 text-blue-600" />}
-                {activity.type === 'tree_inspection' && <TreePine className="h-4 w-4 text-green-600" />}
+                {activity.type === 'tree_inspection' && <BeakerIcon className="h-4 w-4 text-green-600" />}
                 {activity.type === 'investment' && <CurrencyDollarIcon className="h-4 w-4 text-yellow-600" />}
               </div>
               <div className="min-w-0 flex-1">

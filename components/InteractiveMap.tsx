@@ -74,7 +74,7 @@ export default function InteractiveMap() {
   const { currentFarm, hasPermission } = useEnhancedAuth()
   const { isLoaded: isGoogleMapsLoaded, isLoading: isGoogleMapsLoading, error: googleMapsError } = useGoogleMaps()
   const mapContainerRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<google.maps.Map | null>(null)
+  const mapRef = useRef<any>(null)
   
   // State management
   const [trees, setTrees] = useState<TreeMarker[]>([])
@@ -103,9 +103,9 @@ export default function InteractiveMap() {
   const [showZoneDetails, setShowZoneDetails] = useState(false)
 
   // Map markers and overlays
-  const [treeMarkers, setTreeMarkers] = useState<Map<string, google.maps.Marker>>(new Map())
-  const [zonePolygons, setZonePolygons] = useState<Map<string, google.maps.Polygon>>(new Map())
-  const [infoWindow, setInfoWindow] = useState<google.maps.InfoWindow | null>(null)
+  const [treeMarkers, setTreeMarkers] = useState<Map<string, any>>(new Map())
+  const [zonePolygons, setZonePolygons] = useState<Map<string, any>>(new Map())
+  const [infoWindow, setInfoWindow] = useState<any>(null)
 
   // Load map data
   useEffect(() => {
@@ -299,41 +299,41 @@ export default function InteractiveMap() {
 
     try {
       // Initialize Google Maps
-      const map = new google.maps.Map(mapContainerRef.current, {
+      const map = (window as any).google.maps.Map(mapContainerRef.current, {
         center: viewport.center,
         zoom: viewport.zoom,
-        mapTypeId: google.maps.MapTypeId.SATELLITE,
+        mapTypeId: (window as any).google.maps.MapTypeId.SATELLITE,
         mapTypeControl: true,
         mapTypeControlOptions: {
-          style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-          position: google.maps.ControlPosition.TOP_CENTER,
+          style: (window as any).google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+          position: (window as any).google.maps.ControlPosition.TOP_CENTER,
           mapTypeIds: [
-            google.maps.MapTypeId.ROADMAP,
-            google.maps.MapTypeId.SATELLITE,
-            google.maps.MapTypeId.HYBRID,
-            google.maps.MapTypeId.TERRAIN
+            (window as any).google.maps.MapTypeId.ROADMAP,
+            (window as any).google.maps.MapTypeId.SATELLITE,
+            (window as any).google.maps.MapTypeId.HYBRID,
+            (window as any).google.maps.MapTypeId.TERRAIN
           ]
         },
         zoomControl: true,
         zoomControlOptions: {
-          position: google.maps.ControlPosition.RIGHT_CENTER
+          position: (window as any).google.maps.ControlPosition.RIGHT_CENTER
         },
         streetViewControl: false,
         fullscreenControl: true,
         fullscreenControlOptions: {
-          position: google.maps.ControlPosition.RIGHT_TOP
+          position: (window as any).google.maps.ControlPosition.RIGHT_TOP
         }
       })
 
       mapRef.current = map
 
       // Initialize info window
-      const infoWin = new google.maps.InfoWindow()
+      const infoWin = (window as any).google.maps.InfoWindow()
       setInfoWindow(infoWin)
 
       // Fit bounds if available
       if (viewport.bounds) {
-        const bounds = new google.maps.LatLngBounds(
+        const bounds = (window as any).google.maps.LatLngBounds(
           { lat: viewport.bounds.south, lng: viewport.bounds.west },
           { lat: viewport.bounds.north, lng: viewport.bounds.east }
         )
@@ -377,12 +377,12 @@ export default function InteractiveMap() {
   const addZonePolygons = () => {
     if (!mapRef.current) return
 
-    const newPolygons = new Map<string, google.maps.Polygon>()
+    const newPolygons = new Map<string, any>()
 
     zones.forEach(zone => {
       if (filters.selectedZone && zone.id !== filters.selectedZone) return
 
-      const polygon = new google.maps.Polygon({
+      const polygon = (window as any).google.maps.Polygon({
         paths: zone.boundaries.map(point => ({ lat: point.lat, lng: point.lng })),
         strokeColor: zone.color,
         strokeOpacity: 0.8,
@@ -395,7 +395,7 @@ export default function InteractiveMap() {
       polygon.setMap(mapRef.current!)
 
       // Add click listener for zone
-      polygon.addListener('click', (event: google.maps.MapMouseEvent) => {
+      polygon.addListener('click', (event: any) => {
         handleZoneClick(zone, event)
       })
 
@@ -408,7 +408,7 @@ export default function InteractiveMap() {
   const addTreeMarkers = () => {
     if (!mapRef.current) return
 
-    const newMarkers = new Map<string, google.maps.Marker>()
+    const newMarkers = new Map<string, any>()
 
     const filteredTrees = trees.filter(tree => {
       if (filters.selectedZone && tree.zoneId !== filters.selectedZone) return false
@@ -419,7 +419,7 @@ export default function InteractiveMap() {
     })
 
     filteredTrees.forEach(tree => {
-      const marker = new google.maps.Marker({
+      const marker = (window as any).google.maps.Marker({
         position: { lat: tree.latitude, lng: tree.longitude },
         map: mapRef.current!,
         title: tree.name,
@@ -438,7 +438,7 @@ export default function InteractiveMap() {
     setTreeMarkers(newMarkers)
   }
 
-  const getTreeMarkerIcon = (tree: TreeMarker): google.maps.Icon => {
+  const getTreeMarkerIcon = (tree: TreeMarker): any => {
     let color = '#22c55e' // default green
     
     switch (tree.healthStatus) {
@@ -456,7 +456,7 @@ export default function InteractiveMap() {
     }
 
     return {
-      path: google.maps.SymbolPath.CIRCLE,
+      path: (window as any).google.maps.SymbolPath.CIRCLE,
       fillColor: color,
       fillOpacity: tree.needsAttention ? 1.0 : 0.8,
       strokeColor: '#ffffff',
@@ -465,7 +465,7 @@ export default function InteractiveMap() {
     }
   }
 
-  const handleTreeClick = (tree: TreeMarker, marker: google.maps.Marker) => {
+  const handleTreeClick = (tree: TreeMarker, marker: any) => {
     setSelectedTree(tree)
     setShowTreeDetails(true)
 
@@ -476,7 +476,7 @@ export default function InteractiveMap() {
     }
   }
 
-  const handleZoneClick = (zone: Zone, event: google.maps.MapMouseEvent) => {
+  const handleZoneClick = (zone: Zone, event: any) => {
     setSelectedZone(zone)
     setShowZoneDetails(true)
 
@@ -568,7 +568,7 @@ export default function InteractiveMap() {
   const fitAllMarkers = () => {
     if (!mapRef.current || (trees.length === 0 && zones.length === 0)) return
 
-    const bounds = new google.maps.LatLngBounds()
+    const bounds = (window as any).google.maps.LatLngBounds()
 
     // Include all tree positions
     trees.forEach(tree => {

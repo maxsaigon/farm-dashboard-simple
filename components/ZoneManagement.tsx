@@ -8,8 +8,8 @@ import {
   PencilIcon,
   TrashIcon,
   EyeIcon,
-  TreePine,
-  LocationDot,
+  BeakerIcon,
+  MapPinIcon,
   Square3Stack3DIcon,
   ChartBarIcon,
   MagnifyingGlassIcon,
@@ -463,7 +463,7 @@ export default function ZoneManagement() {
             <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
             Xuất dữ liệu
           </button>
-          {hasPermission('zones:create') && (
+          {hasPermission('zones:create' as any) && (
             <button
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
@@ -495,7 +495,7 @@ export default function ZoneManagement() {
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <TreePine className="h-8 w-8 text-green-600" />
+                <BeakerIcon className="h-8 w-8 text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Tổng số cây</p>
@@ -686,7 +686,7 @@ export default function ZoneManagement() {
               : 'Chưa có khu vực nào được tạo trong trang trại.'
             }
           </p>
-          {hasPermission('zones:create') && (
+          {hasPermission('zones:create' as any) && (
             <button
               onClick={() => setShowAddModal(true)}
               className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
@@ -757,6 +757,13 @@ export default function ZoneManagement() {
 }
 
 // Zone Card Component (Grid View)
+const drainageOptions = [
+  { value: 'excellent', label: 'Tuyệt vời', color: '#10b981' },
+  { value: 'good', label: 'Tốt', color: '#3b82f6' },
+  { value: 'fair', label: 'Khá', color: '#f59e0b' },
+  { value: 'poor', label: 'Kém', color: '#ef4444' }
+]
+
 function ZoneCard({ 
   zone, 
   onAction, 

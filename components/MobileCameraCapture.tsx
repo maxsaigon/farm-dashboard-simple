@@ -468,7 +468,7 @@ export default function MobileCameraCapture() {
         />
 
         {/* Error display */}
-        {error && error.type !== 'permission' && (
+        {error && (error as any).type !== 'permission' && (
           <div className="absolute top-4 left-4 right-4 bg-red-600 text-white p-3 rounded-lg">
             <p className="text-sm">{error.message}</p>
           </div>

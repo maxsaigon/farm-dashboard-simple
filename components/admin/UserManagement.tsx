@@ -49,7 +49,7 @@ export function UserManagement({ searchQuery }: UserManagementProps) {
 
   const filteredUsers = users.filter(user =>
     user.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   const handleAssignFarm = (user: EnhancedUser) => {

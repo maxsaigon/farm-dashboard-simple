@@ -20,7 +20,7 @@ interface ZoneManagementProps {
 
 export function ZoneManagement({ searchQuery }: ZoneManagementProps) {
   const [zones, setZones] = useState<Zone[]>([])
-  const [farms, setFarms] = useState<EnhancedFarm[]>([])
+  const [farms, setFarms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null)
   const [showZoneModal, setShowZoneModal] = useState(false)

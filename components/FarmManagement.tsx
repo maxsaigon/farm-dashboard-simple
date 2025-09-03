@@ -250,7 +250,7 @@ export default function FarmManagement() {
       {/* Content */}
       {activeTab === 'farms' && (
         <FarmsTab 
-          farms={farms}
+          farms={farms as any}
           farmStats={farmStats}
           onCreateFarm={() => setShowCreateFarmModal(true)}
           onEditFarm={(farm) => setSelectedFarm(farm)}
@@ -266,7 +266,7 @@ export default function FarmManagement() {
       )}
 
       {activeTab === 'settings' && (
-        <SettingsTab currentFarm={currentFarm} />
+        <SettingsTab currentFarm={currentFarm as any} />
       )}
 
       {/* Modals */}
@@ -383,7 +383,7 @@ function OrganizationsTab({
   return (
     <div className="space-y-6">
       {/* Create Organization Button */}
-      {hasPermission('organizations:create') && (
+      {hasPermission('organizations:create' as any) && (
         <div className="flex justify-end">
           <button
             onClick={onCreateOrganization}
@@ -403,7 +403,7 @@ function OrganizationsTab({
           <p className="text-gray-500 mb-4">
             Bạn chưa thuộc tổ chức nào hoặc chưa có tổ chức được tạo.
           </p>
-          {hasPermission('organizations:create') && (
+          {hasPermission('organizations:create' as any) && (
             <button
               onClick={onCreateOrganization}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
@@ -740,7 +740,7 @@ function OrganizationCard({
             {organization.subscriptionStatus === 'active' ? 'Hoạt động' :
              organization.subscriptionStatus === 'suspended' ? 'Tạm ngưng' : 'Đã hủy'}
           </span>
-          {hasPermission('organizations:write') && (
+          {hasPermission('organizations:write' as any) && (
             <button
               onClick={onEdit}
               className="p-1 text-gray-400 hover:text-blue-600"

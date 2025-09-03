@@ -294,7 +294,7 @@ export default function MobileDashboard() {
               icon={PlusIcon}
               onClick={() => window.location.href = '/trees/new'}
               color="blue"
-              disabled={!hasPermission('trees:create')}
+              disabled={!hasPermission('trees:create' as any)}
             />
             
             <MobileActionButton

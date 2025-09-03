@@ -42,7 +42,7 @@ export async function withRetry<T>(
 ): Promise<T> {
   const { timeout = 10000, retries = 3, retryDelay = 1000 } = options
   
-  let lastError: Error
+  let lastError: Error = new Error('Unknown error')
   
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {

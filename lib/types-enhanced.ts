@@ -62,6 +62,7 @@ export type OrganizationFeature =
 export interface EnhancedUser extends User {
   phoneNumber?: string
   profilePicture?: string
+  photoURL?: string
   language: string
   timezone: string
   lastLoginAt?: Date
@@ -71,6 +72,10 @@ export interface EnhancedUser extends User {
   accountStatus: 'active' | 'suspended' | 'pending_verification'
   twoFactorEnabled: boolean
   preferences: UserPreferences
+  currentFarmId?: string
+  roles?: string[]
+  isActive?: boolean
+  updatedAt?: Date
 }
 
 export interface UserPreferences {

@@ -28,8 +28,9 @@ const DEMO_TREES: Tree[] = [
     needsAttention: false,
     manualFruitCount: 25,
     aiFruitCount: 28,
-    location: { latitude: 10.762622, longitude: 106.660172 },
-    photos: []
+    farmId: "demo-farm",
+    latitude: 10.762622,
+    longitude: 106.660172
   },
   {
     id: "demo-tree-2", 
@@ -42,8 +43,9 @@ const DEMO_TREES: Tree[] = [
     needsAttention: false,
     manualFruitCount: 18,
     aiFruitCount: 22,
-    location: { latitude: 10.762822, longitude: 106.660372 },
-    photos: []
+    farmId: "demo-farm",
+    latitude: 10.762822,
+    longitude: 106.660372
   },
   {
     id: "demo-tree-3",
@@ -56,8 +58,9 @@ const DEMO_TREES: Tree[] = [
     needsAttention: true,
     manualFruitCount: 8,
     aiFruitCount: 5,
-    location: { latitude: 10.763022, longitude: 106.660572 },
-    photos: []
+    farmId: "demo-farm",
+    latitude: 10.763022,
+    longitude: 106.660572
   },
   {
     id: "demo-tree-4",
@@ -70,8 +73,9 @@ const DEMO_TREES: Tree[] = [
     needsAttention: false,
     manualFruitCount: 35,
     aiFruitCount: 31,
-    location: { latitude: 10.763222, longitude: 106.660772 },
-    photos: []
+    farmId: "demo-farm",
+    latitude: 10.763222,
+    longitude: 106.660772
   },
   {
     id: "demo-tree-5",
@@ -84,8 +88,9 @@ const DEMO_TREES: Tree[] = [
     needsAttention: false,
     manualFruitCount: 42,
     aiFruitCount: 38,
-    location: { latitude: 10.763422, longitude: 106.660972 },
-    photos: []
+    farmId: "demo-farm",
+    latitude: 10.763422,
+    longitude: 106.660972
   }
 ];
 

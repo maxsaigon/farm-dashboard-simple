@@ -120,9 +120,9 @@ export function OpenStreetMap({
 
     // Add tree markers
     trees.forEach(tree => {
-      if (tree.location && tree.location.latitude && tree.location.longitude) {
+      if ((tree as any).location && (tree as any).location.latitude && (tree as any).location.longitude) {
         const marker = L.marker(
-          [tree.location.latitude, tree.location.longitude],
+          [(tree as any).location.latitude, (tree as any).location.longitude],
           { icon: createTreeIcon(tree) }
         )
 
@@ -164,11 +164,11 @@ export function OpenStreetMap({
     })
 
     // Fit map to show all markers if there are trees
-    if (trees.length > 0 && trees.some(t => t.location)) {
+    if (trees.length > 0 && trees.some(t => (t as any).location)) {
       const group = new L.FeatureGroup()
       trees.forEach(tree => {
-        if (tree.location && tree.location.latitude && tree.location.longitude) {
-          group.addLayer(L.marker([tree.location.latitude, tree.location.longitude]))
+        if ((tree as any).location && (tree as any).location.latitude && (tree as any).location.longitude) {
+          group.addLayer(L.marker([(tree as any).location.latitude, (tree as any).location.longitude]))
         }
       })
       
@@ -180,9 +180,9 @@ export function OpenStreetMap({
 
   // Highlight selected tree
   useEffect(() => {
-    if (!mapRef.current || !selectedTree || !selectedTree.location) return
+    if (!mapRef.current || !selectedTree || !(selectedTree as any).location) return
 
-    mapRef.current.setView([selectedTree.location.latitude, selectedTree.location.longitude], 18)
+    mapRef.current.setView([(selectedTree as any).location.latitude, (selectedTree as any).location.longitude], 18)
   }, [selectedTree])
 
   const getTreeColor = (tree: Tree) => {

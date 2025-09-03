@@ -271,7 +271,7 @@ export class GPSTrackingService {
 
       // Detect zone transitions
       if (zoneId !== this.lastKnownZone) {
-        await this.handleZoneTransition(coordinate, this.lastKnownZone, zoneId, session.userId)
+        await this.handleZoneTransition(coordinate, this.lastKnownZone || null, zoneId || null, session.userId)
         this.lastKnownZone = zoneId || null
       }
 
