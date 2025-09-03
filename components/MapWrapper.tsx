@@ -4,6 +4,20 @@ import React from 'react'
 import dynamic from 'next/dynamic'
 import { Tree } from '@/lib/types'
 
+interface Zone {
+  id: string
+  name: string
+  description?: string
+  color: string
+  boundaries: Array<{ lat: number; lng: number }>
+  soilType?: string
+  drainageLevel?: 'poor' | 'fair' | 'good' | 'excellent'
+  treeCount: number
+  area: number
+  isActive: boolean
+  createdAt: Date
+}
+
 // Dynamically import OpenStreetMap with no SSR
 const OpenStreetMapNoSSR = dynamic(() => import('./OpenStreetMap').then(mod => ({ default: mod.OpenStreetMap })), {
   ssr: false,
@@ -19,8 +33,11 @@ const OpenStreetMapNoSSR = dynamic(() => import('./OpenStreetMap').then(mod => (
 
 interface MapWrapperProps {
   trees: Tree[]
+  zones?: Zone[]
   selectedTree?: Tree | null
+  selectedZone?: Zone | null
   onTreeSelect?: (tree: Tree) => void
+  onZoneSelect?: (zone: Zone) => void
   center?: [number, number]
   zoom?: number
   className?: string

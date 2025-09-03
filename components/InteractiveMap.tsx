@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
 import { useGoogleMaps } from '@/lib/google-maps-loader'
+import { subscribeToTrees } from '@/lib/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import { MobileInput, MobileSelect } from './MobileCards'
 import { 
   MapPinIcon,
@@ -172,6 +175,15 @@ export default function InteractiveMap() {
       if (treesData.length > 0 || zonesData.length > 0) {
         const bounds = calculateMapBounds(treesData, zonesData)
         setViewport(prev => ({ ...prev, bounds }))
+      } else if (currentFarm.location) {
+        // Use farm's location if no trees/zones but farm has location
+        const farmLocation = typeof currentFarm.location === 'string' 
+          ? { lat: 10.7769, lng: 106.7009 } // Default to Ho Chi Minh City
+          : currentFarm.location.coordinates 
+            ? { lat: currentFarm.location.coordinates.lat, lng: currentFarm.location.coordinates.lng }
+            : { lat: 10.7769, lng: 106.7009 }
+        
+        setViewport(prev => ({ ...prev, center: farmLocation }))
       }
     } catch (error) {
       console.error('Error loading map data:', error)
@@ -181,98 +193,85 @@ export default function InteractiveMap() {
   }
 
   const loadTreesWithGPS = async (): Promise<TreeMarker[]> => {
-    // Mock data - replace with actual API call
-    return Array.from({ length: 30 }, (_, i) => ({
-      id: `MT-${String(i + 1).padStart(4, '0')}`,
-      name: `Cây Măng Cụt ${i + 1}`,
-      latitude: 10.7769 + (Math.random() - 0.5) * 0.01,
-      longitude: 106.7009 + (Math.random() - 0.5) * 0.01,
-      healthStatus: (['Good', 'Fair', 'Poor', 'Disease'] as const)[Math.floor(Math.random() * 4)],
-      treeStatus: (['Young Tree', 'Mature', 'Old Tree', 'Dead'] as const)[Math.floor(Math.random() * 4)],
-      variety: 'Măng Cụt Tím',
-      photoCount: Math.floor(Math.random() * 20),
-      lastPhotoDate: Math.random() > 0.3 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) : undefined,
-      needsAttention: Math.random() > 0.7,
-      zoneId: `zone-${Math.floor(Math.random() * 4) + 1}`
-    }))
+    if (!currentFarm?.id) return []
+
+    try {
+      console.log('Loading trees for farm:', currentFarm.id)
+      const treesRef = collection(db, 'farms', currentFarm.id, 'trees')
+      
+      // Try to load all trees first, then filter by GPS coordinates
+      const treesSnapshot = await getDocs(treesRef)
+      console.log('Found trees documents:', treesSnapshot.docs.length)
+      
+      const treesWithGPS = treesSnapshot.docs
+        .map(doc => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            name: data.name || `Tree ${doc.id}`,
+            latitude: data.latitude || 0,
+            longitude: data.longitude || 0,
+            healthStatus: data.healthStatus || 'Good',
+            treeStatus: data.status || 'Young Tree',
+            variety: data.variety || 'Unknown',
+            photoCount: data.photoCount || 0,
+            lastPhotoDate: data.lastPhotoDate?.toDate?.() || data.lastPhotoDate,
+            needsAttention: data.needsAttention || false,
+            zoneId: data.zoneId || undefined
+          }
+        })
+        .filter(tree => tree.latitude > 0 && tree.longitude > 0)
+      
+      console.log('Trees with GPS coordinates:', treesWithGPS.length)
+      return treesWithGPS
+    } catch (error) {
+      console.error('Error loading trees with GPS:', error)
+      return []
+    }
   }
 
   const loadFarmZones = async (): Promise<Zone[]> => {
-    // Mock data - replace with actual API call
-    return [
-      {
-        id: 'zone-1',
-        name: 'Khu A - Măng Cụt Trẻ',
-        description: 'Khu vực trồng cây non dưới 3 tuổi',
-        color: '#22c55e',
-        boundaries: [
-          { lat: 10.7775, lng: 106.7005 },
-          { lat: 10.7780, lng: 106.7015 },
-          { lat: 10.7770, lng: 106.7018 },
-          { lat: 10.7765, lng: 106.7008 }
-        ],
-        soilType: 'clay',
-        drainageLevel: 'good',
-        treeCount: 12,
-        area: 2.5,
-        isActive: true,
-        createdAt: new Date('2023-01-15')
-      },
-      {
-        id: 'zone-2',
-        name: 'Khu B - Măng Cụt Trưởng Thành',
-        description: 'Khu vực cây trưởng thành 3-8 tuổi',
-        color: '#3b82f6',
-        boundaries: [
-          { lat: 10.7760, lng: 106.7000 },
-          { lat: 10.7770, lng: 106.7010 },
-          { lat: 10.7755, lng: 106.7015 },
-          { lat: 10.7750, lng: 106.7005 }
-        ],
-        soilType: 'sandy_clay',
-        drainageLevel: 'excellent',
-        treeCount: 8,
-        area: 1.8,
-        isActive: true,
-        createdAt: new Date('2022-08-20')
-      },
-      {
-        id: 'zone-3',
-        name: 'Khu C - Khu Thử Nghiệm',
-        description: 'Khu thử nghiệm giống mới',
-        color: '#f59e0b',
-        boundaries: [
-          { lat: 10.7780, lng: 106.7020 },
-          { lat: 10.7785, lng: 106.7025 },
-          { lat: 10.7775, lng: 106.7030 },
-          { lat: 10.7770, lng: 106.7025 }
-        ],
-        soilType: 'clay_loam',
-        drainageLevel: 'fair',
-        treeCount: 6,
-        area: 1.2,
-        isActive: true,
-        createdAt: new Date('2024-01-10')
-      },
-      {
-        id: 'zone-4',
-        name: 'Khu D - Cần Cải Tạo',
-        description: 'Khu vực cần cải tạo đất và tưới tiêu',
-        color: '#ef4444',
-        boundaries: [
-          { lat: 10.7765, lng: 106.7025 },
-          { lat: 10.7770, lng: 106.7035 },
-          { lat: 10.7760, lng: 106.7040 },
-          { lat: 10.7755, lng: 106.7030 }
-        ],
-        soilType: 'sandy',
-        drainageLevel: 'poor',
-        treeCount: 4,
-        area: 1.0,
-        isActive: false,
-        createdAt: new Date('2021-05-12')
+    if (!currentFarm?.id) return []
+
+    try {
+      console.log('Loading zones for farm:', currentFarm.id)
+      
+      // Try to load zones from farm-specific collection first
+      let zonesRef = collection(db, 'farms', currentFarm.id, 'zones')
+      let zonesSnapshot = await getDocs(zonesRef)
+      console.log('Found zones in farm collection:', zonesSnapshot.docs.length)
+      
+      // If no zones found in farm collection, try global zones collection filtered by farmId
+      if (zonesSnapshot.empty) {
+        console.log('No zones in farm collection, trying global zones collection')
+        zonesRef = collection(db, 'zones')
+        zonesSnapshot = await getDocs(query(zonesRef, where('farmId', '==', currentFarm.id)))
+        console.log('Found zones in global collection:', zonesSnapshot.docs.length)
       }
-    ]
+      
+      const zones = zonesSnapshot.docs.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          name: data.name || `Zone ${doc.id}`,
+          description: data.description || '',
+          color: data.color || '#3b82f6',
+          boundaries: data.boundaries || [],
+          soilType: data.soilType || 'unknown',
+          drainageLevel: data.drainageLevel || 'fair',
+          treeCount: data.treeCount || 0,
+          area: data.area || 0,
+          isActive: data.isActive !== false, // default to true
+          createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date()
+        }
+      })
+      
+      console.log('Processed zones:', zones.length)
+      return zones
+    } catch (error) {
+      console.error('Error loading farm zones:', error)
+      return []
+    }
   }
 
   const calculateMapBounds = (trees: TreeMarker[], zones: Zone[]) => {
@@ -685,6 +684,22 @@ export default function InteractiveMap() {
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
               <span className="text-sm">Đang theo dõi vị trí</span>
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && isMapReady && trees.length === 0 && zones.length === 0 && (
+          <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+            <div className="text-center max-w-sm p-6">
+              <MapPinIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Chưa có dữ liệu bản đồ</h3>
+              <p className="text-gray-600 mb-4">
+                Trang trại này chưa có cây trồng hoặc khu vực nào với tọa độ GPS.
+              </p>
+              <p className="text-sm text-gray-500">
+                Vui lòng thêm cây trồng hoặc khu vực có tọa độ để hiển thị trên bản đồ.
+              </p>
             </div>
           </div>
         )}

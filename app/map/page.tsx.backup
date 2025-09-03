@@ -23,6 +23,7 @@ interface Zone {
   createdAt: Date
 }
 
+// Dynamically import OpenStreetMap with no SSR
 const MapWrapperNoSSR = dynamic(() => import('@/components/MapWrapper').then(mod => ({ default: mod.MapWrapper })), {
   ssr: false,
   loading: () => (
@@ -46,19 +47,17 @@ export default function MapPage() {
   const [showZones, setShowZones] = useState(true)
   const [showTrees, setShowTrees] = useState(true)
 
-  // Debug farm ID for testing
-  const debugFarmId = "F210C3FC-F191-4926-9C15-58D6550A716A"
-  const debugFarm = { id: debugFarmId, name: "Debug Farm" }
-  const displayFarm = currentFarm || debugFarm
-
   useEffect(() => {
-    if (displayFarm.id) {
+    // Temporarily hardcode farm ID for debugging
+    const debugFarmId = "F210C3FC-F191-4926-9C15-58D6550A716A"
+    if (currentFarm?.id || debugFarmId) {
       loadData()
     }
-  }, [displayFarm.id])
+  }, [currentFarm])
 
   const loadData = async () => {
-    const farmId = displayFarm.id
+    const debugFarmId = "F210C3FC-F191-4926-9C15-58D6550A716A"
+    const farmId = currentFarm?.id || debugFarmId
     if (!farmId) return
 
     setLoading(true)
@@ -66,6 +65,7 @@ export default function MapPage() {
     try {
       console.log('Loading data for farm:', farmId)
       
+      // Load trees and zones concurrently
       const [treesData, zonesData] = await Promise.all([
         loadTrees(farmId),
         loadZones(farmId)
@@ -73,7 +73,6 @@ export default function MapPage() {
       
       setTrees(treesData)
       setZones(zonesData)
-      console.log('Data loaded - Trees:', treesData.length, 'Zones:', zonesData.length)
     } catch (error) {
       console.error('Error loading data:', error)
       setError('Không thể tải dữ liệu bản đồ')
@@ -124,10 +123,12 @@ export default function MapPage() {
     try {
       console.log('Loading zones for farm:', farmId)
       
+      // Try to load zones from farm-specific collection first
       let zonesRef = collection(db, 'farms', farmId, 'zones')
       let zonesSnapshot = await getDocs(zonesRef)
       console.log('Found zones in farm collection:', zonesSnapshot.docs.length)
       
+      // If no zones found in farm collection, try global zones collection filtered by farmId
       if (zonesSnapshot.empty) {
         console.log('No zones in farm collection, trying global zones collection')
         zonesRef = collection(db, 'zones')
@@ -137,40 +138,60 @@ export default function MapPage() {
       
       const zonesData = zonesSnapshot.docs.map(doc => {
         const data = doc.data()
-        console.log('Processing zone:', doc.id, data)
+        console.log('Raw zone data for', doc.id, ':', data)
         
+        // Handle different possible field names for boundaries
         let boundaries = data.boundaries || data.coordinates || data.polygon || data.points || []
-        const metadata = data.metadata || {}
         
-        return {
+        // Handle different possible field names for metadata
+        const metadata = data.metadata || {}
+        const soilType = data.soilType || metadata.soilType || 'unknown'
+        const drainageLevel = data.drainageLevel || metadata.drainageLevel || 'fair'
+        const area = data.area || metadata.area || 0
+        
+        const zone = {
           id: doc.id,
           name: data.name || `Zone ${doc.id}`,
           description: data.description || '',
           color: data.color || '#3b82f6',
           boundaries: boundaries,
-          soilType: data.soilType || metadata.soilType || 'unknown',
-          drainageLevel: data.drainageLevel || metadata.drainageLevel || 'fair',
+          soilType: soilType,
+          drainageLevel: drainageLevel,
           treeCount: data.treeCount || 0,
-          area: data.area || metadata.area || 0,
-          isActive: data.isActive !== false,
+          area: area,
+          isActive: data.isActive !== false, // default to true
           createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date()
         }
+        
+        console.log('Processed zone:', zone.id, 'boundaries:', zone.boundaries, 'length:', zone.boundaries?.length)
+        console.log('Boundaries content:', JSON.stringify(zone.boundaries, null, 2))
+        
+        // Also alert the user with zone info
+        if (typeof window !== 'undefined') {
+          console.warn(`ZONE DEBUG: ${zone.id} - Name: ${zone.name}, Boundaries: ${zone.boundaries?.length || 0}`)
+        }
+        
+        return zone
       })
       
-      console.log('All zones processed:', zonesData.length)
+      console.log('All processed zones before filtering:', zonesData.length)
       
-      // For debugging, return all zones to see what we have
+      // Apply boundary filtering but be more flexible
       const zonesWithBoundaries = zonesData.filter(zone => {
         const hasBoundaries = zone.boundaries && Array.isArray(zone.boundaries) && zone.boundaries.length >= 3
-        console.log(`Zone ${zone.id}: ${zone.boundaries?.length || 0} boundaries, valid: ${hasBoundaries}`)
+        console.log(`Zone ${zone.id} (${zone.name}): boundaries=${zone.boundaries?.length || 0}, valid=${hasBoundaries}`)
         return hasBoundaries
       })
       
       console.log('Zones with valid boundaries:', zonesWithBoundaries.length)
       
-      // Return zones with boundaries, or first 3 zones if none have boundaries (for debugging)
-      return zonesWithBoundaries.length > 0 ? zonesWithBoundaries : zonesData.slice(0, 3)
+      // If no zones with boundaries but zones exist, return first few for debugging
+      if (zonesWithBoundaries.length === 0 && zonesData.length > 0) {
+        console.log('No zones with valid boundaries, returning first 5 zones for inspection')
+        return zonesData.slice(0, 5)
+      }
       
+      return zonesWithBoundaries
     } catch (error) {
       console.error('Error loading zones:', error)
       return []
@@ -179,12 +200,12 @@ export default function MapPage() {
 
   const handleTreeSelect = (tree: Tree) => {
     setSelectedTree(tree)
-    setSelectedZone(null)
+    setSelectedZone(null) // Clear zone selection when tree is selected
   }
 
   const handleZoneSelect = (zone: Zone) => {
     setSelectedZone(zone)
-    setSelectedTree(null)
+    setSelectedTree(null) // Clear tree selection when zone is selected
   }
 
   const handleCloseDetail = () => {
@@ -195,6 +216,11 @@ export default function MapPage() {
   const handleRetry = () => {
     loadData()
   }
+
+  // Skip auth check for debugging
+  const debugFarmId = "F210C3FC-F191-4926-9C15-58D6550A716A"
+  const debugFarm = { id: debugFarmId, name: "Debug Farm" }
+  const displayFarm = currentFarm || debugFarm
 
   if (error) {
     return (
@@ -254,7 +280,8 @@ export default function MapPage() {
 
       {/* Map and Detail Layout */}
       <div className="flex flex-col lg:flex-row h-[calc(100vh-140px)]">
-        <div className="flex-1 order-2 lg:order-1 relative">
+        {/* Map */}
+        <div className="flex-1 order-2 lg:order-1">
           {loading ? (
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
@@ -273,24 +300,22 @@ export default function MapPage() {
               </div>
             </div>
           ) : (
-            <>
-              <MapWrapperNoSSR
-                trees={showTrees ? trees : []}
-                zones={showZones ? zones : []}
-                selectedTree={selectedTree}
-                selectedZone={selectedZone}
-                onTreeSelect={handleTreeSelect}
-                onZoneSelect={handleZoneSelect}
-                className="w-full h-full"
-              />
-              {/* Debug info */}
-              <div className="absolute top-4 left-4 bg-white p-2 rounded shadow text-xs z-[2000]">
-                <div>Trees: {trees.length}</div>
-                <div>Zones: {zones.length}</div>
-                <div>Show Zones: {showZones ? 'Yes' : 'No'}</div>
-                <div>Zones to Map: {showZones ? zones.length : 0}</div>
-              </div>
-            </>
+            <MapWrapperNoSSR
+              trees={showTrees ? trees : []}
+              zones={showZones ? zones : []}
+              selectedTree={selectedTree}
+              selectedZone={selectedZone}
+              onTreeSelect={handleTreeSelect}
+              onZoneSelect={handleZoneSelect}
+              className="w-full h-full"
+            />
+            {/* Debug info */}
+            <div className="absolute top-16 left-4 bg-white p-2 rounded shadow text-xs z-[2000]">
+              <div>Trees: {trees.length}</div>
+              <div>Zones: {zones.length}</div>
+              <div>Show Zones: {showZones ? 'Yes' : 'No'}</div>
+              <div>Zones to Map: {showZones ? zones.length : 0}</div>
+            </div>
           )}
         </div>
 
