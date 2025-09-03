@@ -14,7 +14,7 @@ interface Zone {
   name: string
   description?: string
   color: string
-  boundaries: Array<{ lat: number; lng: number }>
+  boundaries: Array<{ latitude: number; longitude: number }>
   soilType?: string
   drainageLevel?: 'poor' | 'fair' | 'good' | 'excellent'
   treeCount: number

@@ -175,15 +175,10 @@ export default function InteractiveMap() {
       if (treesData.length > 0 || zonesData.length > 0) {
         const bounds = calculateMapBounds(treesData, zonesData)
         setViewport(prev => ({ ...prev, bounds }))
-      } else if (currentFarm.location) {
-        // Use farm's location if no trees/zones but farm has location
-        const farmLocation = typeof currentFarm.location === 'string' 
-          ? { lat: 10.7769, lng: 106.7009 } // Default to Ho Chi Minh City
-          : currentFarm.location.coordinates 
-            ? { lat: currentFarm.location.coordinates.lat, lng: currentFarm.location.coordinates.lng }
-            : { lat: 10.7769, lng: 106.7009 }
-        
-        setViewport(prev => ({ ...prev, center: farmLocation }))
+      } else {
+        // Default to Vietnam if no data
+        const defaultLocation = { lat: 10.7769, lng: 106.7009 } // Ho Chi Minh City
+        setViewport(prev => ({ ...prev, center: defaultLocation }))
       }
     } catch (error) {
       console.error('Error loading map data:', error)

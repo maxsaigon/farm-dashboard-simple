@@ -97,7 +97,7 @@ export default function DebugStorage() {
           log(`❌ Error accessing path '${path}': ${error}`)
           structureResults.push({
             path: path || 'root',
-            error: error.message,
+            error: error instanceof Error ? error.message : String(error),
             folders: [],
             files: [],
             totalFiles: 0,
@@ -160,7 +160,7 @@ export default function DebugStorage() {
                           <div>
                             <div className="font-medium">Sample Files:</div>
                             <div className="ml-4 text-xs font-mono bg-gray-100 p-2 rounded space-y-1">
-                              {result.files.map((file, i) => (
+                              {result.files.map((file: any, i: number) => (
                                 <div key={i}>{file.name}</div>
                               ))}
                             </div>

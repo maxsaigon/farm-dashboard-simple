@@ -286,16 +286,13 @@ export function OpenStreetMap({
         let markerLat = defaultLat
         let markerLng = defaultLng
         
-        if (zone.center && typeof zone.center === 'object' && zone.center.lat && zone.center.lng) {
-          markerLat = zone.center.lat
-          markerLng = zone.center.lng
-        } else if (zone.boundaries && zone.boundaries.length > 0) {
+        if (zone.boundaries && zone.boundaries.length > 0) {
           // Try to compute center from invalid boundaries - FIXED: prioritize latitude/longitude
-          const validCoords = zone.boundaries.filter(p => p && ((p.latitude && p.longitude) || (p.lat && p.lng)))
+          const validCoords = zone.boundaries.filter(p => p && p.latitude && p.longitude)
           if (validCoords.length > 0) {
             const firstCoord = validCoords[0]
-            markerLat = firstCoord.latitude || firstCoord.lat || defaultLat
-            markerLng = firstCoord.longitude || firstCoord.lng || defaultLng
+            markerLat = firstCoord.latitude || defaultLat
+            markerLng = firstCoord.longitude || defaultLng
           }
         }
         
@@ -438,8 +435,8 @@ export function OpenStreetMap({
           try {
             const validLatLngs = zone.boundaries
               .map(point => {
-                if (point && ((point.latitude && point.longitude) || (point.lat && point.lng))) {
-                  return [point.latitude || point.lat, point.longitude || point.lng] as [number, number]
+                if (point && point.latitude && point.longitude) {
+                  return [point.latitude, point.longitude] as [number, number]
                 }
                 return null
               })
@@ -454,11 +451,11 @@ export function OpenStreetMap({
           }
         } else if (zone.boundaries && zone.boundaries.length > 0) {
           // Add fallback marker position to bounds - FIXED: prioritize latitude/longitude
-          const validCoords = zone.boundaries.filter(p => p && ((p.latitude && p.longitude) || (p.lat && p.lng)))
+          const validCoords = zone.boundaries.filter(p => p && p.latitude && p.longitude)
           if (validCoords.length > 0) {
             const firstCoord = validCoords[0]
-            const lat = firstCoord.latitude || firstCoord.lat
-            const lng = firstCoord.longitude || firstCoord.lng
+            const lat = firstCoord.latitude
+            const lng = firstCoord.longitude
             if (lat && lng) {
               group.addLayer(L.marker([lat, lng]))
               zonesAdded++
@@ -500,8 +497,8 @@ export function OpenStreetMap({
         // Handle both latitude/longitude and lat/lng formats
         const latLngs = selectedZone.boundaries
           .map(point => {
-            const lat = point.latitude || point.lat
-            const lng = point.longitude || point.lng
+            const lat = point.latitude
+            const lng = point.longitude
             
             // Validate coordinates
             if (typeof lat !== 'number' || typeof lng !== 'number' || 

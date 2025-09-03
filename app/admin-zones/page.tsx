@@ -509,7 +509,7 @@ function ZoneModal({ zone, farmId, onClose, onSave, onLog }: ZoneModalProps) {
             <div>
               <label className="block text-sm font-medium mb-1">
                 Boundary Points (JSON Format)
-                <span className="text-sm text-gray-500 ml-2">Array of {latitude, longitude} objects</span>
+                <span className="text-sm text-gray-500 ml-2">Array of &#123;latitude, longitude&#125; objects</span>
               </label>
               <textarea
                 value={formData.boundaryText}

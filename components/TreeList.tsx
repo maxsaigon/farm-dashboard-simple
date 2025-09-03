@@ -371,7 +371,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
                 <option value="none">Không có trái (0)</option>
                 <option value="low">Ít trái (1-10)</option>
                 <option value="medium">Trung bình (11-30)</option>
-                <option value="high">Nhiều trái (>30)</option>
+                <option value="high">Nhiều trái (&gt;30)</option>
               </select>
             </div>
 
