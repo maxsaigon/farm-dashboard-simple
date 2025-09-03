@@ -4,8 +4,10 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  getDocs,
   onSnapshot, 
   query, 
+  where,
   orderBy,
   Timestamp
 } from 'firebase/firestore'
@@ -65,8 +67,31 @@ export function subscribeToTrees(farmId: string, userId: string, callback: (tree
       () => AdminService.getAllTrees(),
       [] as Tree[],
       { timeout: 15000, retries: 2 }
-    ).then(allTrees => {
-      callback(allTrees as Tree[])
+    ).then(async (allTrees) => {
+      // For admin, we need to enrich trees from each farm separately
+      const treesWithZones: Tree[] = []
+      const treesByFarm = new Map<string, Tree[]>()
+      
+      // Group trees by farmId
+      ;(allTrees as Tree[]).forEach(tree => {
+        if (!treesByFarm.has(tree.farmId)) {
+          treesByFarm.set(tree.farmId, [])
+        }
+        treesByFarm.get(tree.farmId)!.push(tree)
+      })
+      
+      // Enrich trees for each farm
+      for (const [farmId, trees] of Array.from(treesByFarm.entries())) {
+        try {
+          const enrichedTrees = await enrichTreesWithZoneNames(trees, farmId)
+          treesWithZones.push(...enrichedTrees)
+        } catch (error) {
+          console.error(`Error enriching trees for farm ${farmId}:`, error)
+          treesWithZones.push(...trees) // Fallback without zone names
+        }
+      }
+      
+      callback(treesWithZones)
     }).catch(error => {
       console.error('Error loading admin trees:', error)
       callback([])
@@ -104,7 +129,14 @@ export function subscribeToTrees(farmId: string, userId: string, callback: (tree
             updatedAt: convertToDate(data.updatedAt || data.lastModified),
           } as Tree)
         })
-        callback(trees)
+        
+        // Enrich trees with zone names
+        enrichTreesWithZoneNames(trees, farmId).then(enrichedTrees => {
+          callback(enrichedTrees)
+        }).catch(error => {
+          console.error('Error enriching trees with zone names:', error)
+          callback(trees) // Fallback to trees without zone names
+        })
       } catch (error) {
         console.error('Error processing tree data:', error)
         callback([])
@@ -254,6 +286,49 @@ export function calculateFarmStatistics(trees: Tree[], investments: { amount: nu
 // Get trees that need attention
 export function getTreesNeedingAttention(trees: Tree[]): Tree[] {
   return trees.filter(tree => tree.needsAttention)
+}
+
+// Load zones and create zone code to name mapping
+async function getZoneNameMap(farmId: string): Promise<Map<string, string>> {
+  const zoneNameMap = new Map<string, string>()
+  
+  try {
+    // Try to load zones from farm-specific collection first
+    let zonesRef = collection(db, 'farms', farmId, 'zones')
+    let zonesSnapshot = await getDocs(zonesRef)
+    
+    // If no zones found in farm collection, try global zones collection filtered by farmId
+    if (zonesSnapshot.empty) {
+      zonesRef = collection(db, 'zones')
+      zonesSnapshot = await getDocs(query(zonesRef, where('farmId', '==', farmId)))
+    }
+    
+    zonesSnapshot.docs.forEach(doc => {
+      const data = doc.data()
+      const zoneName = data.name || `Zone ${doc.id}`
+      
+      // Map both zone ID and any zone codes to the zone name
+      zoneNameMap.set(doc.id, zoneName)
+      if (data.code) {
+        zoneNameMap.set(data.code, zoneName)
+      }
+    })
+    
+  } catch (error) {
+    console.error('Error loading zone names:', error)
+  }
+  
+  return zoneNameMap
+}
+
+// Enrich trees with zone names
+async function enrichTreesWithZoneNames(trees: Tree[], farmId: string): Promise<Tree[]> {
+  const zoneNameMap = await getZoneNameMap(farmId)
+  
+  return trees.map(tree => ({
+    ...tree,
+    zoneName: tree.zoneCode ? zoneNameMap.get(tree.zoneCode) : undefined
+  }))
 }
 
 // Photos management

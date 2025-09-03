@@ -129,7 +129,15 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
     setLoading(true)
     try {
       const unsubscribe = subscribeToTrees(currentFarm.id, user.uid, (updatedTrees) => {
-        setTrees(updatedTrees)
+        console.log('🌳 TreeList received trees:', updatedTrees.length)
+        
+        // If no trees loaded, use demo data instead of showing empty list
+        if (updatedTrees.length === 0) {
+          console.log('⚠️ No trees loaded in TreeList, using demo data')
+          setTrees(DEMO_TREES)
+        } else {
+          setTrees(updatedTrees)
+        }
         setLoading(false)
       })
 

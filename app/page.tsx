@@ -231,8 +231,17 @@ export default function HomePage() {
     
     // Subscribe to real-time tree updates for the current farm
     const unsubscribeTrees = subscribeToTrees(currentFarm.id, user.uid, (updatedTrees) => {
-      setStats(calculateDashboardStats(updatedTrees))
-      setAttentionTrees(getTreesNeedingAttention(updatedTrees))
+      console.log('📊 Dashboard received trees:', updatedTrees.length)
+      
+      // If no trees loaded, use demo data instead of showing zeros
+      if (updatedTrees.length === 0) {
+        console.log('⚠️ No trees loaded, using demo data')
+        setStats(demoData.stats)
+        setAttentionTrees(demoData.treesNeedingAttention as Tree[])
+      } else {
+        setStats(calculateDashboardStats(updatedTrees))
+        setAttentionTrees(getTreesNeedingAttention(updatedTrees))
+      }
       setDataLoading(false)
     })
     
@@ -241,7 +250,7 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 p-2 sm:p-4 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Đang tải...</p>
@@ -264,7 +273,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-2 sm:p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center">

@@ -79,13 +79,8 @@ export function TreeCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
               <h3 className="text-sm font-semibold text-gray-900 truncate">
-                {tree.name || `Cây ${tree.qrCode || tree.id.slice(0, 8)}`}
+                {tree.name || `Cây ${tree.variety || tree.zoneName || tree.id.slice(0, 8)}`}
               </h3>
-              {tree.variety && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {tree.variety}
-                </span>
-              )}
             </div>
 
             <div className="flex items-center space-x-4 text-xs text-gray-600">

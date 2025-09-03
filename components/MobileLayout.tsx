@@ -67,19 +67,8 @@ export default function MobileLayout({ children, currentTab = 'dashboard' }: Mob
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* Left: Menu + Title */}
+            {/* Left: Clean Title (hamburger menu removed for mobile-first design) */}
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-2 -ml-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation"
-                aria-label="Menu"
-              >
-                {isSidebarOpen ? (
-                  <XMarkIcon className="h-6 w-6 text-gray-700" />
-                ) : (
-                  <Bars3Icon className="h-6 w-6 text-gray-700" />
-                )}
-              </button>
               
               <div className="flex flex-col">
                 <h1 className="text-lg font-semibold text-gray-900 leading-tight">

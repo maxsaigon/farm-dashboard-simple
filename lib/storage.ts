@@ -30,20 +30,44 @@ export async function getTreeImages(treeId: string, farmId?: string): Promise<st
         const treeRef = ref(storage, treePath)
         const result = await listAll(treeRef)
         
-        // For each photo folder, get all image variants
+        // For each photo folder, get only the best quality image (one per photoID)
         for (const photoFolder of result.prefixes) {
           const photoResult = await listAll(photoFolder)
-          const photoUrls = await Promise.all(
-            photoResult.items.map(async (itemRef) => {
+          
+          // Priority order: compressed.jpg > ai_ready.jpg > thumbnail.jpg > any other image
+          const priorityOrder = ['compressed.jpg', 'ai_ready.jpg', 'thumbnail.jpg']
+          let selectedUrl: string | null = null
+          
+          // First, try to find images in priority order
+          for (const priority of priorityOrder) {
+            const matchingItem = photoResult.items.find(item => 
+              item.name.toLowerCase() === priority
+            )
+            if (matchingItem) {
               try {
-                return await getDownloadURL(itemRef)
+                selectedUrl = await getDownloadURL(matchingItem)
+                break
+              } catch (error) {
+                console.error(`Error getting URL for ${matchingItem.fullPath}:`, error)
+              }
+            }
+          }
+          
+          // If no priority image found, take the first available image
+          if (!selectedUrl && photoResult.items.length > 0) {
+            for (const itemRef of photoResult.items) {
+              try {
+                selectedUrl = await getDownloadURL(itemRef)
+                break
               } catch (error) {
                 console.error(`Error getting URL for ${itemRef.fullPath}:`, error)
-                return null
               }
-            })
-          )
-          urls.push(...photoUrls.filter((url): url is string => url !== null))
+            }
+          }
+          
+          if (selectedUrl) {
+            urls.push(selectedUrl)
+          }
         }
       } catch (error) {
         console.debug(`No images found in farms/${farmId}/trees/${treeId}/photos`)

@@ -13,6 +13,7 @@ export interface Tree {
   notes?: string
   qrCode?: string
   zoneCode?: string
+  zoneName?: string
   manualFruitCount: number
   lastCountDate?: Date
   treeHeight?: number

@@ -226,39 +226,41 @@ export default function MapPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header - Mobile Optimized */}
       <div className="bg-white shadow-sm border-b border-gray-200 p-4">
-        <h1 className="text-2xl font-bold text-gray-900">Bản Đồ - {displayFarm.name}</h1>
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-gray-600">Xem vị trí cây trồng và khu vực trên bản đồ OpenStreetMap</p>
-          <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-500">
+        <div className="flex items-center justify-between">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg lg:text-2xl font-bold text-gray-900 truncate">
+              Bản Đồ - {displayFarm.name}
+            </h1>
+            <div className="text-sm text-gray-500 mt-1">
               {loading ? 'Đang tải...' : `${trees.length} cây • ${zones.length} khu vực`}
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setShowTrees(!showTrees)}
-                className={`flex items-center space-x-1 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                  showTrees 
-                    ? 'bg-green-100 text-green-700 border border-green-200' 
-                    : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'
-                }`}
-              >
-                <MapPinIcon className="h-4 w-4" />
-                <span>Cây</span>
-              </button>
-              <button
-                onClick={() => setShowZones(!showZones)}
-                className={`flex items-center space-x-1 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                  showZones 
-                    ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                    : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'
-                }`}
-              >
-                <RectangleGroupIcon className="h-4 w-4" />
-                <span>Khu vực</span>
-              </button>
-            </div>
+          </div>
+          
+          <div className="flex items-center space-x-1 ml-4">
+            <button
+              onClick={() => setShowTrees(!showTrees)}
+              className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                showTrees 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-gray-100 text-gray-500'
+              }`}
+            >
+              <MapPinIcon className="h-3 w-3" />
+              <span className="hidden sm:inline">Cây</span>
+            </button>
+            <button
+              onClick={() => setShowZones(!showZones)}
+              className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                showZones 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : 'bg-gray-100 text-gray-500'
+              }`}
+            >
+              <RectangleGroupIcon className="h-3 w-3" />
+              <span className="hidden sm:inline">Khu vực</span>
+            </button>
           </div>
         </div>
       </div>
@@ -294,13 +296,7 @@ export default function MapPage() {
                 onZoneSelect={handleZoneSelect}
                 className="w-full h-full"
               />
-              {/* Debug info */}
-              <div className="absolute top-4 left-4 bg-white p-2 rounded shadow text-xs z-[2000]">
-                <div>Trees: {trees.length}</div>
-                <div>Zones: {zones.length}</div>
-                <div>Show Zones: {showZones ? 'Yes' : 'No'}</div>
-                <div>Zones to Map: {showZones ? zones.length : 0}</div>
-              </div>
+              {/* Debug info removed for cleaner mobile UI */}
             </>
           )}
         </div>

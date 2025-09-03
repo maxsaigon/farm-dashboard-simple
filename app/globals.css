@@ -73,6 +73,55 @@ body {
     touch-action: manipulation;
   }
   
+  /* Mobile contrast improvements */
+  @media screen and (max-width: 768px) {
+    /* Ensure minimum button size for touch */
+    button, [role="button"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Improve text contrast on mobile */
+    .text-gray-600 {
+      @apply text-gray-700;
+    }
+    
+    .text-gray-500 {
+      @apply text-gray-600;
+    }
+    
+    .text-gray-400 {
+      @apply text-gray-500;
+    }
+    
+    /* Ensure buttons have sufficient contrast */
+    .bg-gray-100 {
+      @apply bg-gray-200;
+    }
+    
+    .bg-gray-50 {
+      @apply bg-gray-100;
+    }
+    
+    /* Make green buttons more visible */
+    .bg-green-600 {
+      @apply bg-green-700;
+    }
+    
+    .bg-green-500 {
+      @apply bg-green-600;
+    }
+    
+    /* Improve shadow visibility on mobile */
+    .shadow-sm {
+      @apply shadow;
+    }
+    
+    .shadow {
+      @apply shadow-md;
+    }
+  }
+  
   /* Scale animation for button presses */
   .active\:scale-98:active {
     transform: scale(0.98);
