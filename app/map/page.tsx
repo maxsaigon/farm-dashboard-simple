@@ -14,7 +14,7 @@ interface Zone {
   name: string
   description?: string
   color: string
-  boundaries: Array<{ lat: number; lng: number }>
+  boundaries: Array<{ latitude: number; longitude: number }> // FIXED: Use correct field names from Firebase
   soilType?: string
   drainageLevel?: 'poor' | 'fair' | 'good' | 'excellent'
   treeCount: number
@@ -139,7 +139,7 @@ export default function MapPage() {
         const data = doc.data()
         console.log('Processing zone:', doc.id, data)
         
-        let boundaries = data.boundaries || data.coordinates || data.polygon || data.points || []
+        let boundaries = data.boundary || data.boundaries || data.coordinates || data.polygon || data.points || []
         const metadata = data.metadata || {}
         
         return {
@@ -183,8 +183,19 @@ export default function MapPage() {
   }
 
   const handleZoneSelect = (zone: Zone) => {
-    setSelectedZone(zone)
-    setSelectedTree(null)
+    try {
+      console.log('🎯 handleZoneSelect called with:', zone?.id, zone?.name)
+      if (zone && zone.id) {
+        setSelectedZone(zone)
+        setSelectedTree(null)
+        console.log('🎯 Zone selected successfully:', zone.name)
+      } else {
+        console.error('🎯 Invalid zone passed to handleZoneSelect:', zone)
+      }
+    } catch (error) {
+      console.error('🎯 Error in handleZoneSelect:', error)
+      console.error('🎯 Zone data:', zone)
+    }
   }
 
   const handleCloseDetail = () => {

@@ -28,6 +28,8 @@ interface ImageGalleryProps {
 }
 
 export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
+  // Use correct farmId - prioritize tree.farmId, then fallback to known working farmId  
+  const effectiveFarmId = tree.farmId && tree.farmId !== 'default' ? tree.farmId : 'F210C3FC-F191-4926-9C15-58D6550A716A'
   const [photos, setPhotos] = useState<PhotoWithUrls[]>([])
   const [storageImages, setStorageImages] = useState<{ general: string[], health: string[], fruitCount: string[] }>({
     general: [],
@@ -43,12 +45,12 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     if (!tree.id) return
 
     const unsubscribe = subscribeToTreePhotos(tree.id, async (firestorePhotos) => {
-      const photosWithUrls = await getPhotosWithUrls(firestorePhotos)
+      const photosWithUrls = await getPhotosWithUrls(firestorePhotos, effectiveFarmId)
       setPhotos(photosWithUrls)
     })
 
     return unsubscribe
-  }, [tree.id])
+  }, [tree.id, effectiveFarmId])
 
   // Load images from Storage
   useEffect(() => {
@@ -56,7 +58,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       if (!tree.id) return
 
       try {
-        const images = await getTreeImagesByPattern(tree.id, tree.qrCode)
+        const images = await getTreeImagesByPattern(tree.id, tree.qrCode, effectiveFarmId)
         setStorageImages(images)
       } catch (error) {
         console.error('Error loading storage images:', error)
@@ -64,7 +66,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     }
 
     loadStorageImages()
-  }, [tree.id, tree.qrCode])
+  }, [tree.id, tree.qrCode, effectiveFarmId])
 
   // Set loading state
   useEffect(() => {

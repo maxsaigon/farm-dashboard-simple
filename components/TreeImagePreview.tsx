@@ -7,11 +7,14 @@ import { getTreePhotos, getPhotosWithUrls } from '@/lib/photo-service'
 
 interface TreeImagePreviewProps {
   treeId: string
+  farmId?: string
   qrCode?: string
   className?: string
 }
 
-export function TreeImagePreview({ treeId, qrCode, className = '' }: TreeImagePreviewProps) {
+export function TreeImagePreview({ treeId, farmId, qrCode, className = '' }: TreeImagePreviewProps) {
+  // Use correct farmId - prioritize passed farmId, then fallback to known working farmId
+  const effectiveFarmId = farmId && farmId !== 'default' ? farmId : 'F210C3FC-F191-4926-9C15-58D6550A716A'
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -25,7 +28,7 @@ export function TreeImagePreview({ treeId, qrCode, className = '' }: TreeImagePr
         // Try to get from Firestore first (more metadata)
         const firestorePhotos = await getTreePhotos(treeId)
         if (firestorePhotos.length > 0) {
-          const photoWithUrl = await getPhotosWithUrls([firestorePhotos[0]])
+          const photoWithUrl = await getPhotosWithUrls([firestorePhotos[0]], effectiveFarmId)
           if (photoWithUrl[0]?.thumbnailUrl || photoWithUrl[0]?.imageUrl) {
             setImageUrl(photoWithUrl[0].thumbnailUrl || photoWithUrl[0].imageUrl || null)
             setLoading(false)
@@ -33,8 +36,8 @@ export function TreeImagePreview({ treeId, qrCode, className = '' }: TreeImagePr
           }
         }
 
-        // Fallback to storage direct access
-        const storageImages = await getTreeImages(treeId)
+        // Fallback to storage direct access with correct path
+        const storageImages = await getTreeImages(treeId, effectiveFarmId)
         if (storageImages.length > 0) {
           setImageUrl(storageImages[0])
           setLoading(false)
@@ -43,7 +46,7 @@ export function TreeImagePreview({ treeId, qrCode, className = '' }: TreeImagePr
 
         // If QR code exists, try with QR code
         if (qrCode) {
-          const qrImages = await getTreeImages(qrCode)
+          const qrImages = await getTreeImages(qrCode, effectiveFarmId)
           if (qrImages.length > 0) {
             setImageUrl(qrImages[0])
           }
@@ -56,7 +59,7 @@ export function TreeImagePreview({ treeId, qrCode, className = '' }: TreeImagePr
     }
 
     loadPreviewImage()
-  }, [treeId, qrCode])
+  }, [treeId, effectiveFarmId, qrCode])
 
   if (loading) {
     return (

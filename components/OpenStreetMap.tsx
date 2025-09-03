@@ -10,7 +10,7 @@ interface Zone {
   name: string
   description?: string
   color: string
-  boundaries: Array<{ lat: number; lng: number }>
+  boundaries: Array<{ latitude: number; longitude: number }> // FIXED: Use correct field names from Firebase
   soilType?: string
   drainageLevel?: 'poor' | 'fair' | 'good' | 'excellent'
   treeCount: number
@@ -61,7 +61,23 @@ export function OpenStreetMap({
     // Initialize map
     if (!mapRef.current) {
       try {
-        const map = L.map(mapContainerRef.current, {
+        // Ensure container has dimensions before creating map
+        const container = mapContainerRef.current
+        if (container.clientWidth === 0 || container.clientHeight === 0) {
+          console.log('⏳ Container not ready, retrying after delay...')
+          setTimeout(() => {
+            if (mapContainerRef.current && !mapRef.current) {
+              console.log('⏳ Retry: Container dimensions:', mapContainerRef.current.clientWidth, 'x', mapContainerRef.current.clientHeight)
+              // Trigger re-run of this effect
+              mapContainerRef.current.style.minHeight = '400px'
+            }
+          }, 100)
+          return
+        }
+
+        console.log('🗺️ Initializing Leaflet map with dimensions:', container.clientWidth, 'x', container.clientHeight)
+
+        const map = L.map(container, {
           center: center,
           zoom: zoom,
           scrollWheelZoom: true,
@@ -70,7 +86,8 @@ export function OpenStreetMap({
           boxZoom: false,
           keyboard: true,
           zoomControl: true,
-          preferCanvas: true
+          preferCanvas: false, // Changed to false to avoid canvas issues
+          renderer: L.svg() // Use SVG renderer explicitly
         })
 
         // Add OpenStreetMap tiles
@@ -97,8 +114,23 @@ export function OpenStreetMap({
     return () => {
       if (mapRef.current) {
         try {
+          console.log('🧹 Cleaning up Leaflet map')
+          
+          // Clear layer groups first
+          if (markersRef.current) {
+            markersRef.current.clearLayers()
+            markersRef.current.remove()
+          }
+          if (zonesRef.current) {
+            zonesRef.current.clearLayers()
+            zonesRef.current.remove()
+          }
+          
+          // Remove map
           mapRef.current.remove()
           mapRef.current = null
+          
+          console.log('🧹 Map cleanup complete')
         } catch (error) {
           console.error('Error cleaning up Leaflet map:', error)
         }
@@ -127,22 +159,22 @@ export function OpenStreetMap({
           const latLngs = zone.boundaries.map((point, index) => {
             console.log(`Processing boundary point ${index}:`, point)
             
-            // Handle {lat, lng} format
-            if (typeof point === 'object' && point !== null && 'lat' in point && 'lng' in point) {
-              const lat = Number(point.lat)
-              const lng = Number(point.lng)
-              if (!isNaN(lat) && !isNaN(lng)) {
-                console.log(`Point ${index}: {lat: ${lat}, lng: ${lng}}`)
-                return [lat, lng] as [number, number]
-              }
-            }
-            
-            // Handle {latitude, longitude} format
+            // Handle {latitude, longitude} format FIRST (this is the correct format!)
             if (typeof point === 'object' && point !== null && 'latitude' in point && 'longitude' in point) {
               const lat = Number(point.latitude)
               const lng = Number(point.longitude)
               if (!isNaN(lat) && !isNaN(lng)) {
-                console.log(`Point ${index}: {latitude: ${lat}, longitude: ${lng}}`)
+                console.log(`✅ Point ${index}: {latitude: ${lat}, longitude: ${lng}}`)
+                return [lat, lng] as [number, number]
+              }
+            }
+            
+            // Handle {lat, lng} format (fallback)
+            if (typeof point === 'object' && point !== null && 'lat' in point && 'lng' in point) {
+              const lat = Number(point.lat)
+              const lng = Number(point.lng)
+              if (!isNaN(lat) && !isNaN(lng)) {
+                console.log(`✅ Point ${index}: {lat: ${lat}, lng: ${lng}}`)
                 return [lat, lng] as [number, number]
               }
             }
@@ -221,10 +253,17 @@ export function OpenStreetMap({
         })
 
         // Handle zone click
-        polygon.on('click', () => {
-          if (onZoneSelect) {
-            onZoneSelect(zone)
+        polygon.on('click', (e) => {
+          try {
+            console.log('🔷 Zone polygon clicked:', zone.id, zone.name)
+            if (onZoneSelect && zone) {
+              onZoneSelect(zone)
+            }
+          } catch (error) {
+            console.error('🔷 Error in zone click handler:', error)
+            console.error('🔷 Zone data:', zone)
           }
+          e.originalEvent?.stopPropagation?.()
         })
 
         console.log('Successfully created polygon for zone:', zone.id, 'adding to map')
@@ -251,12 +290,12 @@ export function OpenStreetMap({
           markerLat = zone.center.lat
           markerLng = zone.center.lng
         } else if (zone.boundaries && zone.boundaries.length > 0) {
-          // Try to compute center from invalid boundaries
-          const validCoords = zone.boundaries.filter(p => p && ((p.lat && p.lng) || (p.latitude && p.longitude)))
+          // Try to compute center from invalid boundaries - FIXED: prioritize latitude/longitude
+          const validCoords = zone.boundaries.filter(p => p && ((p.latitude && p.longitude) || (p.lat && p.lng)))
           if (validCoords.length > 0) {
             const firstCoord = validCoords[0]
-            markerLat = firstCoord.lat || firstCoord.latitude || defaultLat
-            markerLng = firstCoord.lng || firstCoord.longitude || defaultLng
+            markerLat = firstCoord.latitude || firstCoord.lat || defaultLat
+            markerLng = firstCoord.longitude || firstCoord.lng || defaultLng
           }
         }
         
@@ -283,11 +322,17 @@ export function OpenStreetMap({
         `)
         
         // Handle zone click
-        marker.on('click', () => {
-          if (onZoneSelect) {
-            console.log('🔸 Fallback zone marker clicked:', zone.id)
-            onZoneSelect(zone)
+        marker.on('click', (e) => {
+          try {
+            console.log('🔸 Fallback zone marker clicked:', zone.id, zone.name)
+            if (onZoneSelect && zone) {
+              onZoneSelect(zone)
+            }
+          } catch (error) {
+            console.error('🔸 Error in fallback zone click handler:', error)
+            console.error('🔸 Zone data:', zone)
           }
+          e.originalEvent?.stopPropagation?.()
         })
         
         zonesRef.current.addLayer(marker)
@@ -393,8 +438,8 @@ export function OpenStreetMap({
           try {
             const validLatLngs = zone.boundaries
               .map(point => {
-                if (point && ((point.lat && point.lng) || (point.latitude && point.longitude))) {
-                  return [point.lat || point.latitude, point.lng || point.longitude] as [number, number]
+                if (point && ((point.latitude && point.longitude) || (point.lat && point.lng))) {
+                  return [point.latitude || point.lat, point.longitude || point.lng] as [number, number]
                 }
                 return null
               })
@@ -408,12 +453,12 @@ export function OpenStreetMap({
             console.warn('Error adding zone to bounds:', zone.id, error)
           }
         } else if (zone.boundaries && zone.boundaries.length > 0) {
-          // Add fallback marker position to bounds
-          const validCoords = zone.boundaries.filter(p => p && ((p.lat && p.lng) || (p.latitude && p.longitude)))
+          // Add fallback marker position to bounds - FIXED: prioritize latitude/longitude
+          const validCoords = zone.boundaries.filter(p => p && ((p.latitude && p.longitude) || (p.lat && p.lng)))
           if (validCoords.length > 0) {
             const firstCoord = validCoords[0]
-            const lat = firstCoord.lat || firstCoord.latitude
-            const lng = firstCoord.lng || firstCoord.longitude
+            const lat = firstCoord.latitude || firstCoord.lat
+            const lng = firstCoord.longitude || firstCoord.lng
             if (lat && lng) {
               group.addLayer(L.marker([lat, lng]))
               zonesAdded++
@@ -451,10 +496,41 @@ export function OpenStreetMap({
     if (!mapRef.current || !selectedZone) return
     
     if (selectedZone.boundaries && selectedZone.boundaries.length > 0) {
-      const latLngs = selectedZone.boundaries.map(point => [point.lat, point.lng] as [number, number])
-      const polygon = L.polygon(latLngs)
-      const bounds = polygon.getBounds()
-      mapRef.current.fitBounds(bounds, { padding: [20, 20] })
+      try {
+        // Handle both latitude/longitude and lat/lng formats
+        const latLngs = selectedZone.boundaries
+          .map(point => {
+            const lat = point.latitude || point.lat
+            const lng = point.longitude || point.lng
+            
+            // Validate coordinates
+            if (typeof lat !== 'number' || typeof lng !== 'number' || 
+                isNaN(lat) || isNaN(lng) || 
+                Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+              console.warn('Invalid coordinates:', point)
+              return null
+            }
+            
+            return [lat, lng] as [number, number]
+          })
+          .filter(Boolean) as [number, number][]
+        
+        if (latLngs.length >= 3) {
+          const polygon = L.polygon(latLngs)
+          const bounds = polygon.getBounds()
+          
+          // Validate bounds before fitting
+          if (bounds.isValid()) {
+            mapRef.current.fitBounds(bounds, { padding: [20, 20] })
+          } else {
+            console.warn('Invalid bounds for zone:', selectedZone.name, bounds)
+          }
+        } else {
+          console.warn('Not enough valid coordinates for zone:', selectedZone.name, latLngs.length)
+        }
+      } catch (error) {
+        console.error('Error fitting bounds for selected zone:', error, selectedZone)
+      }
     }
   }, [selectedZone])
 
@@ -499,9 +575,17 @@ export function OpenStreetMap({
       }
       
       (window as any).selectZone = (zoneId: string) => {
-        const zone = zones.find(z => z.id === zoneId)
-        if (zone && onZoneSelect) {
-          onZoneSelect(zone)
+        try {
+          console.log('🔷 Global selectZone called for:', zoneId)
+          const zone = zones.find(z => z.id === zoneId)
+          if (zone && onZoneSelect) {
+            console.log('🔷 Zone found and calling onZoneSelect:', zone.name)
+            onZoneSelect(zone)
+          } else {
+            console.log('🔷 Zone not found or no onZoneSelect:', { zone: !!zone, onZoneSelect: !!onZoneSelect })
+          }
+        } catch (error) {
+          console.error('🔷 Error in global selectZone:', error)
         }
       }
     }

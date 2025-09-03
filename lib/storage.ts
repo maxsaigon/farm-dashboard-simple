@@ -16,40 +16,68 @@ export async function getImageUrl(path: string): Promise<string | null> {
 }
 
 /**
- * Get all images for a specific tree
+ * Get all images for a specific tree using correct Firebase Storage structure
+ * Path: farms/{farmId}/trees/{treeId}/photos/{photoId}/
  */
-export async function getTreeImages(treeId: string): Promise<string[]> {
+export async function getTreeImages(treeId: string, farmId?: string): Promise<string[]> {
   try {
-    // Try multiple possible path patterns
-    const possiblePaths = [
-      `trees/${treeId}`,
-      `photos/${treeId}`,
-      `tree-photos/${treeId}`,
-      `images/trees/${treeId}`,
-    ]
-
     const urls: string[] = []
     
-    for (const basePath of possiblePaths) {
+    if (farmId) {
+      // Use correct path structure: farms/{farmId}/trees/{treeId}/photos/
       try {
-        const folderRef = ref(storage, basePath)
-        const result = await listAll(folderRef)
+        const treePath = `farms/${farmId}/trees/${treeId}/photos`
+        const treeRef = ref(storage, treePath)
+        const result = await listAll(treeRef)
         
-        // Get URLs for all files in this folder
-        const urlPromises = result.items.map(async (itemRef) => {
-          try {
-            return await getDownloadURL(itemRef)
-          } catch (error) {
-            console.error(`Error getting URL for ${itemRef.fullPath}:`, error)
-            return null
-          }
-        })
-        
-        const folderUrls = await Promise.all(urlPromises)
-        urls.push(...folderUrls.filter((url): url is string => url !== null))
+        // For each photo folder, get all image variants
+        for (const photoFolder of result.prefixes) {
+          const photoResult = await listAll(photoFolder)
+          const photoUrls = await Promise.all(
+            photoResult.items.map(async (itemRef) => {
+              try {
+                return await getDownloadURL(itemRef)
+              } catch (error) {
+                console.error(`Error getting URL for ${itemRef.fullPath}:`, error)
+                return null
+              }
+            })
+          )
+          urls.push(...photoUrls.filter((url): url is string => url !== null))
+        }
       } catch (error) {
-        // Folder doesn't exist, continue to next path
-        console.debug(`No images found in path: ${basePath}`)
+        console.debug(`No images found in farms/${farmId}/trees/${treeId}/photos`)
+      }
+    }
+    
+    // Fallback to legacy path patterns if farmId not provided or no images found
+    if (urls.length === 0) {
+      const legacyPaths = [
+        `trees/${treeId}`,
+        `photos/${treeId}`,
+        `tree-photos/${treeId}`,
+        `images/trees/${treeId}`,
+      ]
+
+      for (const basePath of legacyPaths) {
+        try {
+          const folderRef = ref(storage, basePath)
+          const result = await listAll(folderRef)
+          
+          const urlPromises = result.items.map(async (itemRef) => {
+            try {
+              return await getDownloadURL(itemRef)
+            } catch (error) {
+              console.error(`Error getting URL for ${itemRef.fullPath}:`, error)
+              return null
+            }
+          })
+          
+          const folderUrls = await Promise.all(urlPromises)
+          urls.push(...folderUrls.filter((url): url is string => url !== null))
+        } catch (error) {
+          console.debug(`No images found in path: ${basePath}`)
+        }
       }
     }
     
@@ -63,17 +91,17 @@ export async function getTreeImages(treeId: string): Promise<string[]> {
 /**
  * Get images for a tree by various filename patterns
  */
-export async function getTreeImagesByPattern(treeId: string, qrCode?: string): Promise<{
+export async function getTreeImagesByPattern(treeId: string, qrCode?: string, farmId?: string): Promise<{
   general: string[]
   health: string[]
   fruitCount: string[]
 }> {
   try {
-    const allImages = await getTreeImages(treeId)
+    const allImages = await getTreeImages(treeId, farmId)
     
     // If we have QR code, also try to find images by QR code pattern
     if (qrCode) {
-      const qrImages = await getTreeImages(qrCode)
+      const qrImages = await getTreeImages(qrCode, farmId)
       allImages.push(...qrImages)
     }
     

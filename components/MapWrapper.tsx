@@ -9,7 +9,7 @@ interface Zone {
   name: string
   description?: string
   color: string
-  boundaries: Array<{ lat: number; lng: number }>
+  boundaries: Array<{ latitude: number; longitude: number }> // FIXED: Use correct field names from Firebase
   soilType?: string
   drainageLevel?: 'poor' | 'fair' | 'good' | 'excellent'
   treeCount: number

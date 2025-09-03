@@ -364,6 +364,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
                     <div className="flex-shrink-0">
                       <TreeImagePreview 
                         treeId={tree.id}
+                        farmId={tree.farmId}
                         qrCode={tree.qrCode}
                         className="w-12 h-12"
                       />
