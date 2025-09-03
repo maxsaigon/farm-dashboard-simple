@@ -1,7 +1,8 @@
 import { db } from './firebase'
-import { collection, query, where, getDocs, onSnapshot, orderBy, limit, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore'
+import { where, orderBy, limit, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore'
 import { Photo } from './types'
 import { getImageUrl, getThumbnailUrl } from './storage'
+import { FirestoreSafe, safeGetDocs, safeOnSnapshot, safeQuery, safeCollection } from './firestore-safe'
 
 /**
  * Convert Firestore document to Photo with proper date handling
@@ -51,33 +52,59 @@ function convertToPhoto(doc: QueryDocumentSnapshot<DocumentData>): Photo {
  */
 export async function getTreePhotos(treeId: string): Promise<Photo[]> {
   try {
-    const photosRef = collection(db, 'photos')
+    // Validate inputs
+    if (!treeId || typeof treeId !== 'string') {
+      console.warn('Invalid treeId provided to getTreePhotos:', treeId)
+      return []
+    }
+
+    // Check if db is available
+    if (!db) {
+      console.error('Firestore database not initialized')
+      return []
+    }
+
+    const photosRef = safeCollection('photos')
+    if (!photosRef) {
+      console.warn('Could not get photos collection reference')
+      return []
+    }
     
     // Try with orderBy first, fallback to simple query if index doesn't exist
     try {
-      const q = query(
+      const q = safeQuery(
         photosRef,
         where('treeId', '==', treeId),
         orderBy('timestamp', 'desc')
       )
-      const querySnapshot = await getDocs(q)
-      return querySnapshot.docs.map(convertToPhoto)
+      if (!q) {
+        console.warn('Could not build query with orderBy')
+        throw new Error('Query building failed')
+      }
+      
+      const docs = await safeGetDocs(q)
+      return docs.map(convertToPhoto)
     } catch (indexError: any) {
       console.warn('Index not available, using simple query:', indexError?.message || indexError)
       
       // Fallback to simple query without orderBy
-      const simpleQ = query(
+      const simpleQ = safeQuery(
         photosRef,
         where('treeId', '==', treeId)
       )
-      const querySnapshot = await getDocs(simpleQ)
-      const photos = querySnapshot.docs.map(convertToPhoto)
+      if (!simpleQ) {
+        console.warn('Could not build simple query')
+        return []
+      }
+      
+      const docs = await safeGetDocs(simpleQ)
+      const photos = docs.map(convertToPhoto)
       
       // Sort manually by timestamp
       return photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
     }
   } catch (error) {
-    console.error('Error getting tree photos:', error)
+    console.error('Error getting tree photos for treeId:', treeId, error)
     return []
   }
 }
@@ -90,39 +117,56 @@ export function subscribeToTreePhotos(
   callback: (photos: Photo[]) => void
 ): () => void {
   try {
-    const photosRef = collection(db, 'photos')
+    const photosRef = safeCollection('photos')
+    if (!photosRef) {
+      console.error('Could not get photos collection for subscription')
+      callback([])
+      return () => {}
+    }
     
     // Try with orderBy first, fallback to simple query if index doesn't exist
     try {
-      const q = query(
+      const q = safeQuery(
         photosRef,
         where('treeId', '==', treeId),
         orderBy('timestamp', 'desc')
       )
       
-      return onSnapshot(q, (querySnapshot) => {
-        const photos = querySnapshot.docs.map(convertToPhoto)
+      if (!q) {
+        console.warn('Could not build query for subscription')
+        callback([])
+        return () => {}
+      }
+      
+      return safeOnSnapshot(q, (docs) => {
+        const photos = docs.map(convertToPhoto)
         callback(photos)
       }, (error) => {
-        console.error('Error subscribing to tree photos:', error)
+        console.error('Error in subscription callback:', error)
         callback([])
       })
     } catch (indexError) {
       console.warn('Index not available for subscription, using simple query')
       
       // Fallback to simple query without orderBy
-      const simpleQ = query(
+      const simpleQ = safeQuery(
         photosRef,
         where('treeId', '==', treeId)
       )
       
-      return onSnapshot(simpleQ, (querySnapshot) => {
-        const photos = querySnapshot.docs.map(convertToPhoto)
+      if (!simpleQ) {
+        console.warn('Could not build simple query for subscription')
+        callback([])
+        return () => {}
+      }
+      
+      return safeOnSnapshot(simpleQ, (docs) => {
+        const photos = docs.map(convertToPhoto)
         // Sort manually by timestamp
         const sortedPhotos = photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
         callback(sortedPhotos)
       }, (error) => {
-        console.error('Error subscribing to tree photos:', error)
+        console.error('Error in simple subscription callback:', error)
         callback([])
       })
     }
@@ -137,30 +181,43 @@ export function subscribeToTreePhotos(
  */
 export async function getFarmPhotos(farmId: string): Promise<Photo[]> {
   try {
-    const photosRef = collection(db, 'photos')
+    const photosRef = safeCollection('photos')
+    if (!photosRef) {
+      console.warn('Could not get photos collection reference')
+      return []
+    }
     
     // Try with orderBy first, fallback to simple query if index doesn't exist
     try {
-      const q = query(
+      const q = safeQuery(
         photosRef,
         where('farmId', '==', farmId),
         orderBy('timestamp', 'desc'),
-        limit(100) // Limit to recent 100 photos
+        limit(100)
       )
+      if (!q) {
+        console.warn('Could not build query with orderBy')
+        throw new Error('Query building failed')
+      }
       
-      const querySnapshot = await getDocs(q)
-      return querySnapshot.docs.map(convertToPhoto)
+      const docs = await safeGetDocs(q)
+      return docs.map(convertToPhoto)
     } catch (indexError) {
       console.warn('Index not available for farm photos, using simple query')
       
       // Fallback to simple query without orderBy
-      const simpleQ = query(
+      const simpleQ = safeQuery(
         photosRef,
         where('farmId', '==', farmId),
         limit(100)
       )
-      const querySnapshot = await getDocs(simpleQ)
-      const photos = querySnapshot.docs.map(convertToPhoto)
+      if (!simpleQ) {
+        console.warn('Could not build simple query')
+        return []
+      }
+      
+      const docs = await safeGetDocs(simpleQ)
+      const photos = docs.map(convertToPhoto)
       
       // Sort manually by timestamp
       return photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
@@ -180,16 +237,26 @@ export async function getRecentPhotos(farmIds: string[], limitCount: number = 20
       return []
     }
 
-    const photosRef = collection(db, 'photos')
-    const q = query(
+    const photosRef = safeCollection('photos')
+    if (!photosRef) {
+      console.warn('Could not get photos collection reference')
+      return []
+    }
+    
+    const q = safeQuery(
       photosRef,
       where('farmId', 'in', farmIds.slice(0, 10)), // Firestore limit
       orderBy('timestamp', 'desc'),
       limit(limitCount)
     )
     
-    const querySnapshot = await getDocs(q)
-    return querySnapshot.docs.map(convertToPhoto)
+    if (!q) {
+      console.warn('Could not build recent photos query')
+      return []
+    }
+    
+    const docs = await safeGetDocs(q)
+    return docs.map(convertToPhoto)
   } catch (error) {
     console.error('Error getting recent photos:', error)
     return []
@@ -204,11 +271,15 @@ export async function getPhotosByType(
   photoType: 'general' | 'health' | 'fruit_count'
 ): Promise<Photo[]> {
   try {
-    const photosRef = collection(db, 'photos')
+    const photosRef = safeCollection('photos')
+    if (!photosRef) {
+      console.warn('Could not get photos collection reference')
+      return []
+    }
     
     // Try with orderBy first, fallback to simple query if index doesn't exist
     try {
-      const q = query(
+      const q = safeQuery(
         photosRef,
         where('farmId', '==', farmId),
         where('photoType', '==', photoType),
@@ -216,20 +287,30 @@ export async function getPhotosByType(
         limit(50)
       )
       
-      const querySnapshot = await getDocs(q)
-      return querySnapshot.docs.map(convertToPhoto)
+      if (!q) {
+        console.warn('Could not build query with orderBy')
+        throw new Error('Query building failed')
+      }
+      
+      const docs = await safeGetDocs(q)
+      return docs.map(convertToPhoto)
     } catch (indexError) {
       console.warn('Index not available for photos by type, using simple query')
       
       // Fallback to simple query without orderBy
-      const simpleQ = query(
+      const simpleQ = safeQuery(
         photosRef,
         where('farmId', '==', farmId),
         where('photoType', '==', photoType),
         limit(50)
       )
-      const querySnapshot = await getDocs(simpleQ)
-      const photos = querySnapshot.docs.map(convertToPhoto)
+      if (!simpleQ) {
+        console.warn('Could not build simple query')
+        return []
+      }
+      
+      const docs = await safeGetDocs(simpleQ)
+      const photos = docs.map(convertToPhoto)
       
       // Sort manually by timestamp
       return photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())

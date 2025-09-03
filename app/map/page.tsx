@@ -139,7 +139,7 @@ export default function MapPage() {
         const data = doc.data()
         console.log('Processing zone:', doc.id, data)
         
-        let boundaries = data.boundary || data.boundaries || data.coordinates || data.polygon || data.points || []
+        const boundaries = data.boundary || data.boundaries || data.coordinates || data.polygon || data.points || []
         const metadata = data.metadata || {}
         
         return {

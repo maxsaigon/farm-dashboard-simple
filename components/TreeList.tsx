@@ -11,7 +11,9 @@ import {
   CheckCircleIcon,
   ClockIcon,
   EyeIcon,
-  PencilIcon
+  PencilIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline'
 import { TreeImagePreview } from './TreeImagePreview'
 
@@ -99,17 +101,22 @@ interface TreeListProps {
   selectedTreeId?: string
   showActions?: boolean
   className?: string
+  pageSize?: number
 }
 
-export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, className = '' }: TreeListProps) {
+export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, className = '', pageSize = 20 }: TreeListProps) {
   const { user, currentFarm } = useAuth()
   const [trees, setTrees] = useState<Tree[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterVariety, setFilterVariety] = useState<string>('all')
+  const [filterZone, setFilterZone] = useState<string>('all')
+  const [filterFruitCount, setFilterFruitCount] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'name' | 'plantingDate' | 'healthStatus' | 'fruitCount'>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(pageSize)
 
   useEffect(() => {
     if (!user || !currentFarm) {
@@ -138,7 +145,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
     }
   }, [user, currentFarm])
 
-  // Get unique varieties for filter
+  // Get unique varieties and zones for filters
   const varieties = useMemo(() => {
     const varietySet = new Set<string>()
     trees.forEach(tree => {
@@ -149,7 +156,17 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
     return Array.from(varietySet).sort()
   }, [trees])
 
-  // Filter and sort trees
+  const zones = useMemo(() => {
+    const zoneSet = new Set<string>()
+    trees.forEach(tree => {
+      if (tree.zoneCode) {
+        zoneSet.add(tree.zoneCode)
+      }
+    })
+    return Array.from(zoneSet).sort()
+  }, [trees])
+
+  // Filter and sort trees (without pagination)
   const filteredAndSortedTrees = useMemo(() => {
     const filtered = trees.filter(tree => {
       // Search filter
@@ -168,7 +185,18 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
       // Variety filter
       const matchesVariety = filterVariety === 'all' || tree.variety === filterVariety
 
-      return matchesSearch && matchesStatus && matchesVariety
+      // Zone filter
+      const matchesZone = filterZone === 'all' || tree.zoneCode === filterZone
+
+      // Fruit count filter
+      const totalFruitCount = (tree.manualFruitCount || 0) + (tree.aiFruitCount || 0)
+      const matchesFruitCount = filterFruitCount === 'all' || 
+        (filterFruitCount === 'none' && totalFruitCount === 0) ||
+        (filterFruitCount === 'low' && totalFruitCount > 0 && totalFruitCount <= 10) ||
+        (filterFruitCount === 'medium' && totalFruitCount > 10 && totalFruitCount <= 30) ||
+        (filterFruitCount === 'high' && totalFruitCount > 30)
+
+      return matchesSearch && matchesStatus && matchesVariety && matchesZone && matchesFruitCount
     })
 
     // Sort trees
@@ -213,7 +241,18 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
     })
 
     return filtered
-  }, [trees, searchTerm, filterStatus, filterVariety, sortBy, sortOrder])
+  }, [trees, searchTerm, filterStatus, filterVariety, filterZone, filterFruitCount, sortBy, sortOrder])
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAndSortedTrees.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedTrees = filteredAndSortedTrees.slice(startIndex, endIndex)
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, filterStatus, filterVariety, filterZone, filterFruitCount, sortBy, sortOrder])
 
   const getHealthIcon = (tree: Tree) => {
     if (tree.needsAttention) {
@@ -267,26 +306,29 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
           <div>
             <h2 className="text-xl font-bold text-gray-900">Danh Sách Cây</h2>
             <p className="text-sm text-gray-600 mt-1">
-              {filteredAndSortedTrees.length} / {trees.length} cây
+              Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredAndSortedTrees.length)} / {filteredAndSortedTrees.length} cây
+              {filteredAndSortedTrees.length !== trees.length && ` (${trees.length} tổng cộng)`}
             </p>
           </div>
 
           {/* Search and filters */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col gap-3">
             {/* Search */}
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm cây..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên, mã QR, khu vực, giống..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
             </div>
 
-            {/* Filters */}
-            <div className="flex gap-2">
+            {/* Filters Row 1 */}
+            <div className="flex flex-wrap gap-2">
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
@@ -310,6 +352,32 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
               </select>
 
               <select
+                value={filterZone}
+                onChange={(e) => setFilterZone(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+              >
+                <option value="all">Tất cả khu vực</option>
+                {zones.map(zone => (
+                  <option key={zone} value={zone}>{zone}</option>
+                ))}
+              </select>
+
+              <select
+                value={filterFruitCount}
+                onChange={(e) => setFilterFruitCount(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+              >
+                <option value="all">Tất cả số trái</option>
+                <option value="none">Không có trái (0)</option>
+                <option value="low">Ít trái (1-10)</option>
+                <option value="medium">Trung bình (11-30)</option>
+                <option value="high">Nhiều trái (>30)</option>
+              </select>
+            </div>
+
+            {/* Filters Row 2 - Sorting and Pagination */}
+            <div className="flex flex-wrap gap-2">
+              <select
                 value={`${sortBy}-${sortOrder}`}
                 onChange={(e) => {
                   const [field, order] = e.target.value.split('-')
@@ -326,6 +394,20 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
                 <option value="healthStatus-asc">Sức khỏe yếu nhất</option>
                 <option value="fruitCount-desc">Nhiều trái nhất</option>
                 <option value="fruitCount-asc">Ít trái nhất</option>
+              </select>
+
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value))
+                  setCurrentPage(1)
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+              >
+                <option value={10}>10 / trang</option>
+                <option value={20}>20 / trang</option>
+                <option value={50}>50 / trang</option>
+                <option value={100}>100 / trang</option>
               </select>
             </div>
           </div>
@@ -347,7 +429,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredAndSortedTrees.map((tree) => (
+            {paginatedTrees.map((tree) => (
               <div
                 key={tree.id}
                 onClick={() => onTreeSelect?.(tree)}
@@ -462,6 +544,65 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {filteredAndSortedTrees.length > itemsPerPage && (
+          <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+            <div className="text-sm text-gray-600">
+              Trang {currentPage} / {totalPages}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                <ChevronLeftIcon className="h-4 w-4 mr-1" />
+                Trước
+              </button>
+
+              {/* Page Numbers */}
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum
+                  if (totalPages <= 5) {
+                    pageNum = i + 1
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i
+                  } else {
+                    pageNum = currentPage - 2 + i
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-2 text-sm font-medium rounded-md ${
+                        currentPage === pageNum
+                          ? 'bg-green-600 text-white'
+                          : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                Sau
+                <ChevronRightIcon className="h-4 w-4 ml-1" />
+              </button>
+            </div>
           </div>
         )}
       </div>

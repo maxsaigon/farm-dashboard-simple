@@ -38,7 +38,7 @@ export default function DebugZonesPage() {
         console.log('Raw zone data for', doc.id, ':', data)
         
         // Handle different possible field names for boundaries
-        let boundaries = data.boundaries || data.coordinates || data.polygon || data.points || []
+        const boundaries = data.boundaries || data.coordinates || data.polygon || data.points || []
         
         // Handle different possible field names for metadata
         const metadata = data.metadata || {}

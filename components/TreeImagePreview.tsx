@@ -25,30 +25,45 @@ export function TreeImagePreview({ treeId, farmId, qrCode, className = '' }: Tre
       setLoading(true)
       
       try {
+        // Add a small delay to ensure Firebase is ready
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
         // Try to get from Firestore first (more metadata)
-        const firestorePhotos = await getTreePhotos(treeId)
-        if (firestorePhotos.length > 0) {
-          const photoWithUrl = await getPhotosWithUrls([firestorePhotos[0]], effectiveFarmId)
-          if (photoWithUrl[0]?.thumbnailUrl || photoWithUrl[0]?.imageUrl) {
-            setImageUrl(photoWithUrl[0].thumbnailUrl || photoWithUrl[0].imageUrl || null)
-            setLoading(false)
-            return
+        try {
+          const firestorePhotos = await getTreePhotos(treeId)
+          if (firestorePhotos.length > 0) {
+            const photoWithUrl = await getPhotosWithUrls([firestorePhotos[0]], effectiveFarmId)
+            if (photoWithUrl[0]?.thumbnailUrl || photoWithUrl[0]?.imageUrl) {
+              setImageUrl(photoWithUrl[0].thumbnailUrl || photoWithUrl[0].imageUrl || null)
+              setLoading(false)
+              return
+            }
           }
+        } catch (firestoreError) {
+          console.warn('Firestore access failed, trying direct storage:', firestoreError)
         }
 
         // Fallback to storage direct access with correct path
-        const storageImages = await getTreeImages(treeId, effectiveFarmId)
-        if (storageImages.length > 0) {
-          setImageUrl(storageImages[0])
-          setLoading(false)
-          return
+        try {
+          const storageImages = await getTreeImages(treeId, effectiveFarmId)
+          if (storageImages.length > 0) {
+            setImageUrl(storageImages[0])
+            setLoading(false)
+            return
+          }
+        } catch (storageError) {
+          console.warn('Storage access failed:', storageError)
         }
 
         // If QR code exists, try with QR code
         if (qrCode) {
-          const qrImages = await getTreeImages(qrCode, effectiveFarmId)
-          if (qrImages.length > 0) {
-            setImageUrl(qrImages[0])
+          try {
+            const qrImages = await getTreeImages(qrCode, effectiveFarmId)
+            if (qrImages.length > 0) {
+              setImageUrl(qrImages[0])
+            }
+          } catch (qrError) {
+            console.warn('QR code image loading failed:', qrError)
           }
         }
       } catch (error) {
