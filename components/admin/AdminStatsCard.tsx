@@ -1,7 +1,5 @@
 'use client'
 
-import { LucideIcon } from 'lucide-react'
-
 interface AdminStatsCardProps {
   title: string
   value: string
