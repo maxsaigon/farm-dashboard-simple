@@ -111,45 +111,23 @@ export default function MobileDashboard() {
 
   const loadRecentActivity = async () => {
     try {
-      // Mock data - replace with actual API calls
-      setRecentActivity([
-        {
-          id: '1',
-          type: 'health_alert',
-          message: 'Cây #MT-0234 có dấu hiệu bệnh lá vàng',
-          timestamp: new Date(Date.now() - 15 * 60 * 1000),
-          urgent: true
-        },
-        {
-          id: '2',
-          type: 'photo',
-          message: 'Đã chụp 5 ảnh mới ở Khu A',
-          timestamp: new Date(Date.now() - 45 * 60 * 1000)
-        },
-        {
-          id: '3',
-          type: 'task_completed',
-          message: 'Hoàn thành kiểm tra sức khỏe tuần 12',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000)
-        }
-      ])
+      // Load real activity data from API - no mock data
+      // TODO: Implement actual API call to get recent activity
+      setRecentActivity([])
     } catch (error) {
       console.error('Error loading recent activity:', error)
+      setRecentActivity([])
     }
   }
 
   const loadWeatherData = async () => {
     try {
-      // Mock weather data - replace with actual weather API
-      setWeather({
-        temperature: 28,
-        condition: 'Nắng nhẹ',
-        humidity: 72,
-        windSpeed: 12,
-        isGoodForFieldWork: true
-      })
+      // Load real weather data from API - no mock data
+      // TODO: Implement actual weather API call
+      setWeather(null)
     } catch (error) {
       console.error('Error loading weather data:', error)
+      setWeather(null)
     }
   }
 

@@ -65,25 +65,9 @@ export default function MobileTreeList() {
   const loadTrees = async () => {
     setLoading(true)
     try {
-      // Mock data - replace with actual API call
-      const mockTrees: Tree[] = Array.from({ length: 50 }, (_, i) => ({
-        id: `MT-${String(i + 1).padStart(4, '0')}`,
-        name: `Cây Măng Cụt ${i + 1}`,
-        latitude: 10.7769 + (Math.random() - 0.5) * 0.01,
-        longitude: 106.7009 + (Math.random() - 0.5) * 0.01,
-        plantingDate: new Date(2020 + Math.floor(Math.random() * 4), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)),
-        variety: ['Măng Cụt Tím', 'Măng Cụt Trắng', 'Măng Cụt Lai'][Math.floor(Math.random() * 3)],
-        treeStatus: (['Young Tree', 'Mature', 'Old Tree', 'Dead'] as const)[Math.floor(Math.random() * 4)],
-        healthStatus: (['Good', 'Fair', 'Poor', 'Disease'] as const)[Math.floor(Math.random() * 4)],
-        qrCode: Math.random() > 0.3 ? `QR${String(i + 1).padStart(4, '0')}` : undefined,
-        manualFruitCount: Math.random() > 0.5 ? Math.floor(Math.random() * 50) : undefined,
-        aiFruitCount: Math.random() > 0.7 ? Math.floor(Math.random() * 50) : undefined,
-        needsAttention: Math.random() > 0.8,
-        photoCount: Math.floor(Math.random() * 20),
-        lastPhotoDate: Math.random() > 0.3 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) : undefined,
-        zone: ['Khu A', 'Khu B', 'Khu C', 'Khu D'][Math.floor(Math.random() * 4)]
-      }))
-      setTrees(mockTrees)
+      // Load real trees data from API - no mock data
+      // TODO: Implement actual API call to load trees
+      setTrees([])
     } catch (error) {
       console.error('Error loading trees:', error)
     } finally {

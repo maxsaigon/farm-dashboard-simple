@@ -17,84 +17,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { TreeImagePreview } from './TreeImagePreview'
 
-// Demo trees data for non-authenticated users
-const DEMO_TREES: Tree[] = [
-  {
-    id: "demo-tree-1",
-    qrCode: "DEMO-001", 
-    name: "Cây Sầu Riêng 001",
-    variety: "Monthong",
-    zoneCode: "Z01_01",
-    plantingDate: new Date('2020-03-15'),
-    healthStatus: "Excellent",
-    needsAttention: false,
-    manualFruitCount: 25,
-    aiFruitCount: 28,
-    farmId: "demo-farm",
-    latitude: 10.762622,
-    longitude: 106.660172
-  },
-  {
-    id: "demo-tree-2", 
-    qrCode: "DEMO-002",
-    name: "Cây Sầu Riêng 002",
-    variety: "Kan Yao",
-    zoneCode: "Z01_02", 
-    plantingDate: new Date('2019-08-20'),
-    healthStatus: "Good",
-    needsAttention: false,
-    manualFruitCount: 18,
-    aiFruitCount: 22,
-    farmId: "demo-farm",
-    latitude: 10.762822,
-    longitude: 106.660372
-  },
-  {
-    id: "demo-tree-3",
-    qrCode: "DEMO-003",
-    name: "Cây Sầu Riêng 003", 
-    variety: "Kan Yao",
-    zoneCode: "Z01_03",
-    plantingDate: new Date('2021-01-10'),
-    healthStatus: "Fair",
-    needsAttention: true,
-    manualFruitCount: 8,
-    aiFruitCount: 5,
-    farmId: "demo-farm",
-    latitude: 10.763022,
-    longitude: 106.660572
-  },
-  {
-    id: "demo-tree-4",
-    qrCode: "DEMO-004", 
-    name: "Cây Sầu Riêng 004",
-    variety: "Monthong",
-    zoneCode: "Z02_01",
-    plantingDate: new Date('2018-11-05'),
-    healthStatus: "Good",
-    needsAttention: false,
-    manualFruitCount: 35,
-    aiFruitCount: 31,
-    farmId: "demo-farm",
-    latitude: 10.763222,
-    longitude: 106.660772
-  },
-  {
-    id: "demo-tree-5",
-    qrCode: "DEMO-005",
-    name: "Cây Sầu Riêng 005",
-    variety: "Golden Pillow",
-    zoneCode: "Z02_02", 
-    plantingDate: new Date('2020-06-25'),
-    healthStatus: "Excellent",
-    needsAttention: false,
-    manualFruitCount: 42,
-    aiFruitCount: 38,
-    farmId: "demo-farm",
-    latitude: 10.763422,
-    longitude: 106.660972
-  }
-];
+// No mock data - use only real API data
 
 interface TreeListProps {
   onTreeSelect?: (tree: Tree) => void
@@ -120,8 +43,8 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
 
   useEffect(() => {
     if (!user || !currentFarm) {
-      // Use demo data when not authenticated
-      setTrees(DEMO_TREES)
+      // Show empty state when not authenticated
+      setTrees([])
       setLoading(false)
       return
     }
@@ -131,13 +54,8 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
       const unsubscribe = subscribeToTrees(currentFarm.id, user.uid, (updatedTrees) => {
         console.log('🌳 TreeList received trees:', updatedTrees.length)
         
-        // If no trees loaded, use demo data instead of showing empty list
-        if (updatedTrees.length === 0) {
-          console.log('⚠️ No trees loaded in TreeList, using demo data')
-          setTrees(DEMO_TREES)
-        } else {
-          setTrees(updatedTrees)
-        }
+        // Show real data or empty list if no trees loaded
+        setTrees(updatedTrees)
         setLoading(false)
       })
 

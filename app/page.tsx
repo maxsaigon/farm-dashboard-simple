@@ -19,28 +19,7 @@ import { AdminDashboard } from '../components/AdminDashboard'
 import { useAuth } from '../lib/enhanced-auth-context'
 import MobileDashboard from '../components/MobileDashboard'
 
-// Demo data fallback
-const demoData = {
-  farmer: "Demo User",
-  stats: {
-    totalTrees: 5,
-    healthyTrees: 4, 
-    treesNeedingAttention: 1,
-    totalFruits: 83,
-    gpsCoverage: 0.8,
-    zonesCount: 2
-  },
-  treesNeedingAttention: [
-    {
-      id: "demo-1",
-      name: "Cây Sầu Riêng 003",
-      variety: "Kan Yao",
-      zoneCode: "Z01_03", 
-      healthStatus: "Fair" as const,
-      needsAttention: true
-    }
-  ]
-}
+// No mock data - use only real API data
 
 function FarmStats({ stats }: { stats: DashboardStats }) {
   
@@ -202,7 +181,14 @@ function AttentionList({ trees }: { trees: Tree[] }) {
 
 export default function HomePage() {
   const { user, loading, currentFarm, setCurrentFarm, isAdmin } = useAuth()
-  const [stats, setStats] = useState<DashboardStats>(demoData.stats)
+  const [stats, setStats] = useState<DashboardStats>({
+    totalTrees: 0,
+    healthyTrees: 0,
+    treesNeedingAttention: 0,
+    totalFruits: 0,
+    gpsCoverage: 0,
+    zonesCount: 0
+  })
   const [attentionTrees, setAttentionTrees] = useState<Tree[]>([])
   const [dataLoading, setDataLoading] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -220,9 +206,16 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!user || !currentFarm) {
-      // Use demo data when not authenticated or no farm selected
-      setStats(demoData.stats)
-      setAttentionTrees(demoData.treesNeedingAttention as Tree[])
+      // Show empty state when not authenticated or no farm selected
+      setStats({
+        totalTrees: 0,
+        healthyTrees: 0,
+        treesNeedingAttention: 0,
+        totalFruits: 0,
+        gpsCoverage: 0,
+        zonesCount: 0
+      })
+      setAttentionTrees([])
       setDataLoading(false)
       return
     }
@@ -233,15 +226,9 @@ export default function HomePage() {
     const unsubscribeTrees = subscribeToTrees(currentFarm.id, user.uid, (updatedTrees) => {
       console.log('📊 Dashboard received trees:', updatedTrees.length)
       
-      // If no trees loaded, use demo data instead of showing zeros
-      if (updatedTrees.length === 0) {
-        console.log('⚠️ No trees loaded, using demo data')
-        setStats(demoData.stats)
-        setAttentionTrees(demoData.treesNeedingAttention as Tree[])
-      } else {
-        setStats(calculateDashboardStats(updatedTrees))
-        setAttentionTrees(getTreesNeedingAttention(updatedTrees))
-      }
+      // Show real data or zeros if no trees loaded
+      setStats(calculateDashboardStats(updatedTrees))
+      setAttentionTrees(getTreesNeedingAttention(updatedTrees))
       setDataLoading(false)
     })
     

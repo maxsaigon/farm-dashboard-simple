@@ -112,21 +112,9 @@ export default function PhotoManagement() {
     try {
       setLoading(true)
       // Load photos from Firebase
-      // Mock data for demonstration
-      const mockPhotos: Photo[] = [
-        {
-          id: '1',
-          treeId: 'tree1',
-          treeName: 'DUR-001',
-          timestamp: new Date('2024-01-15T10:30:00'),
-          localPath: '/photos/tree1_20240115_1.jpg',
-          farmId: currentFarm?.id || 'farm1',
-          filename: 'tree1_fruit_analysis.jpg',
-          photoType: 'fruit',
-          userNotes: 'Đếm trái định kỳ tháng 1',
-          manualFruitCount: 25,
-          latitude: 10.8231,
-          longitude: 106.6297,
+      // Load real photos data from API - no mock data
+      // TODO: Implement actual API call to load photos
+      setPhotos([])
           needsAIAnalysis: false,
           uploadedToServer: true,
           serverProcessed: true,
@@ -179,9 +167,6 @@ export default function PhotoManagement() {
           uploadDate: new Date('2024-01-17T09:00:00'),
           localStorageDate: new Date('2024-01-17T08:45:00'),
           totalLocalSize: 2950000
-        }
-      ]
-      setPhotos(mockPhotos)
     } catch (error) {
       console.error('Error loading photos:', error)
     } finally {
