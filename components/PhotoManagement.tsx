@@ -841,7 +841,14 @@ function PhotoDetailModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9998]"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
+    >
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-start mb-6">
@@ -850,9 +857,11 @@ function PhotoDetailModal({
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 touch-manipulation"
+              aria-label="Đóng"
+              style={{ minHeight: '44px', minWidth: '44px' }}
             >
-              <XMarkIcon className="h-6 w-6" />
+              <XMarkIcon className="h-8 w-8" />
             </button>
           </div>
           

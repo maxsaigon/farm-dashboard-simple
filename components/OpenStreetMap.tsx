@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Tree } from '@/lib/types'
+import { TreeImagePreview } from './TreeImagePreview'
 
 interface Zone {
   id: string
@@ -400,30 +401,168 @@ export function OpenStreetMap({
       if (lat && lng && lat !== 0 && lng !== 0) {
         const marker = L.marker([lat, lng], { icon: createTreeIcon(tree) })
 
-        // Create popup content
+        // Create a unique popup container for React rendering
+        const popupId = `tree-popup-${tree.id}`
+        
+        // Create optimized popup content with better mobile design
         const popupContent = `
-          <div style="min-width: 200px;">
-            <h3 style="margin: 0 0 8px 0; color: #16a34a; font-size: 14px;">
-              ${tree.name || `Cây ${tree.qrCode || tree.id.slice(0, 8)}`}
-            </h3>
-            <div style="font-size: 12px; color: #666;">
-              <p style="margin: 4px 0;"><strong>Giống:</strong> ${tree.variety || 'Không xác định'}</p>
-              <p style="margin: 4px 0;"><strong>Khu vực:</strong> ${tree.zoneCode || 'N/A'}</p>
-              <p style="margin: 4px 0;"><strong>Sức khỏe:</strong> 
-                <span style="color: ${getHealthColor(tree.healthStatus)};">
-                  ${tree.healthStatus || 'Chưa đánh giá'}
-                </span>
-              </p>
-              <p style="margin: 4px 0;"><strong>Trái:</strong> ${((tree.manualFruitCount || 0) + (tree.aiFruitCount || 0)).toLocaleString()}</p>
-              <p style="margin: 4px 0;"><strong>Ngày trồng:</strong> ${formatDate(tree.plantingDate)}</p>
+          <div id="${popupId}" style="min-width: 280px; max-width: 320px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <!-- Thumbnail will be inserted here by React -->
+            <div id="${popupId}-thumbnail" style="width: 100%; height: 120px; background: #f3f4f6; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; border: 2px solid #e5e7eb;">
+              <svg style="width: 32px; height: 32px; color: #9ca3af;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </div>
-            ${onTreeSelect ? '<div style="margin-top: 8px;"><button onclick="selectTree(\'' + tree.id + '\')" style="background: #16a34a; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Xem chi tiết</button></div>' : ''}
+            
+            <!-- Simplified, farmer-friendly content -->
+            <div style="text-align: center; margin-bottom: 12px;">
+              <h3 style="margin: 0; color: #16a34a; font-size: 18px; font-weight: 600;">
+                ${tree.variety || 'Sầu riêng'}
+              </h3>
+              ${tree.name ? `<p style="margin: 4px 0 0 0; color: #6b7280; font-size: 13px;">${tree.name}</p>` : ''}
+            </div>
+            
+            <!-- Key information in cards -->
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+              <div style="flex: 1; background: ${getHealthColor(tree.healthStatus)}15; padding: 8px; border-radius: 6px; text-align: center;">
+                <div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">SỨC KHỎE</div>
+                <div style="font-size: 14px; font-weight: 600; color: ${getHealthColor(tree.healthStatus)};">
+                  ${getHealthStatusVietnamese(tree.healthStatus)}
+                </div>
+              </div>
+              <div style="flex: 1; background: #16a34a15; padding: 8px; border-radius: 6px; text-align: center;">
+                <div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">SỐ TRÁI</div>
+                <div style="font-size: 14px; font-weight: 600; color: #16a34a;">
+                  ${((tree.manualFruitCount || 0) + (tree.aiFruitCount || 0)).toLocaleString()}
+                </div>
+              </div>
+            </div>
+            
+            <!-- Large, touch-friendly button -->
+            ${onTreeSelect ? `
+            <button 
+              id="${popupId}-button"
+              onclick="selectTree('${tree.id}')"
+              style="
+                width: 100%;
+                background: linear-gradient(135deg, #16a34a, #15803d);
+                color: white;
+                border: none;
+                padding: 12px 16px;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+              "
+              onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(22, 163, 74, 0.3)'"
+              onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(22, 163, 74, 0.2)'"
+              ontouchstart="this.style.transform='scale(0.98)'"
+              ontouchend="this.style.transform='scale(1)'"
+            >
+              <svg style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Xem chi tiết
+            </button>
+            ` : ''}
           </div>
         `
 
         marker.bindPopup(popupContent, {
-          maxWidth: 250,
-          closeButton: true
+          maxWidth: 320,
+          closeButton: true,
+          className: 'custom-tree-popup'
+        })
+        
+        // Handle popup open event to render React thumbnail component
+        marker.on('popupopen', () => {
+          // Small delay to ensure DOM is ready
+          setTimeout(async () => {
+            const thumbnailContainer = document.getElementById(`${popupId}-thumbnail`)
+            if (thumbnailContainer) {
+              try {
+                // Try to load tree image directly using the storage service
+                const { getTreeImages } = await import('@/lib/storage')
+                const effectiveFarmId = tree.farmId && tree.farmId !== 'default' ? tree.farmId : 'F210C3FC-F191-4926-9C15-58D6550A716A'
+                
+                // Try multiple approaches to get the image
+                let imageUrl = null
+                
+                // First try: Direct tree ID
+                try {
+                  const images = await getTreeImages(tree.id, effectiveFarmId)
+                  if (images.length > 0) {
+                    imageUrl = images[0]
+                  }
+                } catch (error) {
+                  console.warn('Failed to load image with tree ID:', error)
+                }
+                
+                // Second try: QR Code if available
+                if (!imageUrl && tree.qrCode) {
+                  try {
+                    const images = await getTreeImages(tree.qrCode, effectiveFarmId)
+                    if (images.length > 0) {
+                      imageUrl = images[0]
+                    }
+                  } catch (error) {
+                    console.warn('Failed to load image with QR code:', error)
+                  }
+                }
+                
+                // Update the thumbnail container
+                if (imageUrl) {
+                  thumbnailContainer.innerHTML = `
+                    <img 
+                      src="${imageUrl}" 
+                      alt="Tree image" 
+                      style="
+                        width: 100%; 
+                        height: 100%; 
+                        object-fit: cover; 
+                        border-radius: 8px;
+                        transition: opacity 0.3s ease;
+                      "
+                      loading="lazy"
+                      onerror="this.parentElement.innerHTML = '\\
+                        <div style=\\'display: flex; align-items: center; justify-content: center; color: #9ca3af;\\'>\\
+                          <svg style=\\'width: 32px; height: 32px;\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'currentColor\\'>\\
+                            <path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'1.5\\' d=\\'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z\\' />\\
+                          </svg>\\
+                        </div>'"
+                    />
+                  `
+                } else {
+                  // No image found - show placeholder
+                  thumbnailContainer.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; color: #9ca3af;">
+                      <svg style="width: 32px; height: 32px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  `
+                }
+              } catch (error) {
+                console.warn('Error loading tree image for popup:', error)
+                // Fallback to placeholder
+                thumbnailContainer.innerHTML = `
+                  <div style="display: flex; align-items: center; justify-content: center; color: #9ca3af;">
+                    <svg style="width: 32px; height: 32px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                `
+              }
+            }
+          }, 100)
         })
 
         // Handle marker click
@@ -575,6 +714,16 @@ export function OpenStreetMap({
       case 'Fair': return '#f59e0b' 
       case 'Poor': return '#ef4444'
       default: return '#6b7280'
+    }
+  }
+  
+  const getHealthStatusVietnamese = (status?: string) => {
+    switch (status) {
+      case 'Excellent': return 'Tuyệt vời'
+      case 'Good': return 'Tốt' 
+      case 'Fair': return 'Khá'
+      case 'Poor': return 'Yếu'
+      default: return 'Chưa đánh giá'
     }
   }
 

@@ -357,3 +357,107 @@ body {
     padding-bottom: 8px;
   }
 }
+
+/* Custom Tree Popup Styles for Leaflet */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  border: 2px solid rgba(22, 163, 74, 0.2) !important;
+}
+
+.custom-tree-popup .leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  border-radius: 16px !important;
+  padding: 0 !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(22, 163, 74, 0.1) !important;
+}
+
+.custom-tree-popup .leaflet-popup-content {
+  margin: 16px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  line-height: 1.5 !important;
+  overflow: visible !important;
+}
+
+.custom-tree-popup .leaflet-popup-tip-container {
+  width: 40px !important;
+  height: 20px !important;
+  margin-left: -20px !important;
+}
+
+.custom-tree-popup .leaflet-popup-tip {
+  background: white !important;
+  border: 2px solid rgba(22, 163, 74, 0.2) !important;
+  border-top: none !important;
+  border-right: none !important;
+  box-shadow: -1px 1px 1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.custom-tree-popup .leaflet-popup-close-button {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #6b7280 !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  line-height: 1 !important;
+  top: 8px !important;
+  right: 8px !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.custom-tree-popup .leaflet-popup-close-button:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444 !important;
+  transform: scale(1.05) !important;
+}
+
+.custom-tree-popup .leaflet-popup-close-button:active {
+  transform: scale(0.95) !important;
+}
+
+/* Mobile-specific popup optimizations */
+@media screen and (max-width: 768px) {
+  .custom-tree-popup .leaflet-popup-content-wrapper {
+    min-width: 300px !important;
+    max-width: 340px !important;
+  }
+  
+  .custom-tree-popup .leaflet-popup-content {
+    margin: 20px !important;
+  }
+  
+  .custom-tree-popup .leaflet-popup-close-button {
+    width: 36px !important;
+    height: 36px !important;
+    top: 12px !important;
+    right: 12px !important;
+  }
+}
+
+/* High contrast mode for outdoor use */
+@media (prefers-contrast: high) {
+  .custom-tree-popup .leaflet-popup-content-wrapper {
+    border: 3px solid #16a34a !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+  }
+  
+  .custom-tree-popup .leaflet-popup-close-button {
+    background: rgba(0, 0, 0, 0.1) !important;
+    border: 2px solid #6b7280 !important;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .custom-tree-popup .leaflet-popup-close-button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+}

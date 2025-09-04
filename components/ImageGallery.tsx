@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { PhotoWithUrls, getPhotosWithUrls, subscribeToTreePhotos } from '@/lib/photo-service'
+import { getModalZClass, modalStack } from '@/lib/modal-z-index'
 
 interface StorageImage {
   imageUrl: string
@@ -119,7 +120,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     }
   }
 
-  // Close modal on escape key
+  // Close modal on escape key and handle body scroll
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelectedImage(null)
@@ -128,10 +129,39 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     }
 
     if (selectedImage !== null) {
+      // Use modal stack manager to handle body scroll
+      modalStack.pushModal('image-gallery')
       document.addEventListener('keydown', handleKeyDown)
-      return () => document.removeEventListener('keydown', handleKeyDown)
+      
+      return () => {
+        modalStack.popModal('image-gallery')
+        document.removeEventListener('keydown', handleKeyDown)
+      }
     }
   }, [selectedImage, totalImages])
+
+  // Handle touch gestures for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    setTouchStart(touch.clientY)
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart) return
+    
+    const touch = e.changedTouches[0]
+    const diff = touchStart - touch.clientY
+    
+    // Swipe down to close (threshold: 50px)
+    if (diff < -50) {
+      setSelectedImage(null)
+    }
+    
+    setTouchStart(null)
+  }
+
+  // Track touch position for swipe gesture
+  const [touchStart, setTouchStart] = useState<number | null>(null)
 
   const formatDate = (date?: Date) => {
     if (!date) return 'N/A'
@@ -272,8 +302,18 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
 
       {/* Fullscreen Modal */}
       {selectedImage !== null && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center">
-          <div className="max-w-5xl max-h-full w-full h-full flex flex-col p-4">
+        <div 
+          className={`fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center ${getModalZClass('PHOTO_VIEWER')}`}
+          onClick={(e) => {
+            // Click outside image to close
+            if (e.target === e.currentTarget) {
+              setSelectedImage(null)
+            }
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="max-w-5xl max-h-full w-full h-full flex flex-col p-4" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center justify-between mb-4 text-white">
               <div className="flex items-center space-x-4">
@@ -297,9 +337,11 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
               </div>
               <button
                 onClick={() => setSelectedImage(null)}
-                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
+                className="p-3 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors touch-manipulation"
+                aria-label="Đóng hình ảnh"
+                style={{ minHeight: '44px', minWidth: '44px' }}
               >
-                <XMarkIcon className="h-6 w-6" />
+                <XMarkIcon className="h-8 w-8" />
               </button>
             </div>
 
@@ -309,7 +351,12 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                 <img
                   src={filteredImages[selectedImage].imageUrl}
                   alt={`Tree photo ${selectedImage + 1}`}
-                  className="max-w-full max-h-full object-contain"
+                  className="max-w-full max-h-full object-contain select-none"
+                  style={{ 
+                    touchAction: 'pan-x pan-y pinch-zoom',
+                    userSelect: 'none' 
+                  }}
+                  draggable={false}
                 />
               )}
 
@@ -318,18 +365,32 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                 <>
                   <button
                     onClick={prevImage}
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full text-white transition-colors"
+                    className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 hover:bg-opacity-80 rounded-full text-white transition-colors touch-manipulation"
+                    aria-label="Ảnh trước"
+                    style={{ minHeight: '48px', minWidth: '48px' }}
                   >
-                    <ChevronLeftIcon className="h-6 w-6" />
+                    <ChevronLeftIcon className="h-8 w-8" />
                   </button>
                   <button
                     onClick={nextImage}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full text-white transition-colors"
+                    className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 hover:bg-opacity-80 rounded-full text-white transition-colors touch-manipulation"
+                    aria-label="Ảnh tiếp theo"
+                    style={{ minHeight: '48px', minWidth: '48px' }}
                   >
-                    <ChevronRightIcon className="h-6 w-6" />
+                    <ChevronRightIcon className="h-8 w-8" />
                   </button>
                 </>
               )}
+
+              {/* Image counter overlay for mobile */}
+              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-sm font-medium">
+                {selectedImage + 1} / {totalImages}
+              </div>
+
+              {/* Mobile instructions overlay - shows temporarily */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-xs font-medium text-center animate-pulse sm:hidden">
+                👆 Chạm bên ngoài hoặc vuốt xuống để đóng
+              </div>
             </div>
 
             {/* Footer - Photo info */}

@@ -824,7 +824,7 @@ export default function InteractiveMap() {
 
       {/* Tree Details Modal */}
       {showTreeDetails && selectedTree && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+        <div className="fixed inset-0 z-[9997] flex items-end justify-center p-4 sm:items-center">
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowTreeDetails(false)} />
           <div className="bg-white rounded-t-xl sm:rounded-xl shadow-xl w-full max-w-md relative max-h-[80vh] overflow-y-auto">
             <div className="p-6">
@@ -904,7 +904,7 @@ export default function InteractiveMap() {
 
       {/* Zone Details Modal */}
       {showZoneDetails && selectedZone && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+        <div className="fixed inset-0 z-[9997] flex items-end justify-center p-4 sm:items-center">
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowZoneDetails(false)} />
           <div className="bg-white rounded-t-xl sm:rounded-xl shadow-xl w-full max-w-md relative max-h-[80vh] overflow-y-auto">
             <div className="p-6">
