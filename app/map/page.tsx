@@ -90,8 +90,8 @@ function MapPageContent() {
           const relatedTrees = treesData.filter(tree => 
             tree.zoneCode === targetZone.id || 
             tree.zoneCode === targetZone.name ||
-            tree.zoneId === targetZone.id ||
-            tree.zoneId === targetZone.name
+            (tree as any).zoneId === targetZone.id ||
+            (tree as any).zoneId === targetZone.name
           )
           console.log('🌳 Trees in focused zone:', relatedTrees.length)
           console.log('🌳 Sample tree zoneCodes:', treesData.slice(0, 5).map(t => ({ id: t.id, zoneCode: t.zoneCode, zoneId: (t as any).zoneId })))
