@@ -20,6 +20,8 @@ import {
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
 import { ImageGallery } from './ImageGallery'
+import { CustomFieldsSection } from './CustomFieldsSection'
+import { CustomFieldValue, TreeCustomFields } from '@/lib/custom-field-types'
 
 interface TreeDetailProps {
   tree: Tree | null
@@ -34,6 +36,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<Tree>>({})
+  const [customFields, setCustomFields] = useState<TreeCustomFields | undefined>()
 
   useEffect(() => {
     if (tree) {
@@ -51,6 +54,9 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
         diseaseNotes: tree.diseaseNotes || '',
         needsAttention: tree.needsAttention || false
       })
+      
+      // Set custom fields from tree data
+      setCustomFields(tree.customFields as TreeCustomFields)
     }
   }, [tree])
 
@@ -106,6 +112,30 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       alert('Có lỗi xảy ra khi xóa cây')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCustomFieldsSave = async (treeId: string, fields: CustomFieldValue[]) => {
+    if (!user || !currentFarm) return
+    
+    try {
+      // For now, we'll store custom fields in the tree's customFields property
+      // In a real app, this would be a separate collection or subcollection
+      const updatedCustomFields: TreeCustomFields = {
+        treeId,
+        fields,
+        lastUpdated: new Date()
+      }
+      
+      await updateTree(currentFarm.id, treeId, user.uid, {
+        customFields: updatedCustomFields,
+        updatedAt: new Date()
+      })
+      
+      setCustomFields(updatedCustomFields)
+    } catch (error) {
+      console.error('Error saving custom fields:', error)
+      throw error // Let CustomFieldsSection handle the error display
     }
   }
 
@@ -507,6 +537,16 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
               </div>
             )}
           </div>
+        </div>
+
+        {/* Custom Fields Section */}
+        <div className="border-t border-gray-200 pt-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin bổ sung</h3>
+          <CustomFieldsSection
+            treeId={tree.id}
+            customFields={customFields || (tree.customFields as TreeCustomFields)}
+            onSave={handleCustomFieldsSave}
+          />
         </div>
 
         {/* Image Gallery */}

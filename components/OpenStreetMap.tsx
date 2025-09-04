@@ -71,11 +71,18 @@ export function OpenStreetMap({
       setIsFullscreen(isCurrentlyFullscreen)
       console.log('📱 Fullscreen state changed:', isCurrentlyFullscreen)
       
-      // Invalidate map size when entering/exiting fullscreen
+      // Safely invalidate map size when entering/exiting fullscreen
       if (mapRef.current) {
         setTimeout(() => {
-          mapRef.current?.invalidateSize()
-        }, 100)
+          try {
+            if (mapRef.current && mapContainerRef.current && mapContainerRef.current.offsetWidth > 0) {
+              mapRef.current.invalidateSize({ animate: false, pan: false })
+              console.log('📱 Map size invalidated after fullscreen change')
+            }
+          } catch (error) {
+            console.warn('📱 Map invalidation error (safe to ignore):', (error as Error).message)
+          }
+        }, 150)
       }
     }
 
@@ -905,20 +912,35 @@ export function OpenStreetMap({
                     if (mapRef.current) {
                       console.log('🎯 Fullscreen activated, refreshing map...')
                       
-                      // Force multiple map invalidations to ensure proper display
-                      mapRef.current.invalidateSize({ animate: false })
+                      // Safely force multiple map invalidations to ensure proper display
+                      try {
+                        if (mapContainerRef.current && mapContainerRef.current.offsetWidth > 0) {
+                          mapRef.current.invalidateSize({ animate: false, pan: false })
+                          console.log('🗺️ Map size invalidated for fullscreen (initial)')
+                        }
+                      } catch (error) {
+                        console.warn('🗺️ Initial map invalidation error (safe to ignore):', (error as Error).message)
+                      }
                       
                       setTimeout(() => {
-                        if (mapRef.current) {
-                          mapRef.current.invalidateSize({ animate: true })
-                          console.log('🗺️ Map size invalidated for fullscreen (animated)')
+                        if (mapRef.current && mapContainerRef.current && mapContainerRef.current.offsetWidth > 0) {
+                          try {
+                            mapRef.current.invalidateSize({ animate: true, pan: false })
+                            console.log('🗺️ Map size invalidated for fullscreen (animated)')
+                          } catch (error) {
+                            console.warn('🗺️ Animated map invalidation error (safe to ignore):', (error as Error).message)
+                          }
                         }
                       }, 200)
                       
                       setTimeout(() => {
-                        if (mapRef.current) {
-                          mapRef.current.invalidateSize({ animate: false })
-                          console.log('🗺️ Final map size invalidation')
+                        if (mapRef.current && mapContainerRef.current && mapContainerRef.current.offsetWidth > 0) {
+                          try {
+                            mapRef.current.invalidateSize({ animate: false, pan: false })
+                            console.log('🗺️ Final map size invalidation')
+                          } catch (error) {
+                            console.warn('🗺️ Final map invalidation error (safe to ignore):', (error as Error).message)
+                          }
                         }
                       }, 500)
                       

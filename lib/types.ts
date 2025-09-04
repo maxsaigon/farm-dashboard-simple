@@ -1,3 +1,6 @@
+// Import custom field types
+import type { TreeCustomFields } from './custom-field-types'
+
 // TypeScript types matching iOS app Core Data entities
 export interface Tree {
   id: string
@@ -28,6 +31,7 @@ export interface Tree {
   lastAIAnalysisDate?: Date
   aiAccuracy?: number
   needsAttention: boolean
+  customFields?: TreeCustomFields
   createdAt?: Date
   updatedAt?: Date
   farmName?: string // Added by admin service for cross-farm displays
