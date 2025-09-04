@@ -787,6 +787,9 @@ export function OpenStreetMap({
               console.warn('Map container element not found for fullscreen')
               return
             }
+            
+            // Ensure the fullscreen element has proper styling
+            element.style.backgroundColor = element.style.backgroundColor || 'white'
 
             try {
               if (!document.fullscreenElement) {
@@ -829,8 +832,16 @@ export function OpenStreetMap({
                     if (mapRef.current) {
                       console.log('🎯 Fullscreen activated, focusing on farm location...')
                       
-                      // First, ensure map size is properly calculated
-                      mapRef.current.invalidateSize()
+                      // First, ensure map size is properly calculated with animation
+                      mapRef.current.invalidateSize({ animate: true, pan: true })
+                      
+                      // Force redraw of the map
+                      setTimeout(() => {
+                        if (mapRef.current) {
+                          mapRef.current.invalidateSize({ animate: false })
+                          console.log('🗺️ Map size invalidated for fullscreen')
+                        }
+                      }, 100)
                       
                       // Wait a bit more for fullscreen to settle, then focus
                       setTimeout(() => {

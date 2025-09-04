@@ -461,3 +461,77 @@ body {
     min-height: 44px !important;
   }
 }
+
+/* Fullscreen map container styling */
+:fullscreen {
+  background: white !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 999999 !important;
+}
+
+:-webkit-full-screen {
+  background: white !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 999999 !important;
+}
+
+:-moz-full-screen {
+  background: white !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 999999 !important;
+}
+
+:-ms-fullscreen {
+  background: white !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 999999 !important;
+}
+
+/* Ensure child elements fill the fullscreen container */
+:fullscreen > * {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+:-webkit-full-screen > * {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+:-moz-full-screen > * {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+:-ms-fullscreen > * {
+  width: 100% !important;
+  height: 100% !important;
+}
