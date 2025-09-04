@@ -115,58 +115,6 @@ export default function PhotoManagement() {
       // Load real photos data from API - no mock data
       // TODO: Implement actual API call to load photos
       setPhotos([])
-          needsAIAnalysis: false,
-          uploadedToServer: true,
-          serverProcessed: true,
-          uploadDate: new Date('2024-01-15T10:35:00'),
-          thumbnailPath: '/photos/thumbs/tree1_20240115_1_thumb.jpg',
-          compressedPath: '/photos/compressed/tree1_20240115_1_comp.jpg',
-          localStorageDate: new Date('2024-01-15T10:30:00'),
-          totalLocalSize: 2840000,
-          aiAnalysisResult: {
-            fruitCount: 27,
-            confidence: 0.92,
-            diseaseDetected: false,
-            growthStage: 'mature',
-            healthScore: 8.5
-          }
-        },
-        {
-          id: '2',
-          treeId: 'tree2',
-          treeName: 'DUR-002',
-          timestamp: new Date('2024-01-16T14:20:00'),
-          localPath: '/photos/tree2_20240116_1.jpg',
-          farmId: currentFarm?.id || 'farm1',
-          filename: 'tree2_disease_check.jpg',
-          photoType: 'disease',
-          userNotes: 'Phát hiện vết đốm trên lá',
-          latitude: 10.8235,
-          longitude: 106.6299,
-          needsAIAnalysis: true,
-          uploadedToServer: false,
-          serverProcessed: false,
-          localStorageDate: new Date('2024-01-16T14:20:00'),
-          totalLocalSize: 3200000
-        },
-        {
-          id: '3',
-          treeId: 'tree1',
-          treeName: 'DUR-001',
-          timestamp: new Date('2024-01-17T08:45:00'),
-          localPath: '/photos/tree1_20240117_1.jpg',
-          farmId: currentFarm?.id || 'farm1',
-          filename: 'tree1_growth_check.jpg',
-          photoType: 'growth',
-          userNotes: 'Kiểm tra phát triển sau bón phân',
-          latitude: 10.8231,
-          longitude: 106.6297,
-          needsAIAnalysis: true,
-          uploadedToServer: true,
-          serverProcessed: false,
-          uploadDate: new Date('2024-01-17T09:00:00'),
-          localStorageDate: new Date('2024-01-17T08:45:00'),
-          totalLocalSize: 2950000
     } catch (error) {
       console.error('Error loading photos:', error)
     } finally {
@@ -176,13 +124,9 @@ export default function PhotoManagement() {
 
   const loadTrees = async () => {
     try {
-      // Load tree list for filtering
-      const mockTrees = [
-        { id: 'tree1', name: 'DUR-001' },
-        { id: 'tree2', name: 'DUR-002' },
-        { id: 'tree3', name: 'DUR-003' }
-      ]
-      setTrees(mockTrees)
+      // Load tree list for filtering from API - no mock data
+      // TODO: Implement actual API call to load trees for filtering
+      setTrees([])
     } catch (error) {
       console.error('Error loading trees:', error)
     }
