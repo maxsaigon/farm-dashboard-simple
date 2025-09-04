@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Tree } from '@/lib/types'
-import { TreeImagePreview } from './TreeImagePreview'
+// Note: TreeImagePreview import removed as it was unused
 
 interface Zone {
   id: string

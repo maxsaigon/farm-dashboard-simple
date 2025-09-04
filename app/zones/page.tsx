@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { MapPinIcon, Square3Stack3DIcon } from '@heroicons/react/24/outline'
+// Note: Icons removed as they were unused
 
 interface Zone {
   id: string

@@ -43,8 +43,6 @@ export function getModalZClass(type: ModalType): string {
   switch (zIndex) {
     case 40: return 'z-40'
     case 30: return 'z-30'
-    case 20: return 'z-20'
-    case 10: return 'z-10'
     default: return `z-[${zIndex}]`
   }
 }

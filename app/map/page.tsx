@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase'
 import { Tree } from '@/lib/types'
 import dynamic from 'next/dynamic'
 import { TreeDetail } from '@/components/TreeDetail'
-import { EyeIcon, MapPinIcon, RectangleGroupIcon } from '@heroicons/react/24/outline'
+import { EyeIcon } from '@heroicons/react/24/outline'
 
 interface Zone {
   id: string
