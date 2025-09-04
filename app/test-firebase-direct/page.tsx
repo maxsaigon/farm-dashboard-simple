@@ -102,7 +102,7 @@ export default function TestFirebaseDirect() {
             <h2 className="font-semibold mb-4">Test Results:</h2>
             <div className="space-y-1 text-sm font-mono">
               {results.length === 0 ? (
-                <p className="text-gray-500">Click "Run Firebase Test" to start</p>
+                <p className="text-gray-500">Click &quot;Run Firebase Test&quot; to start</p>
               ) : (
                 results.map((result, index) => (
                   <div key={index} className="py-1">

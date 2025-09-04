@@ -55,7 +55,7 @@ export default function MapPage() {
     if (displayFarm.id) {
       loadData()
     }
-  }, [displayFarm.id])
+  }, [displayFarm.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadData = async () => {
     const farmId = displayFarm.id

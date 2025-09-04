@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { collection, getDocs, doc, setDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore'
+import { collection, getDocs, doc, setDoc, deleteDoc, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 
 interface Zone {
@@ -40,7 +40,7 @@ export default function AdminZonesPage() {
 
   useEffect(() => {
     loadFarms()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadFarms = async () => {
     try {
@@ -373,7 +373,7 @@ function ZoneModal({ zone, farmId, onClose, onSave, onLog }: ZoneModalProps) {
       let boundary = []
       try {
         boundary = JSON.parse(formData.boundaryText)
-      } catch (e) {
+      } catch {
         alert('Invalid boundary JSON format')
         setSaving(false)
         return
