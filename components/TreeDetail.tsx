@@ -171,7 +171,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
             {getHealthIcon(tree.healthStatus)}
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                {tree.name || `Cây ${tree.qrCode || tree.id.slice(0, 8)}`}
+                {tree.name || `Cây ${tree.variety || tree.zoneName || tree.id.slice(0, 8)}`}
               </h2>
               <div className="flex items-center space-x-2 mt-1">
                 {tree.variety && (

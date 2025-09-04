@@ -12,8 +12,6 @@ interface Zone {
   description?: string
   color: string
   boundaries: Array<{ latitude: number; longitude: number }>
-  soilType?: string
-  drainageLevel?: 'poor' | 'fair' | 'good' | 'excellent'
   treeCount: number
   area: number
   isActive: boolean
@@ -63,8 +61,6 @@ export default function ZonesPage() {
           description: data.description || '',
           color: data.color || '#3b82f6',
           boundaries: boundaries,
-          soilType: data.soilType || 'unknown',
-          drainageLevel: data.drainageLevel || 'fair',
           treeCount: data.treeCount || 0,
           area: data.area || 0,
           isActive: data.isActive !== false,
@@ -86,15 +82,6 @@ export default function ZonesPage() {
     window.location.href = `/map?zone=${zone.id}`
   }
 
-  const getDrainageLevelText = (level: string) => {
-    const levels = {
-      poor: 'Kém',
-      fair: 'Trung bình', 
-      good: 'Tốt',
-      excellent: 'Xuất sắc'
-    }
-    return levels[level as keyof typeof levels] || level
-  }
 
   if (loading) {
     return (
@@ -253,17 +240,6 @@ export default function ZonesPage() {
                     </div>
                   </div>
 
-                  {/* Zone Details - Enhanced */}
-                  <div className="space-y-3 mb-5">
-                    <div className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded-lg">
-                      <span className="text-gray-600 font-medium">🌱 Loại đất:</span>
-                      <span className="font-bold capitalize text-gray-800">{zone.soilType || 'Chưa xác định'}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded-lg">
-                      <span className="text-gray-600 font-medium">💧 Thoát nước:</span>
-                      <span className="font-bold text-gray-800">{getDrainageLevelText(zone.drainageLevel || 'fair')}</span>
-                    </div>
-                  </div>
 
                   {/* Actions - Enhanced */}
                   <button

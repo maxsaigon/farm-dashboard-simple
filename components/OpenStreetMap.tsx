@@ -12,8 +12,6 @@ interface Zone {
   description?: string
   color: string
   boundaries: Array<{ latitude: number; longitude: number }> // FIXED: Use correct field names from Firebase
-  soilType?: string
-  drainageLevel?: 'poor' | 'fair' | 'good' | 'excellent'
   treeCount: number
   area: number
   isActive: boolean
@@ -262,8 +260,6 @@ export function OpenStreetMap({
               ${zone.description ? `<p style="margin: 4px 0;">${zone.description}</p>` : ''}
               <p style="margin: 4px 0;"><strong>Số cây:</strong> ${zone.treeCount}</p>
               <p style="margin: 4px 0;"><strong>Diện tích:</strong> ${zone.area} ha</p>
-              <p style="margin: 4px 0;"><strong>Loại đất:</strong> ${zone.soilType}</p>
-              <p style="margin: 4px 0;"><strong>Thoát nước:</strong> ${zone.drainageLevel}</p>
               <p style="margin: 4px 0;"><strong>Trạng thái:</strong> 
                 <span style="color: ${zone.isActive ? '#16a34a' : '#ef4444'};">
                   ${zone.isActive ? 'Hoạt động' : 'Không hoạt động'}
@@ -727,14 +723,6 @@ export function OpenStreetMap({
     }
   }
 
-  const formatDate = (date?: Date | null) => {
-    if (!date) return 'N/A'
-    return new Intl.DateTimeFormat('vi-VN', {
-      day: '2-digit',
-      month: '2-digit', 
-      year: 'numeric'
-    }).format(date)
-  }
 
   // Add global functions for popup buttons
   useEffect(() => {
@@ -782,14 +770,24 @@ export function OpenStreetMap({
       <div className="absolute top-4 right-4 z-[1000]">
         <button
           onClick={async () => {
-            const element = mapContainerRef.current?.parentElement
-            if (!element) {
-              console.warn('Map container element not found for fullscreen')
+            // Target the outermost container element (the one with relative class)
+            const mapElement = mapContainerRef.current
+            const parentElement = mapElement?.parentElement
+            
+            if (!mapElement || !parentElement) {
+              console.warn('Map container elements not found for fullscreen')
               return
             }
             
-            // Ensure the fullscreen element has proper styling
-            element.style.backgroundColor = element.style.backgroundColor || 'white'
+            console.log('🖥️ Fullscreen button clicked')
+            console.log('🖥️ Map element:', mapElement)
+            console.log('🖥️ Parent element:', parentElement)
+            
+            // Ensure the fullscreen element has proper styling before fullscreen
+            parentElement.style.backgroundColor = '#ffffff'
+            parentElement.style.position = 'relative'
+            parentElement.style.width = '100%'
+            parentElement.style.height = '100%'
 
             try {
               if (!document.fullscreenElement) {
@@ -804,23 +802,43 @@ export function OpenStreetMap({
 
                 // Enter fullscreen mode with multiple fallback methods
                 const enterFullscreen = async () => {
-                  if (element.requestFullscreen) {
-                    return await element.requestFullscreen()
-                  } else if ((element as any).webkitRequestFullscreen) {
-                    return await (element as any).webkitRequestFullscreen()
-                  } else if ((element as any).msRequestFullscreen) {
-                    return await (element as any).msRequestFullscreen()
-                  } else if ((element as any).mozRequestFullScreen) {
-                    return await (element as any).mozRequestFullScreen()
+                  console.log('🖥️ Attempting to enter fullscreen on element:', parentElement)
+                  if (parentElement.requestFullscreen) {
+                    return await parentElement.requestFullscreen()
+                  } else if ((parentElement as any).webkitRequestFullscreen) {
+                    return await (parentElement as any).webkitRequestFullscreen()
+                  } else if ((parentElement as any).msRequestFullscreen) {
+                    return await (parentElement as any).msRequestFullscreen()
+                  } else if ((parentElement as any).mozRequestFullScreen) {
+                    return await (parentElement as any).mozRequestFullScreen()
                   } else {
                     throw new Error('Fullscreen not supported')
                   }
                 }
 
                 await enterFullscreen()
+                console.log('🖥️ Fullscreen request completed')
                 
-                // After entering fullscreen, focus on farm location with zones and trees
+                // After entering fullscreen, ensure proper map display
                 setTimeout(() => {
+                  console.log('🖥️ Fullscreen entered, setting up map...')
+                  
+                  // Ensure parent element fills the screen properly
+                  if (parentElement) {
+                    parentElement.style.width = '100vw'
+                    parentElement.style.height = '100vh'
+                    parentElement.style.backgroundColor = '#ffffff'
+                    console.log('🖥️ Parent element styled for fullscreen')
+                  }
+                  
+                  // Ensure map element fills the parent
+                  if (mapElement) {
+                    mapElement.style.width = '100%'
+                    mapElement.style.height = '100%'
+                    mapElement.style.borderRadius = '0'
+                    console.log('🖥️ Map element styled for fullscreen')
+                  }
+                  
                   // First, ensure trees and zones are visible by calling the callback
                   if (onFullscreenFocus) {
                     console.log('🎯 Calling onFullscreenFocus to ensure visibility')
@@ -830,18 +848,24 @@ export function OpenStreetMap({
                   // Small delay to let the callback update the state
                   setTimeout(() => {
                     if (mapRef.current) {
-                      console.log('🎯 Fullscreen activated, focusing on farm location...')
+                      console.log('🎯 Fullscreen activated, refreshing map...')
                       
-                      // First, ensure map size is properly calculated with animation
-                      mapRef.current.invalidateSize({ animate: true, pan: true })
+                      // Force multiple map invalidations to ensure proper display
+                      mapRef.current.invalidateSize({ animate: false })
                       
-                      // Force redraw of the map
+                      setTimeout(() => {
+                        if (mapRef.current) {
+                          mapRef.current.invalidateSize({ animate: true })
+                          console.log('🗺️ Map size invalidated for fullscreen (animated)')
+                        }
+                      }, 200)
+                      
                       setTimeout(() => {
                         if (mapRef.current) {
                           mapRef.current.invalidateSize({ animate: false })
-                          console.log('🗺️ Map size invalidated for fullscreen')
+                          console.log('🗺️ Final map size invalidation')
                         }
-                      }, 100)
+                      }, 500)
                       
                       // Wait a bit more for fullscreen to settle, then focus
                       setTimeout(() => {
@@ -905,10 +929,10 @@ export function OpenStreetMap({
                             mapRef.current.setView(center, zoom)
                           }
                         }
-                      }, 150) // Additional delay for fullscreen to fully settle
+                      }, 800) // Additional delay for fullscreen to fully settle
                     }
-                  }, 100) // Small delay for state update
-                }, 300) // Initial delay for fullscreen transition
+                  }, 500) // More time for state update  
+                }, 200) // Initial delay for fullscreen transition
                 
               } else {
                 // Exit fullscreen mode with multiple fallback methods
@@ -998,29 +1022,7 @@ export function OpenStreetMap({
       </div>
 
       {/* Enhanced Controls - Farmer-Friendly */}
-      <div className="absolute bottom-4 left-4 bg-white p-3 rounded-xl shadow-lg border-2 border-gray-300 z-[1000] max-w-xs">
-        <div className="text-sm font-semibold text-gray-800 space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="text-lg">🌳</span>
-              <span>{trees.length} Cây</span>
-            </div>
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-          </div>
-          {zones.length > 0 && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className="text-lg">📍</span>
-                <span>{zones.length} Khu vực</span>
-              </div>
-              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-            </div>
-          )}
-          <div className="pt-2 border-t border-gray-200 text-xs text-gray-600">
-            💡 Nhấn vào cây hoặc khu vực để xem chi tiết
-          </div>
-        </div>
-      </div>
+      
     </div>
   )
 }

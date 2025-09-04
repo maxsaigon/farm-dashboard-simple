@@ -16,8 +16,6 @@ interface Zone {
   description?: string
   color: string
   boundaries: Array<{ latitude: number; longitude: number }> // FIXED: Use correct field names from Firebase
-  soilType?: string
-  drainageLevel?: 'poor' | 'fair' | 'good' | 'excellent'
   treeCount: number
   area: number
   isActive: boolean
@@ -180,8 +178,6 @@ function MapPageContent() {
           description: data.description || '',
           color: data.color || '#3b82f6',
           boundaries: boundaries,
-          soilType: data.soilType || metadata.soilType || 'unknown',
-          drainageLevel: data.drainageLevel || metadata.drainageLevel || 'fair',
           treeCount: data.treeCount || 0,
           area: data.area || metadata.area || 0,
           isActive: data.isActive !== false,
@@ -581,14 +577,6 @@ function MapPageContent() {
                 </div>
                 
                 <div className="space-y-3">
-                  <div>
-                    <span className="text-sm text-gray-500">Loại đất:</span>
-                    <span className="ml-2 capitalize">{selectedZone.soilType}</span>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-500">Thoát nước:</span>
-                    <span className="ml-2 capitalize">{selectedZone.drainageLevel}</span>
-                  </div>
                   <div>
                     <span className="text-sm text-gray-500">Trạng thái:</span>
                     <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
