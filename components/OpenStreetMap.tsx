@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Tree } from '@/lib/types'
@@ -34,6 +34,7 @@ interface OpenStreetMapProps {
   selectedZone?: Zone | null
   onTreeSelect?: (tree: Tree) => void
   onZoneSelect?: (zone: Zone) => void
+  onFullscreenFocus?: () => void
   center?: [number, number]
   zoom?: number
   className?: string
@@ -46,6 +47,7 @@ export function OpenStreetMap({
   selectedZone,
   onTreeSelect,
   onZoneSelect,
+  onFullscreenFocus,
   center = [10.762622, 106.660172], // Default to Ho Chi Minh City area
   zoom = 16,
   className = ''
@@ -54,6 +56,30 @@ export function OpenStreetMap({
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<L.LayerGroup>(new L.LayerGroup())
   const zonesRef = useRef<L.LayerGroup>(new L.LayerGroup())
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Track fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+      // Invalidate map size when entering/exiting fullscreen
+      if (mapRef.current) {
+        setTimeout(() => {
+          mapRef.current?.invalidateSize()
+        }, 100)
+      }
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('msfullscreenchange', handleFullscreenChange)
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange)
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !mapContainerRef.current) return
@@ -603,44 +629,145 @@ export function OpenStreetMap({
         style={{ minHeight: '400px' }}
       />
       
-      {/* Legend */}
-      <div className="absolute top-4 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 z-[1000]">
-        <h4 className="text-sm font-semibold text-gray-900 mb-2">Chú thích</h4>
-        <div className="space-y-2">
-          {trees.length > 0 && (
-            <div>
-              <div className="text-xs font-medium text-gray-700 mb-1">Cây trồng</div>
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2 text-xs">
-                  <div className="w-3 h-3 bg-green-600 rounded-full border border-white"></div>
-                  <span>Xuất sắc</span>
-                </div>
-                <div className="flex items-center space-x-2 text-xs">
-                  <div className="w-3 h-3 bg-blue-600 rounded-full border border-white"></div>
-                  <span>Tốt</span>
-                </div>
-                <div className="flex items-center space-x-2 text-xs">
-                  <div className="w-3 h-3 bg-yellow-600 rounded-full border border-white"></div>
-                  <span>Trung bình</span>
-                </div>
-                <div className="flex items-center space-x-2 text-xs">
-                  <div className="w-3 h-3 bg-red-600 rounded-full border border-white"></div>
-                  <span>Yếu/Cần chú ý</span>
-                </div>
-              </div>
-            </div>
+      {/* Fullscreen Button */}
+      <div className="absolute top-4 right-4 z-[1000]">
+        <button
+          onClick={async () => {
+            const element = mapContainerRef.current?.parentElement
+            if (element) {
+              try {
+                if (!document.fullscreenElement) {
+                  // Enter fullscreen mode
+                  await (element.requestFullscreen?.() || 
+                  (element as any).webkitRequestFullscreen?.() || 
+                  (element as any).msRequestFullscreen?.())
+                  
+                  // First, ensure trees and zones are visible by calling the callback
+                  if (onFullscreenFocus) {
+                    onFullscreenFocus()
+                  }
+                  
+                  // After entering fullscreen, focus on farm location with zones and trees
+                  setTimeout(() => {
+                    if (mapRef.current) {
+                      console.log('🎯 Fullscreen activated, focusing on farm location...')
+                      
+                      // First, ensure map size is properly calculated
+                      mapRef.current.invalidateSize()
+                      
+                      // Wait a bit more for fullscreen to settle, then focus
+                      setTimeout(() => {
+                        if (mapRef.current) {
+                          // Create a feature group to calculate bounds for all farm content
+                          const farmGroup = new L.FeatureGroup()
+                          let treesAdded = 0
+                          let zonesAdded = 0
+                          
+                          // Add all trees to the group
+                          trees.forEach(tree => {
+                            const lat = (tree as any).location?.latitude || (tree as any).latitude
+                            const lng = (tree as any).location?.longitude || (tree as any).longitude
+                            
+                            if (lat && lng && lat !== 0 && lng !== 0) {
+                              farmGroup.addLayer(L.marker([lat, lng]))
+                              treesAdded++
+                            }
+                          })
+                          
+                          // Add all zones to the group
+                          zones.forEach(zone => {
+                            if (zone.boundaries && zone.boundaries.length >= 3) {
+                              try {
+                                const validLatLngs = zone.boundaries
+                                  .map(point => {
+                                    if (point && point.latitude && point.longitude) {
+                                      return [point.latitude, point.longitude] as [number, number]
+                                    }
+                                    return null
+                                  })
+                                  .filter(coord => coord !== null) as [number, number][]
+                                
+                                if (validLatLngs.length >= 3) {
+                                  farmGroup.addLayer(L.polygon(validLatLngs))
+                                  zonesAdded++
+                                }
+                              } catch (error) {
+                                console.warn('Error adding zone to fullscreen focus:', zone.id)
+                              }
+                            }
+                          })
+                          
+                          // Focus on farm content with better zoom control
+                          if (farmGroup.getLayers().length > 0) {
+                            console.log(`🎯 Focusing on farm: ${treesAdded} trees, ${zonesAdded} zones`)
+                            
+                            // Calculate appropriate zoom level based on content
+                            const bounds = farmGroup.getBounds()
+                            const padding: [number, number] = [60, 60] // More padding for fullscreen
+                            const options: L.FitBoundsOptions = { 
+                              padding,
+                              maxZoom: treesAdded > 0 ? 17 : 15 // Zoom closer if we have individual trees
+                            }
+                            
+                            mapRef.current.fitBounds(bounds, options)
+                          } else {
+                            console.log('🎯 No farm content found, using default location')
+                            mapRef.current.setView(center, zoom)
+                          }
+                        }
+                      }, 100) // Additional delay for fullscreen to fully settle
+                    }
+                  }, 200) // Initial delay for fullscreen transition
+                  
+                } else {
+                  // Exit fullscreen mode
+                  await (document.exitFullscreen?.() ||
+                  (document as any).webkitExitFullscreen?.() ||
+                  (document as any).msExitFullscreen?.())
+                }
+              } catch (error) {
+                console.log('Fullscreen not supported or denied')
+              }
+            }
+          }}
+          className="bg-white hover:bg-gray-50 active:bg-gray-100 p-3 rounded-xl shadow-lg border border-gray-200 transition-all duration-200 flex items-center justify-center transform hover:scale-105 active:scale-95"
+          title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình & Focus nông trại"}
+          style={{
+            minWidth: '50px',
+            minHeight: '50px',
+            WebkitTapHighlightColor: 'transparent'
+          }}
+        >
+          {isFullscreen ? (
+            <svg 
+              className="h-6 w-6 text-gray-700" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M6 18L18 6M6 6l12 12" 
+              />
+            </svg>
+          ) : (
+            <svg 
+              className="h-6 w-6 text-gray-700" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" 
+              />
+            </svg>
           )}
-          
-          {zones.length > 0 && (
-            <div>
-              <div className="text-xs font-medium text-gray-700 mb-1">Khu vực</div>
-              <div className="flex items-center space-x-2 text-xs">
-                <div className="w-3 h-3 border-2 border-gray-400 bg-gray-200 bg-opacity-30"></div>
-                <span>Polygon khu vực</span>
-              </div>
-            </div>
-          )}
-        </div>
+        </button>
       </div>
 
       {/* Controls */}

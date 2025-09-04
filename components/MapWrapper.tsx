@@ -38,11 +38,15 @@ interface MapWrapperProps {
   selectedZone?: Zone | null
   onTreeSelect?: (tree: Tree) => void
   onZoneSelect?: (zone: Zone) => void
+  onFullscreenFocus?: () => void
   center?: [number, number]
   zoom?: number
   className?: string
 }
 
-export function MapWrapper(props: MapWrapperProps) {
+function MapWrapper(props: MapWrapperProps) {
   return <OpenStreetMapNoSSR {...props} />
 }
+
+export default MapWrapper
+export { MapWrapper }

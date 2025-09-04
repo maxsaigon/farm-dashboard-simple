@@ -24,39 +24,14 @@ export function Navigation() {
 
   const navigation = [
     {
-      name: 'Trang Chủ',
-      href: '/',
-      icon: HomeIcon
-    },
-    {
-      name: 'Quản Lý Cây',
-      href: '/trees',
-      icon: ViewfinderCircleIcon
-    },
-    {
       name: 'Bản Đồ',
       href: '/map',
       icon: MapIcon
     },
     {
-      name: 'Định Vị',
-      href: '/positioning',
-      icon: RadioIcon
-    },
-    {
-      name: 'Chụp Ảnh',
-      href: '/camera',
-      icon: CameraIcon
-    },
-    {
-      name: 'Thống Kê',
-      href: '/statistics',
-      icon: ChartBarIcon
-    },
-    {
-      name: 'Cài Đặt',
-      href: '/settings',
-      icon: Cog6ToothIcon
+      name: 'Khu Vực',
+      href: '/zones',
+      icon: ViewfinderCircleIcon
     }
   ]
 
