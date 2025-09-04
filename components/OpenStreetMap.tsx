@@ -57,10 +57,20 @@ export function OpenStreetMap({
   const zonesRef = useRef<L.LayerGroup>(new L.LayerGroup())
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  // Track fullscreen changes
+  // Track fullscreen changes - Enhanced for mobile
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
+      // Check for all possible fullscreen states across browsers
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      )
+      
+      setIsFullscreen(isCurrentlyFullscreen)
+      console.log('📱 Fullscreen state changed:', isCurrentlyFullscreen)
+      
       // Invalidate map size when entering/exiting fullscreen
       if (mapRef.current) {
         setTimeout(() => {
@@ -69,13 +79,16 @@ export function OpenStreetMap({
       }
     }
 
+    // Listen to all possible fullscreen change events
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange)
     document.addEventListener('msfullscreenchange', handleFullscreenChange)
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
       document.removeEventListener('msfullscreenchange', handleFullscreenChange)
     }
   }, [])
@@ -789,8 +802,23 @@ export function OpenStreetMap({
             parentElement.style.width = '100%'
             parentElement.style.height = '100%'
 
+            // Detect mobile devices
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+            
+            console.log('📱 Device detection - Mobile:', isMobile, 'iOS:', isIOS, 'Safari:', isSafari)
+
             try {
-              if (!document.fullscreenElement) {
+              // Check all possible fullscreen states
+              const isCurrentlyFullscreen = !!(
+                document.fullscreenElement ||
+                (document as any).webkitFullscreenElement ||
+                (document as any).mozFullScreenElement ||
+                (document as any).msFullscreenElement
+              )
+              
+              if (!isCurrentlyFullscreen) {
                 // Show loading indicator
                 const button = document.activeElement as HTMLButtonElement
                 if (button) {
@@ -800,19 +828,46 @@ export function OpenStreetMap({
                   `
                 }
 
-                // Enter fullscreen mode with multiple fallback methods
+                // Enter fullscreen mode with mobile-specific handling
                 const enterFullscreen = async () => {
                   console.log('🖥️ Attempting to enter fullscreen on element:', parentElement)
+                  
+                  // iOS Safari and mobile Chrome specific handling
+                  if (isIOS || isMobile) {
+                    console.log('📱 Using mobile fullscreen approach')
+                    
+                    // For iOS Safari, try webkit methods first
+                    if ((parentElement as any).webkitRequestFullscreen) {
+                      console.log('📱 Using webkitRequestFullscreen')
+                      return await (parentElement as any).webkitRequestFullscreen()
+                    }
+                    
+                    // Alternative webkit method for older iOS
+                    if ((parentElement as any).webkitRequestFullScreen) {
+                      console.log('📱 Using webkitRequestFullScreen (legacy)')
+                      return await (parentElement as any).webkitRequestFullScreen()
+                    }
+                  }
+                  
+                  // Standard and fallback methods
                   if (parentElement.requestFullscreen) {
+                    console.log('🖥️ Using standard requestFullscreen')
                     return await parentElement.requestFullscreen()
                   } else if ((parentElement as any).webkitRequestFullscreen) {
+                    console.log('🖥️ Using webkitRequestFullscreen')
                     return await (parentElement as any).webkitRequestFullscreen()
+                  } else if ((parentElement as any).webkitRequestFullScreen) {
+                    console.log('🖥️ Using webkitRequestFullScreen')
+                    return await (parentElement as any).webkitRequestFullScreen()
                   } else if ((parentElement as any).msRequestFullscreen) {
+                    console.log('🖥️ Using msRequestFullscreen')
                     return await (parentElement as any).msRequestFullscreen()
                   } else if ((parentElement as any).mozRequestFullScreen) {
+                    console.log('🖥️ Using mozRequestFullScreen')
                     return await (parentElement as any).mozRequestFullScreen()
                   } else {
-                    throw new Error('Fullscreen not supported')
+                    console.error('📱 No fullscreen method available')
+                    throw new Error('Fullscreen not supported on this device/browser')
                   }
                 }
 
@@ -935,18 +990,46 @@ export function OpenStreetMap({
                 }, 200) // Initial delay for fullscreen transition
                 
               } else {
-                // Exit fullscreen mode with multiple fallback methods
+                // Exit fullscreen mode with mobile-specific handling
                 const exitFullscreen = async () => {
+                  console.log('📱 Attempting to exit fullscreen')
+                  
+                  // iOS Safari and mobile Chrome specific handling
+                  if (isIOS || isMobile) {
+                    console.log('📱 Using mobile exit fullscreen approach')
+                    
+                    // For iOS Safari, try webkit methods first
+                    if ((document as any).webkitExitFullscreen) {
+                      console.log('📱 Using webkitExitFullscreen')
+                      return await (document as any).webkitExitFullscreen()
+                    }
+                    
+                    // Alternative webkit method for older iOS
+                    if ((document as any).webkitCancelFullScreen) {
+                      console.log('📱 Using webkitCancelFullScreen (legacy)')
+                      return await (document as any).webkitCancelFullScreen()
+                    }
+                  }
+                  
+                  // Standard and fallback methods
                   if (document.exitFullscreen) {
+                    console.log('🖥️ Using standard exitFullscreen')
                     return await document.exitFullscreen()
                   } else if ((document as any).webkitExitFullscreen) {
+                    console.log('🖥️ Using webkitExitFullscreen')
                     return await (document as any).webkitExitFullscreen()
+                  } else if ((document as any).webkitCancelFullScreen) {
+                    console.log('🖥️ Using webkitCancelFullScreen')
+                    return await (document as any).webkitCancelFullScreen()
                   } else if ((document as any).msExitFullscreen) {
+                    console.log('🖥️ Using msExitFullscreen')
                     return await (document as any).msExitFullscreen()
                   } else if ((document as any).mozCancelFullScreen) {
+                    console.log('🖥️ Using mozCancelFullScreen')
                     return await (document as any).mozCancelFullScreen()
                   } else {
-                    throw new Error('Exit fullscreen not supported')
+                    console.error('📱 No exit fullscreen method available')
+                    throw new Error('Exit fullscreen not supported on this device/browser')
                   }
                 }
 
