@@ -231,6 +231,19 @@ function MapPageContent() {
     setSelectedZone(null)
   }
 
+  const handleTreeUpdate = (updatedTree: Tree) => {
+    // Update the tree in the trees array
+    setTrees(prevTrees => 
+      prevTrees.map(tree => 
+        tree.id === updatedTree.id ? updatedTree : tree
+      )
+    )
+    // Update the selected tree if it's the same one
+    if (selectedTree && selectedTree.id === updatedTree.id) {
+      setSelectedTree(updatedTree)
+    }
+  }
+
   const handleRetry = () => {
     loadData()
   }
@@ -542,7 +555,9 @@ function MapPageContent() {
             <TreeDetail
               tree={selectedTree}
               onClose={handleCloseDetail}
+              onTreeUpdate={handleTreeUpdate}
               className="h-full overflow-y-auto"
+              fullScreen={true}
             />
           ) : selectedZone ? (
             <div className="h-full bg-white border-l border-gray-200 p-6 overflow-y-auto">

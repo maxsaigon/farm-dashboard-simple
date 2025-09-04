@@ -53,6 +53,7 @@ export default function TreesPage() {
               onClose={handleCloseDetail}
               onTreeUpdate={handleTreeUpdate}
               onTreeDelete={handleTreeDelete}
+              fullScreen={true}
             />
           </div>
         </div>
@@ -70,6 +71,7 @@ export default function TreesPage() {
               onClose={handleCloseDetail}
               onTreeUpdate={handleTreeUpdate}
               onTreeDelete={handleTreeDelete}
+              fullScreen={true}
             />
           )}
         </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '@/lib/enhanced-auth-context'
 import { updateTree, deleteTree } from '@/lib/firestore'
 import { Tree } from '@/lib/types'
@@ -29,14 +30,48 @@ interface TreeDetailProps {
   onTreeUpdate?: (updatedTree: Tree) => void
   onTreeDelete?: (treeId: string) => void
   className?: string
+  fullScreen?: boolean
 }
 
-export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, className = '' }: TreeDetailProps) {
+export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, className = '', fullScreen = false }: TreeDetailProps) {
   const { user, currentFarm } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<Tree>>({})
   const [customFields, setCustomFields] = useState<TreeCustomFields | undefined>()
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Mobile detection and body scroll locking
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768
+      setIsMobile(isMobileDevice)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Body scroll locking for mobile full-screen mode
+  useEffect(() => {
+    if (tree && isMobile) {
+      const scrollY = window.scrollY
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
+      document.body.style.overflow = 'hidden'
+      
+      return () => {
+        const scrollY = document.body.style.top
+        document.body.style.position = ''
+        document.body.style.top = ''
+        document.body.style.width = ''
+        document.body.style.overflow = ''
+        window.scrollTo(0, parseInt(scrollY || '0') * -1)
+      }
+    }
+  }, [tree, isMobile])
 
   useEffect(() => {
     if (tree) {
@@ -127,12 +162,23 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
         lastUpdated: new Date()
       }
       
-      await updateTree(currentFarm.id, treeId, user.uid, {
+      const updatedTreeData = {
         customFields: updatedCustomFields,
         updatedAt: new Date()
-      })
+      }
+      
+      await updateTree(currentFarm.id, treeId, user.uid, updatedTreeData)
       
       setCustomFields(updatedCustomFields)
+      
+      // Update the parent component's tree data if callback exists
+      if (onTreeUpdate && tree) {
+        const updatedTree: Tree = {
+          ...tree,
+          ...updatedTreeData
+        }
+        onTreeUpdate(updatedTree)
+      }
     } catch (error) {
       console.error('Error saving custom fields:', error)
       throw error // Let CustomFieldsSection handle the error display
@@ -183,20 +229,23 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
 
   const totalFruits = (tree.manualFruitCount || 0) + (tree.aiFruitCount || 0)
 
-  return (
-    <div className={`bg-white rounded-xl shadow-lg border border-gray-200 ${className}`} data-testid="tree-detail">
+  // Create the main content
+  const mainContent = (
+    <div className={`bg-white ${isMobile ? '' : 'rounded-xl shadow-lg border border-gray-200'} ${className}`} data-testid="tree-detail">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200">
         <div className="flex items-center space-x-4">
-          <button
-            onClick={onClose}
-            className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50"
-            title="Quay lại"
-            data-testid="back-button"
-          >
-            <ArrowLeftIcon className="h-5 w-5" />
-            <span className="text-sm lg:hidden">Quay lại</span>
-          </button>
+          {!isMobile && (
+            <button
+              onClick={onClose}
+              className="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50"
+              title="Quay lại"
+              data-testid="back-button"
+            >
+              <ArrowLeftIcon className="h-5 w-5" />
+              <span className="text-sm lg:hidden">Quay lại</span>
+            </button>
+          )}
           <div className="flex items-center space-x-3">
             {getHealthIcon(tree.healthStatus)}
             <div>
@@ -262,7 +311,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       </div>
 
       {/* Content */}
-      <div className="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+      <div className={`p-6 space-y-6 ${isMobile ? '' : 'max-h-[calc(100vh-200px)] overflow-y-auto'}`}>
         {/* Basic Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column */}
@@ -330,7 +379,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
                 {isEditing ? (
                   <input
                     type="date"
-                    value={formData.plantingDate ? formData.plantingDate.toISOString().split('T')[0] : ''}
+                    value={formData.plantingDate && formData.plantingDate instanceof Date ? formData.plantingDate.toISOString().split('T')[0] : ''}
                     onChange={(e) => setFormData({ 
                       ...formData, 
                       plantingDate: e.target.value ? new Date(e.target.value) : undefined 
@@ -593,4 +642,36 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       </div>
     </div>
   )
+
+  // Return mobile full-screen modal or desktop sidebar layout
+  if (isMobile && tree) {
+    const fullScreenContent = (
+      <div className="fixed inset-0 bg-white z-[9999] overflow-hidden flex flex-col" style={{ touchAction: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        {/* iOS-style Header */}
+        <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={onClose}
+              className="text-green-600 text-lg font-medium py-2 px-2 min-touch active:opacity-70 transition-opacity"
+            >
+              ← Quay lại
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900 truncate">
+              {tree.name || `Cây ${tree.variety || tree.id.slice(0, 8)}`}
+            </h1>
+            <div className="w-16"></div> {/* Spacer for center alignment */}
+          </div>
+        </div>
+        
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y pinch-zoom', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          {mainContent}
+        </div>
+      </div>
+    )
+    
+    return typeof window !== 'undefined' ? createPortal(fullScreenContent, document.body) : null
+  }
+
+  return mainContent
 }
