@@ -336,27 +336,51 @@ function MapPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header - Farmer-Friendly */}
-      <div className="bg-white shadow-sm border-b border-gray-200 p-4">
+    <div className="min-h-screen bg-gray-50 safe-bottom">
+      {/* Header - Enhanced for Farmers */}
+      <div className="bg-white shadow-sm border-b border-gray-200 p-4 safe-top">
         <div className="flex flex-col space-y-4">
           {/* Title and Stats */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
             <div className="flex-1">
-              <h1 className="text-xl lg:text-3xl font-bold text-gray-900 mb-1">
-                🗺️ Bản Đồ Nông Trại
-              </h1>
-              <p className="text-sm lg:text-base text-gray-600">
-                {displayFarm.name} • {loading ? 'Đang tải...' : `${trees.length} cây trồng • ${zones.length} khu vực`}
-              </p>
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">🗺️</span>
+                </div>
+                <div>
+                  <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+                    Bản Đồ Nông Trại
+                  </h1>
+                  <p className="text-base lg:text-lg text-gray-600 font-medium">
+                    {displayFarm.name}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Stats Row */}
+              <div className="flex items-center space-x-4 text-sm lg:text-base">
+                <div className="flex items-center space-x-2 bg-green-50 px-3 py-2 rounded-lg">
+                  <span className="text-green-600 font-bold">🌳</span>
+                  <span className="text-green-800 font-semibold">
+                    {loading ? 'Đang tải...' : `${trees.length} Cây`}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-lg">
+                  <span className="text-blue-600 font-bold">📍</span>
+                  <span className="text-blue-800 font-semibold">
+                    {loading ? 'Đang tải...' : `${zones.length} Khu vực`}
+                  </span>
+                </div>
+              </div>
+
               {focusedZone && (
-                <div className="mt-2 flex items-center space-x-2">
-                  <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-xl text-base font-semibold flex items-center space-x-2 shadow-sm">
                     <div 
-                      className="w-3 h-3 rounded-full" 
+                      className="w-4 h-4 rounded-full shadow-sm" 
                       style={{ backgroundColor: focusedZone.color }}
                     ></div>
-                    <span>🎯 Focus: {focusedZone.name}</span>
+                    <span>🎯 Đang xem: {focusedZone.name}</span>
                   </div>
                   <button
                     onClick={() => {
@@ -365,56 +389,77 @@ function MapPageContent() {
                       // Update URL to remove zone parameter
                       window.history.pushState({}, '', '/map')
                     }}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-sm font-medium transition-colors"
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-base font-semibold transition-colors min-touch"
+                    style={{
+                      minHeight: '40px',
+                      WebkitTapHighlightColor: 'transparent'
+                    }}
                   >
-                    ✕ Thoát Focus
+                    ✕ Xem Tất Cả
                   </button>
                 </div>
               )}
             </div>
+            
             <a
               href="/zones"
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
-            >
-              <RectangleGroupIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Khu Vực</span>
-            </a>
-          </div>
-          
-          {/* Large Action Buttons for Farmers */}
-          <div className="flex items-center justify-center space-x-3">
-            <button
-              onClick={() => setShowTrees(!showTrees)}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-xl text-sm font-bold transition-all transform hover:scale-105 active:scale-95 shadow-md ${
-                showTrees 
-                  ? 'bg-green-600 text-white shadow-green-200' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl transition-colors text-base font-bold shadow-md min-touch lg:w-auto w-full"
               style={{
-                minHeight: '50px',
-                minWidth: '140px',
+                minHeight: '52px',
                 WebkitTapHighlightColor: 'transparent'
               }}
             >
-              <MapPinIcon className="h-6 w-6" />
-              <span>HIỆN CÂY</span>
+              <span className="text-xl">📍</span>
+              <span>Danh Sách Khu Vực</span>
+            </a>
+          </div>
+          
+          {/* Large Action Buttons for Farmers - Enhanced */}
+          <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <button
+              onClick={() => setShowTrees(!showTrees)}
+              className={`flex items-center justify-center space-x-3 px-8 py-4 rounded-2xl text-lg font-bold transition-all transform hover:scale-105 active:scale-95 shadow-lg min-touch w-full sm:w-auto ${
+                showTrees 
+                  ? 'bg-green-600 text-white shadow-green-300 border-2 border-green-400' 
+                  : 'bg-white text-green-700 hover:bg-green-50 border-2 border-green-200 hover:border-green-300'
+              }`}
+              style={{
+                minHeight: '64px',
+                minWidth: '180px',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              <span className="text-2xl">🌳</span>
+              <div className="flex flex-col items-start">
+                <span className="font-bold">HIỆN CÂY</span>
+                <span className="text-sm opacity-80">{showTrees ? 'Đang hiển thị' : 'Ẩn đi'}</span>
+              </div>
+              {showTrees && (
+                <div className="w-3 h-3 bg-green-200 rounded-full animate-pulse"></div>
+              )}
             </button>
             
             <button
               onClick={() => setShowZones(!showZones)}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-xl text-sm font-bold transition-all transform hover:scale-105 active:scale-95 shadow-md ${
+              className={`flex items-center justify-center space-x-3 px-8 py-4 rounded-2xl text-lg font-bold transition-all transform hover:scale-105 active:scale-95 shadow-lg min-touch w-full sm:w-auto ${
                 showZones 
-                  ? 'bg-blue-600 text-white shadow-blue-200' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-blue-600 text-white shadow-blue-300 border-2 border-blue-400' 
+                  : 'bg-white text-blue-700 hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300'
               }`}
               style={{
-                minHeight: '50px',
-                minWidth: '140px',
+                minHeight: '64px',
+                minWidth: '180px',
                 WebkitTapHighlightColor: 'transparent'
               }}
             >
-              <RectangleGroupIcon className="h-6 w-6" />
-              <span>HIỆN KHU VỰC</span>
+              <span className="text-2xl">📍</span>
+              <div className="flex flex-col items-start">
+                <span className="font-bold">HIỆN KHU VỰC</span>
+                <span className="text-sm opacity-80">{showZones ? 'Đang hiển thị' : 'Ẩn đi'}</span>
+              </div>
+              {showZones && (
+                <div className="w-3 h-3 bg-blue-200 rounded-full animate-pulse"></div>
+              )}
             </button>
           </div>
         </div>
@@ -431,18 +476,40 @@ function MapPageContent() {
               </div>
             </div>
           ) : trees.length === 0 && zones.length === 0 ? (
-            <div className="h-full flex items-center justify-center bg-gray-100">
-              <div className="text-center max-w-md p-8">
-                <EyeIcon className="h-20 w-20 text-gray-400 mx-auto mb-6" />
-                <h3 className="text-xl font-bold text-gray-900 mb-3">🌱 Chưa có dữ liệu</h3>
-                <p className="text-gray-600 text-lg leading-relaxed">
-                  Nông trại này chưa có cây trồng hoặc khu vực nào có tọa độ GPS. 
-                  Hãy thêm dữ liệu từ ứng dụng di động để xem trên bản đồ.
+            <div className="h-full flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
+              <div className="text-center max-w-lg p-8">
+                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <span className="text-4xl">🌱</span>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Chưa Có Dữ Liệu Bản Đồ</h3>
+                <p className="text-gray-700 text-lg leading-relaxed mb-6">
+                  Nông trại này chưa có cây trồng hoặc khu vực nào có vị trí GPS. 
+                  <br />Hãy thêm cây và khu vực để hiển thị trên bản đồ.
                 </p>
-                <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                  <p className="text-blue-800 text-sm font-medium">
-                    💡 Mẹo: Sử dụng ứng dụng iOS để thêm cây và khu vực với tọa độ GPS
-                  </p>
+                
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
+                  <div className="flex items-start space-x-3">
+                    <span className="text-2xl">💡</span>
+                    <div className="text-left">
+                      <h4 className="font-bold text-gray-900 mb-2">Hướng dẫn:</h4>
+                      <ul className="text-gray-700 space-y-2">
+                        <li>• Sử dụng ứng dụng di động để chụp ảnh cây trồng</li>
+                        <li>• Tự động lưu vị trí GPS khi chụp ảnh</li>
+                        <li>• Tạo khu vực với tọa độ để quản lý dễ dàng</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold transition-colors min-touch">
+                    <span className="text-xl">📱</span>
+                    <span>Mở App Điện Thoại</span>
+                  </button>
+                  <button className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-colors min-touch">
+                    <span className="text-xl">❓</span>
+                    <span>Hướng Dẫn Chi Tiết</span>
+                  </button>
                 </div>
               </div>
             </div>

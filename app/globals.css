@@ -73,52 +73,111 @@ body {
     touch-action: manipulation;
   }
   
-  /* Mobile contrast improvements */
+  /* Mobile contrast improvements - Enhanced for Outdoor Visibility */
   @media screen and (max-width: 768px) {
-    /* Ensure minimum button size for touch */
+    /* Ensure minimum button size for touch - Enhanced for farmers */
     button, [role="button"] {
-      min-height: 44px;
-      min-width: 44px;
+      min-height: 52px;
+      min-width: 52px;
+      font-weight: 700; /* Bold text for better visibility */
     }
     
-    /* Improve text contrast on mobile */
+    /* Improve text contrast on mobile - Outdoor optimized */
     .text-gray-600 {
-      @apply text-gray-700;
+      @apply text-gray-800; /* Darker for outdoor visibility */
     }
     
     .text-gray-500 {
-      @apply text-gray-600;
+      @apply text-gray-700; /* Darker for outdoor visibility */
     }
     
     .text-gray-400 {
-      @apply text-gray-500;
+      @apply text-gray-600; /* Darker for outdoor visibility */
     }
     
-    /* Ensure buttons have sufficient contrast */
+    /* White text should be more contrasted */
+    .text-white {
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Ensure buttons have sufficient contrast for sunlight */
     .bg-gray-100 {
-      @apply bg-gray-200;
+      @apply bg-gray-300; /* Much higher contrast */
     }
     
     .bg-gray-50 {
-      @apply bg-gray-100;
+      @apply bg-gray-200; /* Much higher contrast */
     }
     
-    /* Make green buttons more visible */
+    /* Make green buttons more visible in sunlight */
     .bg-green-600 {
-      @apply bg-green-700;
+      @apply bg-green-800; /* Darker green for outdoor */
     }
     
     .bg-green-500 {
-      @apply bg-green-600;
+      @apply bg-green-700; /* Darker green for outdoor */
     }
     
-    /* Improve shadow visibility on mobile */
+    .bg-green-700 {
+      @apply bg-green-900; /* Even darker for buttons */
+    }
+    
+    /* Blue buttons optimization */
+    .bg-blue-600 {
+      @apply bg-blue-800; /* Darker blue for outdoor */
+    }
+    
+    .bg-blue-500 {
+      @apply bg-blue-700; /* Darker blue for outdoor */
+    }
+    
+    /* Improve shadow visibility and depth on mobile */
     .shadow-sm {
-      @apply shadow;
+      @apply shadow-lg; /* Much stronger shadow for outdoor */
     }
     
     .shadow {
-      @apply shadow-md;
+      @apply shadow-xl; /* Much stronger shadow for outdoor */
+    }
+    
+    .shadow-md {
+      box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .shadow-lg {
+      box-shadow: 0 20px 40px -4px rgba(0, 0, 0, 0.25), 0 8px 16px -4px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Enhanced borders for better definition in bright light */
+    .border-gray-200 {
+      @apply border-gray-400;
+    }
+    
+    .border-gray-300 {
+      @apply border-gray-500;
+    }
+    
+    /* Card backgrounds should be more contrasted */
+    .bg-white {
+      background-color: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Colored backgrounds should be more saturated for outdoor use */
+    .bg-green-50 {
+      @apply bg-green-200; /* More saturated for visibility */
+    }
+    
+    .bg-blue-50 {
+      @apply bg-blue-200; /* More saturated for visibility */
+    }
+    
+    .bg-red-50 {
+      @apply bg-red-200; /* More saturated for visibility */
+    }
+    
+    .bg-yellow-50 {
+      @apply bg-yellow-200; /* More saturated for visibility */
     }
   }
   
@@ -181,24 +240,73 @@ body {
     @apply bg-white rounded-xl shadow-sm border border-gray-200 touch-manipulation active:scale-98 transition-transform;
   }
   
-  /* Mobile-optimized button */
+  /* Mobile-optimized button - Enhanced for farmers */
   .btn-mobile {
-    @apply min-h-touch px-4 py-3 rounded-xl font-medium transition-colors touch-manipulation;
+    @apply min-h-touch px-6 py-4 rounded-xl font-bold transition-all touch-manipulation shadow-md hover:shadow-lg active:scale-95;
+    min-height: 56px; /* Larger for better farm field usage */
+    font-size: 16px;
+    letter-spacing: 0.025em;
   }
   
-  /* Primary mobile button */
+  /* Primary mobile button - Farmer optimized */
   .btn-primary-mobile {
-    @apply btn-mobile bg-green-600 text-white hover:bg-green-700 active:bg-green-800;
+    @apply btn-mobile bg-green-700 text-white hover:bg-green-800 active:bg-green-900 border-2 border-green-800;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
   
-  /* Secondary mobile button */
+  /* Secondary mobile button - Farmer optimized */
   .btn-secondary-mobile {
-    @apply btn-mobile border border-gray-300 text-gray-700 hover:bg-gray-50 active:bg-gray-100;
+    @apply btn-mobile border-2 border-gray-400 text-gray-800 hover:bg-gray-200 active:bg-gray-300 bg-white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
   
-  /* Mobile form input */
+  /* Mobile form input - Enhanced for outdoor use */
   .input-mobile {
-    @apply w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors;
+    @apply w-full px-4 py-4 text-lg border-2 border-gray-400 rounded-xl focus:ring-4 focus:ring-green-400 focus:border-green-600 transition-all bg-white;
+    min-height: 56px;
+    font-weight: 500;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Farmer-specific utility classes */
+  .farmer-card {
+    @apply bg-white rounded-2xl shadow-lg border-2 border-gray-300 p-6 transition-all hover:shadow-xl active:scale-98;
+  }
+  
+  .farmer-header {
+    @apply text-2xl font-bold text-gray-900 mb-2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  .farmer-subheader {
+    @apply text-lg font-semibold text-gray-700 mb-4;
+  }
+  
+  .farmer-text {
+    @apply text-base text-gray-800 leading-relaxed;
+    font-weight: 500;
+  }
+  
+  .farmer-stat-card {
+    @apply bg-gradient-to-br from-white to-gray-50 p-4 rounded-xl shadow-md border border-gray-200;
+  }
+  
+  .farmer-stat-number {
+    @apply text-3xl font-bold mb-1;
+  }
+  
+  .farmer-stat-label {
+    @apply text-sm font-semibold text-gray-600;
+  }
+  
+  .farmer-action-button {
+    @apply btn-mobile bg-gradient-to-r text-white font-bold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95;
+    background-image: linear-gradient(135deg, #10b981, #059669);
+    border: 2px solid #047857;
+  }
+  
+  .farmer-secondary-button {
+    @apply btn-mobile bg-white text-gray-800 font-bold shadow-md hover:shadow-lg border-2 border-gray-400 hover:border-gray-500;
   }
 }
 

@@ -629,124 +629,185 @@ export function OpenStreetMap({
         style={{ minHeight: '400px' }}
       />
       
-      {/* Fullscreen Button */}
+      {/* Fullscreen Button - Farmer-Friendly */}
       <div className="absolute top-4 right-4 z-[1000]">
         <button
           onClick={async () => {
             const element = mapContainerRef.current?.parentElement
-            if (element) {
-              try {
-                if (!document.fullscreenElement) {
-                  // Enter fullscreen mode
-                  await (element.requestFullscreen?.() || 
-                  (element as any).webkitRequestFullscreen?.() || 
-                  (element as any).msRequestFullscreen?.())
-                  
-                  // After entering fullscreen, focus on farm location with zones and trees
-                  setTimeout(() => {
-                    // First, ensure trees and zones are visible by calling the callback
-                    if (onFullscreenFocus) {
-                      console.log('🎯 Calling onFullscreenFocus to ensure visibility')
-                      onFullscreenFocus()
-                    }
-                    
-                    // Small delay to let the callback update the state
-                    setTimeout(() => {
-                      if (mapRef.current) {
-                        console.log('🎯 Fullscreen activated, focusing on farm location...')
-                        
-                        // First, ensure map size is properly calculated
-                        mapRef.current.invalidateSize()
-                        
-                        // Wait a bit more for fullscreen to settle, then focus
-                        setTimeout(() => {
-                          if (mapRef.current) {
-                            // Create a feature group to calculate bounds for all farm content
-                            const farmGroup = new L.FeatureGroup()
-                            let treesAdded = 0
-                            let zonesAdded = 0
-                            
-                            // Add current visible trees to the group (respects zone focus filtering)
-                            console.log('🎯 Fullscreen focusing with', trees.length, 'visible trees and', zones.length, 'visible zones')
-                            
-                            trees.forEach(tree => {
-                              const lat = (tree as any).location?.latitude || (tree as any).latitude
-                              const lng = (tree as any).location?.longitude || (tree as any).longitude
-                              
-                              if (lat && lng && lat !== 0 && lng !== 0) {
-                                farmGroup.addLayer(L.marker([lat, lng]))
-                                treesAdded++
-                              }
-                            })
-                            
-                            // Add current visible zones to the group (respects zone focus filtering)  
-                            zones.forEach(zone => {
-                              if (zone.boundaries && zone.boundaries.length >= 3) {
-                                try {
-                                  const validLatLngs = zone.boundaries
-                                    .map(point => {
-                                      if (point && point.latitude && point.longitude) {
-                                        return [point.latitude, point.longitude] as [number, number]
-                                      }
-                                      return null
-                                    })
-                                    .filter(coord => coord !== null) as [number, number][]
-                                  
-                                  if (validLatLngs.length >= 3) {
-                                    farmGroup.addLayer(L.polygon(validLatLngs))
-                                    zonesAdded++
-                                  }
-                                } catch (error) {
-                                  console.warn('Error adding zone to fullscreen focus:', zone.id)
-                                }
-                              }
-                            })
-                            
-                            // Focus on farm content with better zoom control
-                            if (farmGroup.getLayers().length > 0) {
-                              console.log(`🎯 Focusing on farm: ${treesAdded} trees, ${zonesAdded} zones`)
-                              
-                              // Calculate appropriate zoom level based on content
-                              const bounds = farmGroup.getBounds()
-                              const padding: [number, number] = [60, 60] // More padding for fullscreen
-                              const options: L.FitBoundsOptions = { 
-                                padding,
-                                maxZoom: treesAdded > 0 ? 17 : 15 // Zoom closer if we have individual trees
-                              }
-                              
-                              mapRef.current.fitBounds(bounds, options)
-                            } else {
-                              console.log('🎯 No farm content found, using default location')
-                              mapRef.current.setView(center, zoom)
-                            }
-                          }
-                        }, 100) // Additional delay for fullscreen to fully settle
-                      }
-                    }, 50) // Small delay for state update
-                  }, 200) // Initial delay for fullscreen transition
-                  
-                } else {
-                  // Exit fullscreen mode
-                  await (document.exitFullscreen?.() ||
-                  (document as any).webkitExitFullscreen?.() ||
-                  (document as any).msExitFullscreen?.())
+            if (!element) {
+              console.warn('Map container element not found for fullscreen')
+              return
+            }
+
+            try {
+              if (!document.fullscreenElement) {
+                // Show loading indicator
+                const button = document.activeElement as HTMLButtonElement
+                if (button) {
+                  button.style.backgroundColor = '#f3f4f6'
+                  button.innerHTML = `
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+                  `
                 }
-              } catch (error) {
-                console.log('Fullscreen not supported or denied')
+
+                // Enter fullscreen mode with multiple fallback methods
+                const enterFullscreen = async () => {
+                  if (element.requestFullscreen) {
+                    return await element.requestFullscreen()
+                  } else if ((element as any).webkitRequestFullscreen) {
+                    return await (element as any).webkitRequestFullscreen()
+                  } else if ((element as any).msRequestFullscreen) {
+                    return await (element as any).msRequestFullscreen()
+                  } else if ((element as any).mozRequestFullScreen) {
+                    return await (element as any).mozRequestFullScreen()
+                  } else {
+                    throw new Error('Fullscreen not supported')
+                  }
+                }
+
+                await enterFullscreen()
+                
+                // After entering fullscreen, focus on farm location with zones and trees
+                setTimeout(() => {
+                  // First, ensure trees and zones are visible by calling the callback
+                  if (onFullscreenFocus) {
+                    console.log('🎯 Calling onFullscreenFocus to ensure visibility')
+                    onFullscreenFocus()
+                  }
+                  
+                  // Small delay to let the callback update the state
+                  setTimeout(() => {
+                    if (mapRef.current) {
+                      console.log('🎯 Fullscreen activated, focusing on farm location...')
+                      
+                      // First, ensure map size is properly calculated
+                      mapRef.current.invalidateSize()
+                      
+                      // Wait a bit more for fullscreen to settle, then focus
+                      setTimeout(() => {
+                        if (mapRef.current) {
+                          // Create a feature group to calculate bounds for all farm content
+                          const farmGroup = new L.FeatureGroup()
+                          let treesAdded = 0
+                          let zonesAdded = 0
+                          
+                          // Add current visible trees to the group (respects zone focus filtering)
+                          console.log('🎯 Fullscreen focusing with', trees.length, 'visible trees and', zones.length, 'visible zones')
+                          
+                          trees.forEach(tree => {
+                            const lat = (tree as any).location?.latitude || (tree as any).latitude
+                            const lng = (tree as any).location?.longitude || (tree as any).longitude
+                            
+                            if (lat && lng && lat !== 0 && lng !== 0) {
+                              farmGroup.addLayer(L.marker([lat, lng]))
+                              treesAdded++
+                            }
+                          })
+                          
+                          // Add current visible zones to the group (respects zone focus filtering)  
+                          zones.forEach(zone => {
+                            if (zone.boundaries && zone.boundaries.length >= 3) {
+                              try {
+                                const validLatLngs = zone.boundaries
+                                  .map(point => {
+                                    if (point && point.latitude && point.longitude) {
+                                      return [point.latitude, point.longitude] as [number, number]
+                                    }
+                                    return null
+                                  })
+                                  .filter(coord => coord !== null) as [number, number][]
+                                
+                                if (validLatLngs.length >= 3) {
+                                  farmGroup.addLayer(L.polygon(validLatLngs))
+                                  zonesAdded++
+                                }
+                              } catch (error) {
+                                console.warn('Error adding zone to fullscreen focus:', zone.id)
+                              }
+                            }
+                          })
+                          
+                          // Focus on farm content with better zoom control
+                          if (farmGroup.getLayers().length > 0) {
+                            console.log(`🎯 Focusing on farm: ${treesAdded} trees, ${zonesAdded} zones`)
+                            
+                            // Calculate appropriate zoom level based on content
+                            const bounds = farmGroup.getBounds()
+                            const padding: [number, number] = [60, 60] // More padding for fullscreen
+                            const options: L.FitBoundsOptions = { 
+                              padding,
+                              maxZoom: treesAdded > 0 ? 17 : 15 // Zoom closer if we have individual trees
+                            }
+                            
+                            mapRef.current.fitBounds(bounds, options)
+                          } else {
+                            console.log('🎯 No farm content found, using default location')
+                            mapRef.current.setView(center, zoom)
+                          }
+                        }
+                      }, 150) // Additional delay for fullscreen to fully settle
+                    }
+                  }, 100) // Small delay for state update
+                }, 300) // Initial delay for fullscreen transition
+                
+              } else {
+                // Exit fullscreen mode with multiple fallback methods
+                const exitFullscreen = async () => {
+                  if (document.exitFullscreen) {
+                    return await document.exitFullscreen()
+                  } else if ((document as any).webkitExitFullscreen) {
+                    return await (document as any).webkitExitFullscreen()
+                  } else if ((document as any).msExitFullscreen) {
+                    return await (document as any).msExitFullscreen()
+                  } else if ((document as any).mozCancelFullScreen) {
+                    return await (document as any).mozCancelFullScreen()
+                  } else {
+                    throw new Error('Exit fullscreen not supported')
+                  }
+                }
+
+                await exitFullscreen()
               }
+            } catch (error) {
+              console.warn('Fullscreen operation failed:', error)
+              
+              // Show user-friendly error message for farmers
+              const button = document.activeElement as HTMLButtonElement
+              if (button) {
+                button.style.backgroundColor = '#fecaca'
+                button.innerHTML = `
+                  <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6m0 0L6 6l12 12" />
+                  </svg>
+                `
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                  if (button && button.isConnected) {
+                    button.style.backgroundColor = ''
+                    button.innerHTML = `
+                      <svg class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                    `
+                  }
+                }, 2000)
+              }
+              
+              // Could also show a toast notification here for better UX
             }
           }}
-          className="bg-white hover:bg-gray-50 active:bg-gray-100 p-3 rounded-xl shadow-lg border border-gray-200 transition-all duration-200 flex items-center justify-center transform hover:scale-105 active:scale-95"
-          title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình & Focus nông trại"}
+          className="bg-white hover:bg-gray-50 active:bg-gray-100 p-3 rounded-xl shadow-lg border border-gray-200 transition-all duration-200 flex items-center justify-center transform hover:scale-105 active:scale-95 min-touch"
+          title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình - Xem lớn hơn"}
           style={{
-            minWidth: '50px',
-            minHeight: '50px',
+            minWidth: '52px',
+            minHeight: '52px',
             WebkitTapHighlightColor: 'transparent'
           }}
         >
           {isFullscreen ? (
             <svg 
-              className="h-6 w-6 text-gray-700" 
+              className="h-7 w-7 text-gray-700" 
               fill="none" 
               viewBox="0 0 24 24" 
               stroke="currentColor"
@@ -754,13 +815,13 @@ export function OpenStreetMap({
               <path 
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
-                strokeWidth={2} 
+                strokeWidth={2.5} 
                 d="M6 18L18 6M6 6l12 12" 
               />
             </svg>
           ) : (
             <svg 
-              className="h-6 w-6 text-gray-700" 
+              className="h-7 w-7 text-gray-700" 
               fill="none" 
               viewBox="0 0 24 24" 
               stroke="currentColor"
@@ -768,7 +829,7 @@ export function OpenStreetMap({
               <path 
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
-                strokeWidth={2} 
+                strokeWidth={2.5} 
                 d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" 
               />
             </svg>
@@ -776,11 +837,28 @@ export function OpenStreetMap({
         </button>
       </div>
 
-      {/* Controls */}
-      <div className="absolute bottom-4 left-4 bg-white p-2 rounded-lg shadow-lg border border-gray-200 z-[1000]">
-        <div className="text-xs text-gray-600 space-y-1">
-          <div>{trees.length} cây trên bản đồ</div>
-          {zones.length > 0 && <div>{zones.length} khu vực</div>}
+      {/* Enhanced Controls - Farmer-Friendly */}
+      <div className="absolute bottom-4 left-4 bg-white p-3 rounded-xl shadow-lg border-2 border-gray-300 z-[1000] max-w-xs">
+        <div className="text-sm font-semibold text-gray-800 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-lg">🌳</span>
+              <span>{trees.length} Cây</span>
+            </div>
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+          </div>
+          {zones.length > 0 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">📍</span>
+                <span>{zones.length} Khu vực</span>
+              </div>
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+            </div>
+          )}
+          <div className="pt-2 border-t border-gray-200 text-xs text-gray-600">
+            💡 Nhấn vào cây hoặc khu vực để xem chi tiết
+          </div>
         </div>
       </div>
     </div>
