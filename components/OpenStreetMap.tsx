@@ -642,81 +642,87 @@ export function OpenStreetMap({
                   (element as any).webkitRequestFullscreen?.() || 
                   (element as any).msRequestFullscreen?.())
                   
-                  // First, ensure trees and zones are visible by calling the callback
-                  if (onFullscreenFocus) {
-                    onFullscreenFocus()
-                  }
-                  
                   // After entering fullscreen, focus on farm location with zones and trees
                   setTimeout(() => {
-                    if (mapRef.current) {
-                      console.log('🎯 Fullscreen activated, focusing on farm location...')
-                      
-                      // First, ensure map size is properly calculated
-                      mapRef.current.invalidateSize()
-                      
-                      // Wait a bit more for fullscreen to settle, then focus
-                      setTimeout(() => {
-                        if (mapRef.current) {
-                          // Create a feature group to calculate bounds for all farm content
-                          const farmGroup = new L.FeatureGroup()
-                          let treesAdded = 0
-                          let zonesAdded = 0
-                          
-                          // Add all trees to the group
-                          trees.forEach(tree => {
-                            const lat = (tree as any).location?.latitude || (tree as any).latitude
-                            const lng = (tree as any).location?.longitude || (tree as any).longitude
-                            
-                            if (lat && lng && lat !== 0 && lng !== 0) {
-                              farmGroup.addLayer(L.marker([lat, lng]))
-                              treesAdded++
-                            }
-                          })
-                          
-                          // Add all zones to the group
-                          zones.forEach(zone => {
-                            if (zone.boundaries && zone.boundaries.length >= 3) {
-                              try {
-                                const validLatLngs = zone.boundaries
-                                  .map(point => {
-                                    if (point && point.latitude && point.longitude) {
-                                      return [point.latitude, point.longitude] as [number, number]
-                                    }
-                                    return null
-                                  })
-                                  .filter(coord => coord !== null) as [number, number][]
-                                
-                                if (validLatLngs.length >= 3) {
-                                  farmGroup.addLayer(L.polygon(validLatLngs))
-                                  zonesAdded++
-                                }
-                              } catch (error) {
-                                console.warn('Error adding zone to fullscreen focus:', zone.id)
-                              }
-                            }
-                          })
-                          
-                          // Focus on farm content with better zoom control
-                          if (farmGroup.getLayers().length > 0) {
-                            console.log(`🎯 Focusing on farm: ${treesAdded} trees, ${zonesAdded} zones`)
-                            
-                            // Calculate appropriate zoom level based on content
-                            const bounds = farmGroup.getBounds()
-                            const padding: [number, number] = [60, 60] // More padding for fullscreen
-                            const options: L.FitBoundsOptions = { 
-                              padding,
-                              maxZoom: treesAdded > 0 ? 17 : 15 // Zoom closer if we have individual trees
-                            }
-                            
-                            mapRef.current.fitBounds(bounds, options)
-                          } else {
-                            console.log('🎯 No farm content found, using default location')
-                            mapRef.current.setView(center, zoom)
-                          }
-                        }
-                      }, 100) // Additional delay for fullscreen to fully settle
+                    // First, ensure trees and zones are visible by calling the callback
+                    if (onFullscreenFocus) {
+                      console.log('🎯 Calling onFullscreenFocus to ensure visibility')
+                      onFullscreenFocus()
                     }
+                    
+                    // Small delay to let the callback update the state
+                    setTimeout(() => {
+                      if (mapRef.current) {
+                        console.log('🎯 Fullscreen activated, focusing on farm location...')
+                        
+                        // First, ensure map size is properly calculated
+                        mapRef.current.invalidateSize()
+                        
+                        // Wait a bit more for fullscreen to settle, then focus
+                        setTimeout(() => {
+                          if (mapRef.current) {
+                            // Create a feature group to calculate bounds for all farm content
+                            const farmGroup = new L.FeatureGroup()
+                            let treesAdded = 0
+                            let zonesAdded = 0
+                            
+                            // Add current visible trees to the group (respects zone focus filtering)
+                            console.log('🎯 Fullscreen focusing with', trees.length, 'visible trees and', zones.length, 'visible zones')
+                            
+                            trees.forEach(tree => {
+                              const lat = (tree as any).location?.latitude || (tree as any).latitude
+                              const lng = (tree as any).location?.longitude || (tree as any).longitude
+                              
+                              if (lat && lng && lat !== 0 && lng !== 0) {
+                                farmGroup.addLayer(L.marker([lat, lng]))
+                                treesAdded++
+                              }
+                            })
+                            
+                            // Add current visible zones to the group (respects zone focus filtering)  
+                            zones.forEach(zone => {
+                              if (zone.boundaries && zone.boundaries.length >= 3) {
+                                try {
+                                  const validLatLngs = zone.boundaries
+                                    .map(point => {
+                                      if (point && point.latitude && point.longitude) {
+                                        return [point.latitude, point.longitude] as [number, number]
+                                      }
+                                      return null
+                                    })
+                                    .filter(coord => coord !== null) as [number, number][]
+                                  
+                                  if (validLatLngs.length >= 3) {
+                                    farmGroup.addLayer(L.polygon(validLatLngs))
+                                    zonesAdded++
+                                  }
+                                } catch (error) {
+                                  console.warn('Error adding zone to fullscreen focus:', zone.id)
+                                }
+                              }
+                            })
+                            
+                            // Focus on farm content with better zoom control
+                            if (farmGroup.getLayers().length > 0) {
+                              console.log(`🎯 Focusing on farm: ${treesAdded} trees, ${zonesAdded} zones`)
+                              
+                              // Calculate appropriate zoom level based on content
+                              const bounds = farmGroup.getBounds()
+                              const padding: [number, number] = [60, 60] // More padding for fullscreen
+                              const options: L.FitBoundsOptions = { 
+                                padding,
+                                maxZoom: treesAdded > 0 ? 17 : 15 // Zoom closer if we have individual trees
+                              }
+                              
+                              mapRef.current.fitBounds(bounds, options)
+                            } else {
+                              console.log('🎯 No farm content found, using default location')
+                              mapRef.current.setView(center, zoom)
+                            }
+                          }
+                        }, 100) // Additional delay for fullscreen to fully settle
+                      }
+                    }, 50) // Small delay for state update
                   }, 200) // Initial delay for fullscreen transition
                   
                 } else {

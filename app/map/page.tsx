@@ -459,6 +459,12 @@ function MapPageContent() {
                   console.log('🎯 Fullscreen focus triggered - enabling trees and zones display')
                   setShowTrees(true)
                   setShowZones(true)
+                  
+                  // If we're in zone focus mode, ensure the focused zone stays selected
+                  if (focusedZone) {
+                    console.log('🎯 Maintaining zone focus in fullscreen:', focusedZone.name)
+                    setSelectedZone(focusedZone)
+                  }
                 }}
                 className="w-full h-full"
               />
