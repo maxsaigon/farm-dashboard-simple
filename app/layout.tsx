@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { EnhancedAuthProvider } from "@/lib/enhanced-auth-context";
 import { Navigation } from "@/components/Navigation";
+import BottomTabBar from "@/components/ui/BottomTabBar";
 import EdgeSwipeBack from "@/components/EdgeSwipeBack";
 
 const geistSans = localFont({
@@ -19,6 +20,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title: "Farm Manager - Quản lý trang trại thông minh",
   description: "Ứng dụng quản lý trang trại thông minh cho việc theo dõi cây trồng, chụp ảnh AI và phân tích sức khỏe cây.",
   keywords: [
@@ -122,6 +124,7 @@ export default function RootLayout({
           <Navigation />
           <EdgeSwipeBack />
           {children}
+          <BottomTabBar />
         </EnhancedAuthProvider>
       </body>
     </html>
