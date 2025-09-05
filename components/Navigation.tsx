@@ -121,8 +121,8 @@ export function Navigation() {
         </div>
       </nav>
 
-      {/* Mobile Navigation - Farmer-Friendly */}
-      <nav className="lg:hidden bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40 safe-top">
+      {/* Mobile Navigation hidden (BottomTabBar is primary) */}
+      <nav className="lg:hidden hidden">
         <div className="px-4 sm:px-6">
           <div className="flex justify-between items-center h-20">
             <Link href="/" className="flex items-center space-x-2">

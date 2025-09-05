@@ -9,6 +9,7 @@ import { Tree } from '@/lib/types'
 import dynamic from 'next/dynamic'
 import { TreeDetail } from '@/components/TreeDetail'
 import { EyeIcon } from '@heroicons/react/24/outline'
+import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
 
 interface Zone {
   id: string
@@ -346,9 +347,12 @@ function MapPageContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 safe-bottom">
-      {/* Header - Enhanced for Farmers */}
-      <div className="bg-white shadow-sm border-b border-gray-200 p-4 safe-top">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 p-0 safe-top">
         <div className="flex flex-col space-y-4">
+          {/* Large Title */}
+          <LargeTitleHeader title="Bản Đồ Nông Trại" subtitle={displayFarm.name} />
+
           {/* Title and Stats */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
             <div className="flex-1">

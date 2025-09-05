@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
 // Note: Icons removed as they were unused
 
 interface Zone {
@@ -114,8 +115,8 @@ export default function ZonesPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 safe-bottom safe-top">
       <div className="max-w-6xl mx-auto">
-        {/* Header - Enhanced for Farmers */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 p-0 mb-4">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-3">
@@ -123,12 +124,7 @@ export default function ZonesPage() {
                   <span className="text-2xl">📍</span>
                 </div>
                 <div>
-                  <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                    Khu Vực Nông Trại
-                  </h1>
-                  <p className="text-base lg:text-lg text-gray-600 font-medium">
-                    {displayFarm.name}
-                  </p>
+                  <LargeTitleHeader title="Khu Vực Nông Trại" subtitle={displayFarm.name} />
                 </div>
               </div>
               
