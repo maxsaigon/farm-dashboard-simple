@@ -9,20 +9,16 @@ import {
   PencilIcon,
   TrashIcon,
   MapPinIcon,
-  ChartBarIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClockIcon,
-  CameraIcon,
-  BeakerIcon,
-  ScissorsIcon,
-  HeartIcon,
   EyeIcon,
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
 import { ImageGallery } from './ImageGallery'
 import { CustomFieldsSection } from './CustomFieldsSection'
 import { CustomFieldValue, TreeCustomFields } from '@/lib/custom-field-types'
+import { useToast } from './Toast'
 
 interface TreeDetailProps {
   tree: Tree | null
@@ -35,11 +31,13 @@ interface TreeDetailProps {
 
 export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, className = '', fullScreen = false }: TreeDetailProps) {
   const { user, currentFarm } = useAuth()
+  const { showSuccess, showError, ToastContainer } = useToast()
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<Tree>>({})
   const [customFields, setCustomFields] = useState<TreeCustomFields | undefined>()
   const [isMobile, setIsMobile] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
 
   // Mobile detection and body scroll locking
   useEffect(() => {
@@ -109,10 +107,32 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     )
   }
 
+  const validateFormData = (data: Partial<Tree>) => {
+    if (!data.name || data.name.trim() === '') {
+      return { isValid: false, message: 'Vui lòng nhập tên cây' }
+    }
+    if (!data.variety) {
+      return { isValid: false, message: 'Vui lòng chọn giống cây' }
+    }
+    return { isValid: true, message: '' }
+  }
+
   const handleSave = async () => {
-    if (!user || !currentFarm || !tree) return
+    if (!user || !currentFarm || !tree) {
+      showError('Không thể lưu', 'Thiếu thông tin xác thực. Vui lòng đăng nhập lại.')
+      return
+    }
+
+    // Validate form data
+    const validation = validateFormData(formData)
+    if (!validation.isValid) {
+      showError('Thông tin không hợp lệ', validation.message)
+      return
+    }
 
     setLoading(true)
+    setSaveStatus('saving')
+    
     try {
       await updateTree(currentFarm.id, tree.id, user.uid, {
         ...formData,
@@ -121,10 +141,23 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
 
       const updatedTree = { ...tree, ...formData, updatedAt: new Date() }
       onTreeUpdate?.(updatedTree)
-      setIsEditing(false)
+      
+      setSaveStatus('success')
+      showSuccess('Lưu thành công!', 'Thông tin cây đã được cập nhật.')
+      
+      // Exit edit mode after short delay
+      setTimeout(() => {
+        setIsEditing(false)
+        setSaveStatus('idle')
+      }, 1500)
+      
     } catch (error) {
       console.error('Error updating tree:', error)
-      alert('Có lỗi xảy ra khi cập nhật thông tin cây')
+      setSaveStatus('error')
+      showError(
+        'Không thể lưu thông tin', 
+        'Vui lòng kiểm tra kết nối mạng và thử lại.'
+      )
     } finally {
       setLoading(false)
     }
@@ -167,7 +200,16 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
         updatedAt: new Date()
       }
       
+      console.log('Saving custom fields:', {
+        farmId: currentFarm.id,
+        treeId,
+        updatedCustomFields,
+        updatedTreeData
+      })
+      
       await updateTree(currentFarm.id, treeId, user.uid, updatedTreeData)
+      
+      console.log('Custom fields saved successfully to Firebase')
       
       setCustomFields(updatedCustomFields)
       
@@ -207,27 +249,16 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     }
   }
 
-  const formatDate = (date?: Date | null) => {
-    if (!date) return 'Chưa có thông tin'
-    return new Intl.DateTimeFormat('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(date)
+  const getHealthStatusText = (status?: string) => {
+    switch (status) {
+      case 'Excellent': return 'Xuất sắc'
+      case 'Good': return 'Tốt'
+      case 'Fair': return 'Bình thường'
+      case 'Poor': return 'Cần chăm sóc'
+      default: return 'Chưa đánh giá'
+    }
   }
 
-  const formatDateTime = (date?: Date | null) => {
-    if (!date) return 'Chưa có thông tin'
-    return new Intl.DateTimeFormat('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date)
-  }
-
-  const totalFruits = (tree.manualFruitCount || 0) + (tree.aiFruitCount || 0)
 
   // Create the main content
   const mainContent = (
@@ -310,335 +341,214 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
         </div>
       </div>
 
-      {/* Content */}
-      <div className={`p-6 space-y-6 ${isMobile ? '' : 'max-h-[calc(100vh-200px)] overflow-y-auto'}`}>
-        {/* Basic Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left Column */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <MapPinIcon className="h-5 w-5 mr-2" />
-              Thông tin cơ bản
-            </h3>
-
-            <div className="space-y-3">
+      {/* Simplified Farmer-Focused Content */}
+      <div className={`p-6 space-y-8 ${isMobile ? '' : 'max-h-[calc(100vh-200px)] overflow-y-auto'}`}>
+        
+        {/* Essential Tree Information - What farmers actually need */}
+        <div className="space-y-6">
+          
+          {/* Tree Identity */}
+          <div className="bg-green-50 border border-green-200 rounded-xl p-6 shadow-sm">
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tên cây</label>
+                <label className="text-lg font-semibold text-gray-800 flex items-center mb-2">
+                  🌳 Tên cây
+                  <span className="text-red-500 ml-2">*</span>
+                </label>
                 {isEditing ? (
                   <input
                     type="text"
                     value={formData.name || ''}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="Nhập tên cây"
+                    className="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-xl 
+                               focus:border-green-500 focus:ring-4 focus:ring-green-100
+                               bg-white shadow-sm min-touch"
+                    placeholder="Ví dụ: Cây sầu riêng số 1"
                   />
                 ) : (
-                  <p className="text-gray-900">{tree.name || 'Chưa đặt tên'}</p>
+                  <p className="text-gray-900 text-xl font-semibold">{tree.name || 'Chưa đặt tên'}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Giống cây</label>
+                <label className="text-lg font-semibold text-gray-800 flex items-center mb-2">
+                  🌱 Giống cây
+                  <span className="text-red-500 ml-2">*</span>
+                </label>
                 {isEditing ? (
-                  <select
-                    value={formData.variety || ''}
-                    onChange={(e) => setFormData({ ...formData, variety: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="">Chọn giống cây</option>
-                    <option value="Kan Yao">Kan Yao</option>
-                    <option value="Ri6">Ri6</option>
-                    <option value="Monthong">Monthong</option>
-                    <option value="Musang King">Musang King</option>
-                    <option value="Black Thorn">Black Thorn</option>
-                    <option value="Red Prawn">Red Prawn</option>
-                    <option value="Khác">Khác</option>
-                  </select>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { value: 'Monthong', vietnamese: 'Monthong' },
+                      { value: 'Musang King', vietnamese: 'Musang King' },
+                      { value: 'Kan Yao', vietnamese: 'Kan Yao' },
+                      { value: 'Ri6', vietnamese: 'Ri6' },
+                      { value: 'Black Thorn', vietnamese: 'Black Thorn' },
+                      { value: 'Red Prawn', vietnamese: 'Red Prawn' },
+                    ].map((variety) => (
+                      <button
+                        key={variety.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, variety: variety.value })}
+                        className={`p-4 border-2 rounded-xl text-center transition-all min-touch active:scale-95 ${
+                          formData.variety === variety.value
+                            ? 'border-green-500 bg-green-50 text-green-800 shadow-md'
+                            : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                        }`}
+                      >
+                        <div className="font-semibold text-lg">{variety.value}</div>
+                        <div className="text-sm text-gray-500">{variety.vietnamese}</div>
+                      </button>
+                    ))}
+                  </div>
                 ) : (
-                  <p className="text-gray-900">{tree.variety || 'Chưa xác định'}</p>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-semibold text-lg">
+                      {tree.variety || 'Chưa xác định'}
+                    </span>
+                  </div>
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Khu vực</label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={formData.zoneCode || ''}
-                    onChange={(e) => setFormData({ ...formData, zoneCode: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="Ví dụ: A01, B05..."
-                  />
-                ) : (
-                  <p className="text-gray-900">{tree.zoneCode || 'Chưa phân khu'}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày trồng</label>
-                {isEditing ? (
-                  <input
-                    type="date"
-                    value={formData.plantingDate && formData.plantingDate instanceof Date ? formData.plantingDate.toISOString().split('T')[0] : ''}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      plantingDate: e.target.value ? new Date(e.target.value) : undefined 
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                ) : (
-                  <p className="text-gray-900">{formatDate(tree.plantingDate)}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">QR Code</label>
-                <p className="text-gray-900 font-mono text-sm">{tree.qrCode || 'Chưa có'}</p>
-              </div>
+              {/* Only show zone if it exists and makes sense */}
+              {(tree.zoneCode || isEditing) && (
+                <div>
+                  <label className="text-lg font-semibold text-gray-800 flex items-center mb-2">
+                    📍 Khu vực
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={formData.zoneCode || ''}
+                      onChange={(e) => setFormData({ ...formData, zoneCode: e.target.value })}
+                      className="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-xl 
+                                 focus:border-green-500 focus:ring-4 focus:ring-green-100
+                                 bg-white shadow-sm min-touch"
+                      placeholder="Ví dụ: A01, B05..."
+                    />
+                  ) : (
+                    <p className="text-gray-900 text-lg font-medium">{tree.zoneCode || 'Chưa phân khu'}</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right Column */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <ChartBarIcon className="h-5 w-5 mr-2" />
-              Thông số sinh trưởng
+          {/* Health & Production - What matters to farmers */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center mb-4">
+              💪 Tình trạng & sản lượng
             </h3>
-
-            <div className="space-y-3">
+            
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái sức khỏe</label>
+                <label className="text-lg font-semibold text-gray-800 mb-2 block">🌡️ Sức khỏe cây</label>
                 {isEditing ? (
                   <select
                     value={formData.healthStatus || ''}
                     onChange={(e) => setFormData({ ...formData, healthStatus: e.target.value as Tree['healthStatus'] })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-xl 
+                               focus:border-green-500 focus:ring-4 focus:ring-green-100
+                               bg-white shadow-sm min-touch"
                   >
-                    <option value="Excellent">Xuất sắc</option>
-                    <option value="Good">Tốt</option>
-                    <option value="Fair">Bình thường</option>
-                    <option value="Poor">Yếu</option>
+                    <option value="">Chọn tình trạng</option>
+                    <option value="Excellent">🟢 Xuất sắc</option>
+                    <option value="Good">🟡 Tốt</option>
+                    <option value="Fair">🟠 Bình thường</option>
+                    <option value="Poor">🔴 Cần chăm sóc</option>
                   </select>
                 ) : (
-                  <p className="text-gray-900">{tree.healthStatus || 'Chưa đánh giá'}</p>
+                  <div className={`inline-flex px-4 py-2 rounded-full font-semibold text-lg ${getHealthStatusColor(tree.healthStatus)}`}>
+                    {getHealthIcon(tree.healthStatus)}
+                    <span className="ml-2">{getHealthStatusText(tree.healthStatus)}</span>
+                  </div>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Chiều cao (m)</label>
-                {isEditing ? (
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={formData.treeHeight || ''}
-                    onChange={(e) => setFormData({ ...formData, treeHeight: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="0.0"
-                  />
-                ) : (
-                  <p className="text-gray-900">{tree.treeHeight ? `${tree.treeHeight} m` : 'Chưa đo'}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Đường kính thân (cm)</label>
-                {isEditing ? (
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={formData.trunkDiameter || ''}
-                    onChange={(e) => setFormData({ ...formData, trunkDiameter: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="0.0"
-                  />
-                ) : (
-                  <p className="text-gray-900">{tree.trunkDiameter ? `${tree.trunkDiameter} cm` : 'Chưa đo'}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Số trái đếm thủ công</label>
+                <label className="text-lg font-semibold text-gray-800 mb-2 block">🥭 Số lượng trái</label>
                 {isEditing ? (
                   <input
                     type="number"
                     min="0"
                     value={formData.manualFruitCount || ''}
                     onChange={(e) => setFormData({ ...formData, manualFruitCount: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="0"
+                    className="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-xl 
+                               focus:border-green-500 focus:ring-4 focus:ring-green-100
+                               bg-white shadow-sm min-touch"
+                    placeholder="Nhập số trái đã đếm"
                   />
                 ) : (
-                  <p className="text-gray-900">{(tree.manualFruitCount || 0).toLocaleString()} trái</p>
+                  <div className="bg-white rounded-lg p-4 border-2 border-green-200">
+                    <div className="text-3xl font-bold text-green-600 text-center">
+                      {(tree.manualFruitCount || 0).toLocaleString()} trái
+                    </div>
+                    <p className="text-sm text-gray-500 text-center mt-1">Đếm thủ công</p>
+                  </div>
                 )}
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Số trái AI phát hiện</label>
-                <p className="text-gray-900">{(tree.aiFruitCount || 0).toLocaleString()} trái</p>
-              </div>
-
-              <div className="pt-3 border-t border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tổng số trái</label>
-                <p className="text-lg font-semibold text-green-600">{totalFruits.toLocaleString()} trái</p>
-              </div>
             </div>
           </div>
-        </div>
 
-        {/* Care History */}
-        <div className="border-t border-gray-200 pt-6">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center mb-4">
-            <HeartIcon className="h-5 w-5 mr-2" />
-            Lịch sử chăm sóc
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center text-green-700 mb-2">
-                <BeakerIcon className="h-5 w-5 mr-2" />
-                <span className="font-medium">Bón phân</span>
-              </div>
-              <p className="text-green-900">{formatDate(tree.fertilizedDate)}</p>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center text-blue-700 mb-2">
-                <ScissorsIcon className="h-5 w-5 mr-2" />
-                <span className="font-medium">Tỉa cành</span>
-              </div>
-              <p className="text-blue-900">{formatDate(tree.prunedDate)}</p>
-            </div>
-
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <div className="flex items-center text-purple-700 mb-2">
-                <CameraIcon className="h-5 w-5 mr-2" />
-                <span className="font-medium">Chụp ảnh AI</span>
-              </div>
-              <p className="text-purple-900">{formatDate(tree.lastAIAnalysisDate)}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Notes and Observations */}
-        <div className="border-t border-gray-200 pt-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Ghi chú và quan sát</h3>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú chung</label>
+          {/* Simple Notes Section - Only if needed */}
+          {(tree.notes || isEditing) && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center mb-3">
+                📝 Ghi chú
+              </h3>
               {isEditing ? (
-                <textarea
-                  value={formData.notes || ''}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Nhập ghi chú về cây..."
-                />
+                <div className="space-y-4">
+                  <textarea
+                    value={formData.notes || ''}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-xl 
+                             focus:border-green-500 focus:ring-4 focus:ring-green-100
+                             bg-white shadow-sm min-touch"
+                    placeholder="Thêm ghi chú về cây này..."
+                  />
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="needsAttention"
+                      checked={formData.needsAttention || false}
+                      onChange={(e) => setFormData({ ...formData, needsAttention: e.target.checked })}
+                      className="h-5 w-5 text-red-600 focus:ring-red-500 border-2 border-gray-300 rounded"
+                    />
+                    <label htmlFor="needsAttention" className="ml-3 text-lg text-gray-900 font-medium">
+                      ⚠️ Cây cần chú ý đặc biệt
+                    </label>
+                  </div>
+                </div>
               ) : (
-                <p className="text-gray-900 whitespace-pre-wrap">{tree.notes || 'Chưa có ghi chú'}</p>
+                <p className="text-gray-900 text-lg leading-relaxed whitespace-pre-wrap">
+                  {tree.notes}
+                </p>
               )}
             </div>
+          )}
+        </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú sức khỏe</label>
-              {isEditing ? (
-                <textarea
-                  value={formData.healthNotes || ''}
-                  onChange={(e) => setFormData({ ...formData, healthNotes: e.target.value })}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Nhập ghi chú về tình trạng sức khỏe..."
-                />
-              ) : (
-                <p className="text-gray-900 whitespace-pre-wrap">{tree.healthNotes || 'Chưa có ghi chú sức khỏe'}</p>
-              )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú bệnh tật</label>
-              {isEditing ? (
-                <textarea
-                  value={formData.diseaseNotes || ''}
-                  onChange={(e) => setFormData({ ...formData, diseaseNotes: e.target.value })}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Nhập ghi chú về bệnh tật..."
-                />
-              ) : (
-                <p className="text-gray-900 whitespace-pre-wrap">{tree.diseaseNotes || 'Chưa có ghi chú bệnh tật'}</p>
-              )}
-            </div>
 
-            {isEditing && (
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="needsAttention"
-                  checked={formData.needsAttention || false}
-                  onChange={(e) => setFormData({ ...formData, needsAttention: e.target.checked })}
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                />
-                <label htmlFor="needsAttention" className="ml-2 block text-sm text-gray-900">
-                  Cây này cần được chú ý đặc biệt
-                </label>
-              </div>
-            )}
+          {/* Image Gallery - Simplified */}
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center mb-3">
+              📸 Hình ảnh cây
+            </h3>
+            <ImageGallery tree={tree} />
           </div>
-        </div>
 
-        {/* Custom Fields Section */}
-        <div className="border-t border-gray-200 pt-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin bổ sung</h3>
-          <CustomFieldsSection
-            treeId={tree.id}
-            customFields={customFields || (tree.customFields as TreeCustomFields)}
-            onSave={handleCustomFieldsSave}
-          />
-        </div>
-
-        {/* Image Gallery */}
-        <div className="border-t border-gray-200 pt-6">
-          <ImageGallery tree={tree} />
-        </div>
-
-        {/* System Information */}
-        <div className="border-t border-gray-200 pt-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Thông tin hệ thống</h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-500">Tọa độ GPS:</span>
-              <div className="font-medium">
-                {tree.latitude && tree.longitude 
-                  ? `${tree.latitude.toFixed(6)}, ${tree.longitude.toFixed(6)}`
-                  : 'Chưa có tọa độ'
-                }
-              </div>
-            </div>
-            <div>
-              <span className="text-gray-500">Độ chính xác GPS:</span>
-              <div className="font-medium">{tree.gpsAccuracy ? `${tree.gpsAccuracy}m` : 'N/A'}</div>
-            </div>
-            <div>
-              <span className="text-gray-500">Ngày tạo:</span>
-              <div className="font-medium">{formatDateTime(tree.createdAt)}</div>
-            </div>
-            <div>
-              <span className="text-gray-500">Cập nhật lần cuối:</span>
-              <div className="font-medium">{formatDateTime(tree.updatedAt)}</div>
-            </div>
-            <div>
-              <span className="text-gray-500">Đồng bộ lần cuối:</span>
-              <div className="font-medium">{formatDateTime(tree.lastSyncDate)}</div>
-            </div>
-            <div>
-              <span className="text-gray-500">Đếm trái lần cuối:</span>
-              <div className="font-medium">{formatDateTime(tree.lastCountDate)}</div>
-            </div>
+          {/* Custom Fields - Simplified */}
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center mb-3">
+              📋 Thông tin thêm
+            </h3>
+            <CustomFieldsSection
+              treeId={tree.id}
+              customFields={customFields || (tree.customFields as TreeCustomFields)}
+              onSave={handleCustomFieldsSave}
+            />
           </div>
-        </div>
       </div>
     </div>
   )
@@ -648,30 +558,84 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     const fullScreenContent = (
       <div className="fixed inset-0 bg-white z-[9999] overflow-hidden flex flex-col" style={{ touchAction: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {/* iOS-style Header */}
-        <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
-          <div className="flex items-center justify-between">
+        <div className="flex-shrink-0 bg-green-600 text-white px-4 py-4" style={{ paddingTop: 'max(16px, calc(env(safe-area-inset-top) + 16px))' }}>
+          <div className="flex items-center">
             <button
               onClick={onClose}
-              className="text-green-600 text-lg font-medium py-2 px-2 min-touch active:opacity-70 transition-opacity"
+              className="p-2 -ml-2 hover:bg-green-700 rounded-lg transition-colors"
             >
-              ← Quay lại
+              <ArrowLeftIcon className="h-6 w-6" />
             </button>
-            <h1 className="text-lg font-semibold text-gray-900 truncate">
-              {tree.name || `Cây ${tree.variety || tree.id.slice(0, 8)}`}
-            </h1>
-            <div className="w-16"></div> {/* Spacer for center alignment */}
+            <div className="flex-1 text-center">
+              <div className="text-lg font-semibold">
+                {isEditing ? 'Chỉnh sửa thông tin cây' : 'Thông tin cây'}
+              </div>
+              <div className="text-sm opacity-90">
+                {tree.name || `Cây ${tree.variety || tree.id.slice(0, 8)}`}
+              </div>
+            </div>
+            <div className="w-10"></div> {/* Spacer for center alignment */}
           </div>
         </div>
         
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y pinch-zoom', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y pinch-zoom', paddingBottom: isEditing ? '100px' : 'env(safe-area-inset-bottom)' }}>
           {mainContent}
         </div>
+
+        {/* Sticky Bottom Action Bar for Edit Mode */}
+        {isEditing && (
+          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-4" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="flex-1 py-4 bg-gray-200 hover:bg-gray-300 active:bg-gray-300 text-gray-700 rounded-xl font-semibold text-lg min-touch transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={loading}
+                className={`flex-2 py-4 rounded-xl font-semibold text-lg min-touch transition-colors ${
+                  loading || saveStatus === 'saving'
+                    ? 'bg-green-400 text-white cursor-not-allowed'
+                    : saveStatus === 'success'
+                    ? 'bg-green-700 text-white'
+                    : 'bg-green-600 hover:bg-green-700 active:bg-green-700 text-white'
+                }`}
+              >
+                {loading || saveStatus === 'saving' ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Đang lưu...</span>
+                  </div>
+                ) : saveStatus === 'success' ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <CheckCircleIcon className="h-5 w-5" />
+                    <span>Đã lưu!</span>
+                  </div>
+                ) : (
+                  'Lưu thông tin cây'
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
     
-    return typeof window !== 'undefined' ? createPortal(fullScreenContent, document.body) : null
+    return typeof window !== 'undefined' ? (
+      <>
+        {createPortal(fullScreenContent, document.body)}
+        <ToastContainer />
+      </>
+    ) : null
   }
 
-  return mainContent
+  return (
+    <>
+      {mainContent}
+      <ToastContainer />
+    </>
+  )
 }

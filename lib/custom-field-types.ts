@@ -2,7 +2,6 @@
 // Optimized for durian farmers with mobile-first design
 
 export type CustomFieldType = 
-  | 'fruit_count' 
   | 'quick_notes' 
   | 'harvest_date' 
   | 'health_status' 
@@ -46,18 +45,7 @@ export interface TreeCustomFields {
 
 // Predefined field templates optimized for durian farming
 export const PREDEFINED_FIELDS: CustomFieldDefinition[] = [
-  {
-    id: 'fruit_count',
-    type: 'fruit_count',
-    label: 'Fruit Count',
-    labelVi: 'Số Lượng Trái',
-    category: 'harvest',
-    icon: '🍎',
-    placeholder: 'Enter number of fruits',
-    placeholderVi: 'Nhập số lượng trái',
-    min: 0,
-    max: 999
-  },
+  // Removed fruit_count field to avoid duplication with existing tree.manualFruitCount system
   {
     id: 'quick_notes',
     type: 'quick_notes',
@@ -209,7 +197,6 @@ export function formatFieldValue(field: CustomFieldDefinition, value: any): stri
   if (value === null || value === undefined || value === '') return ''
   
   switch (field.type) {
-    case 'fruit_count':
     case 'measurements':
       const numValue = typeof value === 'string' ? parseFloat(value) : value
       return field.unit ? `${numValue} ${field.unit}` : numValue.toString()
@@ -241,7 +228,7 @@ export function validateFieldValue(field: CustomFieldDefinition, value: any): st
     return `${field.labelVi} là bắt buộc`
   }
   
-  if (field.type === 'fruit_count' || field.type === 'measurements') {
+  if (field.type === 'measurements') {
     const numValue = typeof value === 'string' ? parseFloat(value) : value
     if (isNaN(numValue)) {
       return 'Vui lòng nhập số hợp lệ'

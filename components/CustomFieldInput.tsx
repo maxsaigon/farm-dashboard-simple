@@ -37,7 +37,6 @@ export function CustomFieldInput({ field, value, onSave, onCancel, className = '
 
     // Process value based on field type
     switch (field.type) {
-      case 'fruit_count':
       case 'measurements':
         processedValue = typeof currentValue === 'string' ? parseFloat(currentValue) || 0 : currentValue
         break
@@ -79,46 +78,6 @@ export function CustomFieldInput({ field, value, onSave, onCancel, className = '
     `
 
     switch (field.type) {
-      case 'fruit_count':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <button
-                type="button"
-                onClick={() => setCurrentValue(Math.max(0, (Number(currentValue) || 0) - 1))}
-                disabled={readOnly}
-                className="min-touch w-12 h-12 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white rounded-xl font-bold text-xl flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-              >
-                −
-              </button>
-              
-              <input
-                ref={inputRef as React.RefObject<HTMLInputElement>}
-                type="number"
-                value={typeof currentValue === 'boolean' ? '' : currentValue}
-                onChange={(e) => setCurrentValue(e.target.value)}
-                placeholder={field.placeholderVi}
-                disabled={readOnly}
-                min={field.min}
-                max={field.max}
-                className={`${baseInputClasses} text-center text-2xl font-bold flex-1`}
-              />
-              
-              <button
-                type="button"
-                onClick={() => setCurrentValue((Number(currentValue) || 0) + 1)}
-                disabled={readOnly}
-                className="min-touch w-12 h-12 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white rounded-xl font-bold text-xl flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-              >
-                +
-              </button>
-            </div>
-            {field.unit && (
-              <p className="text-center text-gray-600">Đơn vị: {field.unit === 'meters' ? 'mét' : field.unit}</p>
-            )}
-          </div>
-        )
-
       case 'measurements':
         return (
           <div className="space-y-2">

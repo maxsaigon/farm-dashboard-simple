@@ -115,6 +115,23 @@ export function subscribeToTrees(farmId: string, userId: string, callback: (tree
         const trees: Tree[] = []
         snapshot.forEach((doc) => {
           const data = doc.data()
+          
+          // Handle customFields with nested dates
+          let customFields = data.customFields
+          if (customFields && customFields.lastUpdated) {
+            customFields = {
+              ...customFields,
+              lastUpdated: convertToDate(customFields.lastUpdated)
+            }
+            // Also handle any date fields in the fields array
+            if (customFields.fields) {
+              customFields.fields = customFields.fields.map((field: any) => ({
+                ...field,
+                updatedAt: field.updatedAt ? convertToDate(field.updatedAt) : field.updatedAt
+              }))
+            }
+          }
+          
           trees.push({
             id: doc.id,
             ...data,
@@ -127,6 +144,7 @@ export function subscribeToTrees(farmId: string, userId: string, callback: (tree
             lastAIAnalysisDate: convertToDate(data.lastAIAnalysisDate),
             createdAt: convertToDate(data.createdAt || data.createdDate),
             updatedAt: convertToDate(data.updatedAt || data.lastModified),
+            customFields: customFields
           } as Tree)
         })
         
@@ -175,6 +193,24 @@ export async function createTree(farmId: string, userId: string, tree: Omit<Tree
   return treeRef.id
 }
 
+// Helper function to convert Date objects in nested objects to Timestamps
+function convertDatesToTimestamps(obj: any): any {
+  if (obj instanceof Date) {
+    return Timestamp.fromDate(obj)
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(convertDatesToTimestamps)
+  }
+  if (obj && typeof obj === 'object') {
+    const converted: any = {}
+    for (const [key, value] of Object.entries(obj)) {
+      converted[key] = convertDatesToTimestamps(value)
+    }
+    return converted
+  }
+  return obj
+}
+
 // Update tree
 export async function updateTree(farmId: string, treeId: string, userId: string, updates: Partial<Tree>): Promise<void> {
   // Admin can update trees in any farm
@@ -192,7 +228,9 @@ export async function updateTree(farmId: string, treeId: string, userId: string,
     fertilizedDate: updates.fertilizedDate ? Timestamp.fromDate(updates.fertilizedDate) : undefined,
     prunedDate: updates.prunedDate ? Timestamp.fromDate(updates.prunedDate) : undefined,
     lastSyncDate: updates.lastSyncDate ? Timestamp.fromDate(updates.lastSyncDate) : undefined,
-    lastAIAnalysisDate: updates.lastAIAnalysisDate ? Timestamp.fromDate(updates.lastAIAnalysisDate) : undefined
+    lastAIAnalysisDate: updates.lastAIAnalysisDate ? Timestamp.fromDate(updates.lastAIAnalysisDate) : undefined,
+    // Handle customFields with nested Date objects
+    customFields: updates.customFields ? convertDatesToTimestamps(updates.customFields) : undefined
   }
   
   // Remove undefined values
@@ -201,6 +239,8 @@ export async function updateTree(farmId: string, treeId: string, userId: string,
       delete updateData[key as keyof typeof updateData]
     }
   })
+  
+  console.log('Updating tree with data:', updateData)
   
   await updateDoc(treeRef, updateData)
 }
