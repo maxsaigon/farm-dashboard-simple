@@ -34,6 +34,9 @@ export function OptimizedPhotoViewer({
   const [touchStart, setTouchStart] = useState<{ x: number, y: number } | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showInstructions, setShowInstructions] = useState(true)
+  const [zoom, setZoom] = useState(1)
+  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const [lastTouch, setLastTouch] = useState<{ time: number; x: number; y: number } | null>(null)
 
   // Handle modal lifecycle
   useEffect(() => {
@@ -94,9 +97,31 @@ export function OptimizedPhotoViewer({
   }
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // pinch start
+      const [a, b] = [e.touches[0], e.touches[1]]
+      const dx = a.clientX - b.clientX
+      const dy = a.clientY - b.clientY
+      ;(e.currentTarget as any)._pinchStartDist = Math.hypot(dx, dy)
+      return
+    }
+
+    const now = Date.now()
+    const t = e.touches[0]
+    if (lastTouch && now - lastTouch.time < 250) {
+      // double tap: toggle zoom around tap point
+      const newZoom = zoom > 1 ? 1 : 2
+      setZoom(newZoom)
+      setOffset({ x: 0, y: 0 })
+      setLastTouch(null)
+    } else {
+      setLastTouch({ time: now, x: t.clientX, y: t.clientY })
+    }
+
     const touch = e.touches[0]
     setTouchStart({ x: touch.clientX, y: touch.clientY })
   }
+
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!touchStart) return
@@ -202,14 +227,35 @@ export function OptimizedPhotoViewer({
 
         {/* Image */}
         <div className="flex-1 flex items-center justify-center relative px-4 py-16">
-          <img
-            src={currentImage.url}
-            alt={currentImage.caption || `Ảnh ${currentIndex + 1}`}
-            className="max-w-full max-h-full object-contain select-none"
-            style={{ 
+          <img onTouchMove={(e) => {
+              if (e.touches.length === 2) {
+                const [a, b] = [e.touches[0], e.touches[1]]
+                const dx = a.clientX - b.clientX
+                const dy = a.clientY - b.clientY
+                const dist = Math.hypot(dx, dy)
+                const start = (e.currentTarget as any)._pinchStartDist || dist
+                const scale = Math.min(4, Math.max(1, zoom * (dist / start)))
+                setZoom(scale)
+                ;(e.currentTarget as any)._pinchStartDist = dist
+                return
+              }
+              if (zoom > 1 && touchStart) {
+                const t = e.touches[0]
+                const dx = t.clientX - touchStart.x
+                const dy = t.clientY - touchStart.y
+                setOffset(({ x, y }) => ({ x: x + dx, y: y + dy }))
+                setTouchStart({ x: t.clientX, y: t.clientY })
+              }
+            }}
+            style={{ transform: `scale(${zoom}) translate(${offset.x / zoom}px, ${offset.y / zoom}px)`,
+              transformOrigin: 'center center',
+              transition: 'transform 80ms ease-out',
               touchAction: 'pan-x pan-y pinch-zoom',
               userSelect: 'none'
             }}
+            src={currentImage.url}
+            alt={currentImage.caption || `Ảnh ${currentIndex + 1}`}
+            className="max-w-full max-h-full object-contain select-none"
             draggable={false}
             loading="lazy"
           />
