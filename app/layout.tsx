@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { EnhancedAuthProvider } from "@/lib/enhanced-auth-context";
 import { Navigation } from "@/components/Navigation";
+import EdgeSwipeBack from "@/components/EdgeSwipeBack";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -119,6 +120,7 @@ export default function RootLayout({
       >
         <EnhancedAuthProvider>
           <Navigation />
+          <EdgeSwipeBack />
           {children}
         </EnhancedAuthProvider>
       </body>

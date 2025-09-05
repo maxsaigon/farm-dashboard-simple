@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn, onAuthStateChange } from '../../lib/auth'
-import { User as FirebaseUser } from 'firebase/auth'
+import { useAuth } from '../../lib/enhanced-auth-context'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -11,16 +10,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const { user, signIn } = useAuth()
 
   // Redirect if already logged in
   useEffect(() => {
-    const unsubscribe = onAuthStateChange((user: FirebaseUser | null) => {
-      if (user) {
-        router.push('/')
-      }
-    })
-    return () => unsubscribe()
-  }, [router])
+    if (user) {
+      router.push('/')
+    }
+  }, [user, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,10 +48,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleDemoLogin = () => {
-    router.push('/')
   }
 
   return (
@@ -139,37 +132,17 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Divider */}
-        <div className="my-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">hoặc</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Demo Mode Button */}
-        <button
-          onClick={handleDemoLogin}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 transform active:scale-95"
-          style={{ minHeight: '44px' }}
-        >
-          Xem Demo (Không cần đăng nhập)
-        </button>
 
         {/* Info */}
         <div className="mt-6 text-center">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">
-              💡 Hướng dẫn
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+            <h3 className="text-sm font-medium text-green-800 mb-2">
+              💡 Hướng dẫn đăng nhập
             </h3>
-            <div className="text-sm text-blue-700 space-y-1">
-              <p>• Sử dụng tài khoản Firebase giống ứng dụng iOS</p>
-              <p>• Dữ liệu sẽ đồng bộ thời gian thực với điện thoại</p>
-              <p>• Hoặc chọn &quot;Xem Demo&quot; để xem giao diện mẫu</p>
+            <div className="text-sm text-green-700 space-y-1">
+              <p>• Sử dụng tài khoản Firebase của bạn</p>
+              <p>• Dữ liệu sẽ đồng bộ thời gian thực</p>
+              <p>• Nếu chưa có tài khoản, vui lòng liên hệ quản trị viên</p>
             </div>
           </div>
         </div>

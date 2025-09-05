@@ -14,13 +14,15 @@ import {
   XMarkIcon,
   ViewfinderCircleIcon,
   RadioIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  ArrowRightOnRectangleIcon,
+  UserIcon
 } from '@heroicons/react/24/outline'
 
 export function Navigation() {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { isSuperAdmin } = useAuth()
+  const { user, signOut, isSuperAdmin, loading } = useAuth()
 
   const navigation = [
     {
@@ -83,6 +85,37 @@ export function Navigation() {
                   </Link>
                 )
               })}
+              
+              {/* Authentication Section */}
+              <div className="flex items-center space-x-4 border-l border-gray-200 pl-6">
+                {loading ? (
+                  <div className="w-8 h-8 border-2 border-green-200 border-t-green-600 rounded-full animate-spin"></div>
+                ) : user ? (
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-2">
+                      <UserIcon className="h-5 w-5 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700">
+                        {user.displayName || user.email}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => signOut()}
+                      className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                    >
+                      <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                      <span>Đăng xuất</span>
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
+                  >
+                    <UserIcon className="h-5 w-5" />
+                    <span>Đăng nhập</span>
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -155,6 +188,51 @@ export function Navigation() {
                 })}
               </div>
               
+              {/* Authentication Section for Mobile */}
+              <div className="pt-4 border-t border-gray-100 mx-2">
+                <p className="text-sm text-gray-500 px-3 pb-3 font-medium">TÀI KHOẢN</p>
+                {loading ? (
+                  <div className="flex justify-center py-4">
+                    <div className="w-8 h-8 border-2 border-green-200 border-t-green-600 rounded-full animate-spin"></div>
+                  </div>
+                ) : user ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3 px-4 py-3 bg-green-50 rounded-xl">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <UserIcon className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-green-900">
+                          {user.displayName || 'Người dùng'}
+                        </div>
+                        <div className="text-sm text-green-700">{user.email}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false)
+                        signOut()
+                      }}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-4 bg-red-50 text-red-700 rounded-xl font-medium hover:bg-red-100 active:bg-red-200 transition-colors min-touch"
+                      style={{ WebkitTapHighlightColor: 'transparent' }}
+                    >
+                      <ArrowRightOnRectangleIcon className="h-6 w-6" />
+                      <span>Đăng xuất</span>
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    href="/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center justify-center space-x-3 px-4 py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 active:bg-green-800 transition-colors min-touch"
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    <UserIcon className="h-6 w-6" />
+                    <span>Đăng nhập</span>
+                  </Link>
+                )}
+              </div>
+
               {/* Quick Actions Section for Farmers */}
               <div className="pt-4 border-t border-gray-100 mx-2">
                 <p className="text-sm text-gray-500 px-3 pb-3 font-medium">THAO TÁC NHANH</p>

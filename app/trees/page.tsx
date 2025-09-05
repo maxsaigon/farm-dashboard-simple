@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Tree } from '@/lib/types'
 import { TreeList } from '@/components/TreeList'
 import { TreeDetail } from '@/components/TreeDetail'
+import BottomSheet from '@/components/ui/BottomSheet'
 
 export default function TreesPage() {
   const [selectedTree, setSelectedTree] = useState<Tree | null>(null)
@@ -66,13 +67,30 @@ export default function TreesPage() {
               showActions={true}
             />
           ) : (
-            <TreeDetail
-              tree={selectedTree}
+            <BottomSheet
+              isOpen={!!selectedTree}
               onClose={handleCloseDetail}
-              onTreeUpdate={handleTreeUpdate}
-              onTreeDelete={handleTreeDelete}
-              fullScreen={true}
-            />
+              initialDetent="full"
+              detents={["full", "large", "medium"]}
+              header={
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">Thông tin cây</h2>
+                    <p className="text-sm text-gray-500">{selectedTree?.name || selectedTree?.id}</p>
+                  </div>
+                  <button onClick={handleCloseDetail} className="px-3 py-1.5 rounded-md text-sm bg-gray-100 hover:bg-gray-200">Đóng</button>
+                </div>
+              }
+            >
+              <TreeDetail
+                tree={selectedTree}
+                onClose={handleCloseDetail}
+                onTreeUpdate={handleTreeUpdate}
+                onTreeDelete={handleTreeDelete}
+                fullScreen={false}
+                disableMobileFullscreen={true}
+              />
+            </BottomSheet>
           )}
         </div>
       </div>

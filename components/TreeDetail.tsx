@@ -27,9 +27,11 @@ interface TreeDetailProps {
   onTreeDelete?: (treeId: string) => void
   className?: string
   fullScreen?: boolean
+  /** When true on mobile, disables the internal full-screen portal so the component can be embedded (e.g., in a BottomSheet). */
+  disableMobileFullscreen?: boolean
 }
 
-export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, className = '', fullScreen = false }: TreeDetailProps) {
+export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, className = '', fullScreen = false, disableMobileFullscreen = false }: TreeDetailProps) {
   const { user, currentFarm } = useAuth()
   const { showSuccess, showError, ToastContainer } = useToast()
   const [isEditing, setIsEditing] = useState(false)
@@ -118,8 +120,19 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   }
 
   const handleSave = async () => {
-    if (!user || !currentFarm || !tree) {
-      showError('Không thể lưu', 'Thiếu thông tin xác thực. Vui lòng đăng nhập lại.')
+    // Authentication check
+    if (!user) {
+      showError('Vui lòng đăng nhập', 'Bạn cần đăng nhập để lưu thông tin cây.')
+      return
+    }
+
+    if (!currentFarm) {
+      showError('Không có trang trại', 'Vui lòng chọn trang trại trước khi lưu thông tin cây.')
+      return
+    }
+
+    if (!tree) {
+      showError('Không tìm thấy cây', 'Không có thông tin cây để cập nhật.')
       return
     }
 
@@ -164,7 +177,21 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   }
 
   const handleDelete = async () => {
-    if (!user || !currentFarm || !tree) return
+    // Authentication check
+    if (!user) {
+      showError('Vui lòng đăng nhập', 'Bạn cần đăng nhập để xóa cây.')
+      return
+    }
+
+    if (!currentFarm) {
+      showError('Không có trang trại', 'Vui lòng chọn trang trại trước khi xóa cây.')
+      return
+    }
+
+    if (!tree) {
+      showError('Không tìm thấy cây', 'Không có cây để xóa.')
+      return
+    }
 
     if (!confirm('Bạn có chắc chắn muốn xóa cây này không? Hành động này không thể hoàn tác.')) {
       return
@@ -184,7 +211,16 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   }
 
   const handleCustomFieldsSave = async (treeId: string, fields: CustomFieldValue[]) => {
-    if (!user || !currentFarm) return
+    // Authentication check
+    if (!user) {
+      showError('Vui lòng đăng nhập', 'Bạn cần đăng nhập để lưu thông tin bổ sung.')
+      throw new Error('Authentication required')
+    }
+
+    if (!currentFarm) {
+      showError('Không có trang trại', 'Vui lòng chọn trang trại trước khi lưu thông tin.')
+      throw new Error('Farm not selected')
+    }
     
     try {
       // For now, we'll store custom fields in the tree's customFields property
@@ -303,7 +339,11 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
         </div>
 
         <div className="flex items-center space-x-2">
-          {!isEditing ? (
+          {!user ? (
+            <div className="text-sm text-gray-500 bg-yellow-50 px-3 py-2 rounded-lg border border-yellow-200">
+              <span>Đăng nhập để chỉnh sửa</span>
+            </div>
+          ) : !isEditing ? (
             <>
               <button
                 onClick={() => setIsEditing(true)}
@@ -554,7 +594,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   )
 
   // Return mobile full-screen modal or desktop sidebar layout
-  if (isMobile && tree) {
+  if (isMobile && tree && !disableMobileFullscreen) {
     const fullScreenContent = (
       <div className="fixed inset-0 bg-white z-[9999] overflow-hidden flex flex-col" style={{ touchAction: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {/* iOS-style Header */}
