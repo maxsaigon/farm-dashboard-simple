@@ -5,6 +5,7 @@ import { Tree } from '@/lib/types'
 import { TreeList } from '@/components/TreeList'
 import { TreeDetail } from '@/components/TreeDetail'
 import BottomSheet from '@/components/ui/BottomSheet'
+import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
 
 export default function TreesPage() {
   const [selectedTree, setSelectedTree] = useState<Tree | null>(null)
@@ -29,11 +30,12 @@ export default function TreesPage() {
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Quản Lý Cây Sầu Riêng</h1>
-          <p className="text-gray-600 mt-2">
-            Theo dõi và quản lý thông tin chi tiết của từng cây trong nông trại
-          </p>
+        <div className="mb-2">
+          {/* iOS large title */}
+          <LargeTitleHeader
+            title="Quản Lý Cây Sầu Riêng"
+            subtitle="Theo dõi và quản lý thông tin chi tiết của từng cây trong nông trại"
+          />
         </div>
 
         {/* Desktop Layout */}
