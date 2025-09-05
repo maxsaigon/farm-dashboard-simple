@@ -221,8 +221,8 @@ public/manifest.json & public/sw.js
 
 ## Tracking table
 - [ ] Phase 0
-- [ ] Phase 1
-- [ ] Phase 2
+- [x] Phase 1 (completed: BottomSheet, edge-swipe back, BottomTabBar, LargeTitleHeader on Trees/Map/Zones)
+- [ ] Phase 2 (in progress)
 - [ ] Phase 3
 - [ ] Phase 4
 - [ ] Phase 5
