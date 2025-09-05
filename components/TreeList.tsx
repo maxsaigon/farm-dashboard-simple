@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAuth } from '@/lib/enhanced-auth-context'
 import { subscribeToTrees } from '@/lib/firestore'
 import { Tree } from '@/lib/types'
@@ -32,6 +32,9 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
   const [trees, setTrees] = useState<Tree[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const touchStartY = useRef<number | null>(null)
+  const pulling = useRef(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterVariety, setFilterVariety] = useState<string>('all')
   const [filterZone, setFilterZone] = useState<string>('all')
@@ -40,6 +43,8 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(pageSize)
+  const [pullDistance, setPullDistance] = useState(0)
+  const [refreshToken, setRefreshToken] = useState(0)
 
   useEffect(() => {
     if (!user || !currentFarm) {
@@ -69,7 +74,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
       setTrees([])
       setLoading(false)
     }
-  }, [user, currentFarm])
+  }, [user, currentFarm, refreshToken])
 
   // Get unique varieties and zones for filters
   const varieties = useMemo(() => {
@@ -226,8 +231,40 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
 
   return (
     <div className={`bg-white rounded-xl shadow-lg border border-gray-200 ${className}`}>
+      {/* Pull-to-refresh indicator */}
+      {pullDistance > 0 && (
+        <div className="flex items-center justify-center text-sm text-gray-600" style={{ height: Math.min(pullDistance, 80) }}>
+          {isRefreshing ? 'Đang làm mới...' : 'Kéo xuống để làm mới'}
+        </div>
+      )}
+
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200" onTouchStart={(e) => {
+        if (window.scrollY <= 0) {
+          touchStartY.current = e.touches[0].clientY
+          pulling.current = true
+          setPullDistance(0)
+        }
+      }}
+      onTouchMove={(e) => {
+        if (!pulling.current || touchStartY.current == null) return
+        const dy = e.touches[0].clientY - touchStartY.current
+        if (dy > 0) {
+          setPullDistance(dy)
+        }
+      }}
+      onTouchEnd={() => {
+        if (!pulling.current) return
+        pulling.current = false
+        if (pullDistance > 80) {
+          setIsRefreshing(true)
+          setRefreshToken((x) => x + 1)
+          if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate?.(10)
+          setTimeout(() => setIsRefreshing(false), 600)
+        }
+        setPullDistance(0)
+      }}
+      >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Danh Sách Cây</h2>
