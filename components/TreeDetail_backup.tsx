@@ -296,14 +296,14 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   }
 
 
-  // Simplified return - just return the tree detail component
-  if (!tree) return null
-
-  return (
-    <div className={`bg-white ${isMobile ? '' : 'rounded-xl shadow-lg border border-gray-200'} ${className}`} data-testid="tree-detail">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-200">
-        <div className="flex items-center space-x-4">
+  // Return mobile full-screen modal or desktop sidebar layout
+  if (isMobile && tree && !disableMobileFullscreen) {
+    return createPortal(
+      <div className="fixed inset-0 z-50 bg-white">
+        <div className={`bg-white ${className}`} data-testid="tree-detail">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-4">
           {!isMobile && (
             <button
               onClick={onClose}
@@ -591,7 +591,82 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
               onSave={handleCustomFieldsSave}
             />
           </div>
+        </div>
+      </div>,
+      document.body
+    )
+  }
+
+  // Desktop layout
+  return (
+    <>
+      <div className={`bg-white ${isMobile ? '' : 'rounded-xl shadow-lg border border-gray-200'} ${className}`} data-testid="tree-detail">
+        {/* iOS-style Header */}
+        <div className="flex-shrink-0 bg-green-600 text-white px-4 py-4" style={{ paddingTop: 'max(16px, calc(env(safe-area-inset-top) + 16px))' }}>
+          <div className="flex items-center">
+            <button
+              onClick={onClose}
+              className="p-2 -ml-2 hover:bg-green-700 rounded-lg transition-colors"
+            >
+              <ArrowLeftIcon className="h-6 w-6" />
+            </button>
+            <div className="flex-1 text-center">
+              <div className="text-lg font-semibold">
+                {isEditing ? 'Chỉnh sửa thông tin cây' : 'Thông tin cây'}
+              </div>
+              <div className="text-sm opacity-90">
+                {tree.name || `Cây ${tree.variety || tree.id.slice(0, 8)}`}
+              </div>
+            </div>
+            <div className="w-10"></div> {/* Spacer for center alignment */}
+          </div>
+        </div>
+        
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y pinch-zoom', paddingBottom: isEditing ? '100px' : 'env(safe-area-inset-bottom)' }}>
+          {/* Main content will be here */}
+        </div>
+
+        {/* Sticky Bottom Action Bar for Edit Mode */}
+        {isEditing && (
+          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-4" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="flex-1 py-4 bg-gray-200 hover:bg-gray-300 active:bg-gray-300 text-gray-700 rounded-xl font-semibold text-lg min-touch transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={loading}
+                className={`flex-2 py-4 rounded-xl font-semibold text-lg min-touch transition-colors ${
+                  loading || saveStatus === 'saving'
+                    ? 'bg-green-400 text-white cursor-not-allowed'
+                    : saveStatus === 'success'
+                    ? 'bg-green-700 text-white'
+                    : 'bg-green-600 hover:bg-green-700 active:bg-green-700 text-white'
+                }`}
+              >
+                {loading || saveStatus === 'saving' ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Đang lưu...</span>
+                  </div>
+                ) : saveStatus === 'success' ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <CheckCircleIcon className="h-5 w-5" />
+                    <span>Đã lưu!</span>
+                  </div>
+                ) : (
+                  'Lưu thông tin cây'
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+      <ToastContainer />
+    </>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useAuth } from '@/lib/enhanced-auth-context'
 import { subscribeToTrees } from '@/lib/firestore'
 import { Tree } from '@/lib/types'
@@ -42,9 +43,9 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
   const [sortBy, setSortBy] = useState<'name' | 'plantingDate' | 'healthStatus' | 'fruitCount'>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(pageSize)
   const [pullDistance, setPullDistance] = useState(0)
   const [refreshToken, setRefreshToken] = useState(0)
+  const parentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!user || !currentFarm) {
@@ -174,16 +175,14 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
     return filtered
   }, [trees, searchTerm, filterStatus, filterVariety, filterZone, filterFruitCount, sortBy, sortOrder])
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredAndSortedTrees.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedTrees = filteredAndSortedTrees.slice(startIndex, endIndex)
+  // Virtualization setup
+  const virtualizer = useVirtualizer({
+    count: filteredAndSortedTrees.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 140, // estimated height of each tree card
+    overscan: 5
+  })
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, filterStatus, filterVariety, filterZone, filterFruitCount, sortBy, sortOrder])
 
   const getHealthIcon = (tree: Tree) => {
     if (tree.needsAttention) {
@@ -391,18 +390,41 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {paginatedTrees.map((tree) => (
-              <div
-                key={tree.id}
-                onClick={() => onTreeSelect?.(tree)}
-                data-testid="tree-card"
-                className={`p-4 border rounded-lg transition-all duration-200 cursor-pointer hover:shadow-md ${
-                  selectedTreeId === tree.id
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
+          <div 
+            ref={parentRef}
+            className="overflow-auto"
+            style={{ height: '600px' }}
+          >
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative'
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualItem) => {
+                const tree = filteredAndSortedTrees[virtualItem.index]
+                return (
+                  <div
+                    key={virtualItem.key}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: `${virtualItem.size}px`,
+                      transform: `translateY(${virtualItem.start}px)`
+                    }}
+                  >
+                    <div
+                      onClick={() => onTreeSelect?.(tree)}
+                      data-testid="tree-card"
+                      className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 m-1 ${
+                        tree.id === selectedTreeId 
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     {/* Tree Image Preview */}
@@ -505,8 +527,11 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
                     </div>
                   </div>
                 )}
-              </div>
-            ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 

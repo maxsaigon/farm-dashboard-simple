@@ -13,7 +13,7 @@ export default function HomePage() {
       if (!user) {
         // Force redirect to login if not authenticated
         router.push('/login')
-      } else if (!currentFarm || !hasPermission('farm:view', currentFarm?.id)) {
+      } else if (!currentFarm || !hasPermission('farms:read', currentFarm?.id)) {
         // If user doesn't have access to any farm, show no access message
         router.push('/no-access')
       } else {
