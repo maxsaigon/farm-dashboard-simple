@@ -296,13 +296,14 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   }
 
 
-  // Helper function to render main content
-  const getMainContentJSX = () => {
-    return (
-      <div className={`bg-white ${isMobile ? '' : 'rounded-xl shadow-lg border border-gray-200'} ${className}`} data-testid="tree-detail">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-200">
-        <div className="flex items-center space-x-4">
+  // Return mobile full-screen modal or desktop sidebar layout
+  if (isMobile && tree && !disableMobileFullscreen) {
+    return createPortal(
+      <div className="fixed inset-0 z-50 bg-white">
+        <div className={`bg-white ${className}`} data-testid="tree-detail">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-4">
           {!isMobile && (
             <button
               onClick={onClose}
@@ -590,14 +591,16 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
               onSave={handleCustomFieldsSave}
             />
           </div>
-    </div>
+        </div>
+      </div>,
+      document.body
     )
   }
 
- // Return mobile full-screen modal or desktop sidebar layout
-  if (isMobile && tree && !disableMobileFullscreen) {
-    const fullScreenContent = (
-      <div className="fixed inset-0 bg-white z-[9999] overflow-hidden flex flex-col" style={{ touchAction: 'auto', WebkitOverflowScrolling: 'touch' }}>
+  // Desktop layout
+  return (
+    <>
+      <div className={`bg-white ${isMobile ? '' : 'rounded-xl shadow-lg border border-gray-200'} ${className}`} data-testid="tree-detail">
         {/* iOS-style Header */}
         <div className="flex-shrink-0 bg-green-600 text-white px-4 py-4" style={{ paddingTop: 'max(16px, calc(env(safe-area-inset-top) + 16px))' }}>
           <div className="flex items-center">
