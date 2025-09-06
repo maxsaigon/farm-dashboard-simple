@@ -98,7 +98,7 @@ export default function TreeManagement() {
       setLoading(true)
       
       // Check permission before loading data
-      if (!hasPermission('farms:read', currentFarm?.id)) {
+      if (!hasPermission('farm:view', currentFarm?.id)) {
         setTrees([])
         return
       }

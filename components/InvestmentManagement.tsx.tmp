@@ -123,7 +123,7 @@ export default function InvestmentManagement() {
       setLoading(true)
       
       // Check permission before loading data
-      if (!hasPermission('farms:read', currentFarm?.id)) {
+      if (!hasPermission('farm:view', currentFarm?.id)) {
         setInvestments([])
         return
       }
@@ -156,7 +156,7 @@ export default function InvestmentManagement() {
   const loadFertilizerCalculations = async () => {
     try {
       // Check permission before loading data
-      if (!hasPermission('farms:read', currentFarm?.id)) {
+      if (!hasPermission('farm:view', currentFarm?.id)) {
         setFertilizerCalculations([])
         return
       }

@@ -135,7 +135,7 @@ export default function FarmManagement() {
   const loadFarmStatistics = async () => {
     try {
       // Check permission before loading data
-      if (!hasPermission('farms:read')) {
+      if (!hasPermission('farm:view')) {
         setFarmStats({})
         return
       }
@@ -143,7 +143,7 @@ export default function FarmManagement() {
       // TODO: Implement Firebase queries to load real farm statistics
       const statsPromises = farms.map(async (farm) => {
         // Check individual farm permission
-        if (!hasPermission('farms:read', farm.id)) {
+        if (!hasPermission('farm:view', farm.id)) {
           return { [farm.id]: null }
         }
 

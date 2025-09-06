@@ -222,8 +222,8 @@ public/manifest.json & public/sw.js
 ## Tracking table
 - [ ] Phase 0
 - [x] Phase 1 (completed: BottomSheet, edge-swipe back, BottomTabBar, LargeTitleHeader on Trees/Map/Zones)
-- [x] Phase 2 (pull-to-refresh implemented; starting photo viewer gestures)
-- [ ] Phase 3
+- [x] Phase 2 (completed: pull-to-refresh, photo gestures, motion removed for build stability)
+- [ ] Phase 3 (in progress: TreeList virtualization complete, fixing type issues)
 - [ ] Phase 4
 - [ ] Phase 5
 

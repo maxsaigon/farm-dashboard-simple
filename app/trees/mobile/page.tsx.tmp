@@ -6,7 +6,7 @@ import AuthGuard from '@/components/AuthGuard'
 
 export default function MobileTreesPage() {
   return (
-    <AuthGuard requiredPermission="farms:read" requireFarmAccess={true}>
+    <AuthGuard requiredPermission="farm:view" requireFarmAccess={true}>
       <MobileTreeList />
     </AuthGuard>
   )

@@ -90,7 +90,7 @@ export default function MobileDashboard() {
   }, [])
 
   const loadDashboardData = async () => {
-    if (!currentFarm || !hasPermission('farms:read', currentFarm.id)) return
+    if (!currentFarm || !hasPermission('farm:view', currentFarm.id)) return
 
     try {
       // Load real dashboard data from Firebase
