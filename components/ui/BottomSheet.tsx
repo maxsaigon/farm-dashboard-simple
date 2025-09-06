@@ -163,7 +163,7 @@ export function BottomSheet({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
       >
-        <div data-role="sheet-handle" className="pt-3 pb-2 px-4 sticky top-0 bg-white/80 backdrop-blur rounded-t-2xl">
+        <div data-role="sheet-handle" className="pt-3 pb-2 px-4 sticky top-0 ios-blur rounded-t-2xl">
           <div className="mx-auto h-1.5 w-10 rounded-full bg-gray-300 mb-2" />
           {header}
         </div>

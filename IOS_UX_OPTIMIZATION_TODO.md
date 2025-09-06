@@ -223,9 +223,9 @@ public/manifest.json & public/sw.js
 - [ ] Phase 0
 - [x] Phase 1 (completed: BottomSheet, edge-swipe back, BottomTabBar, LargeTitleHeader on Trees/Map/Zones)
 - [x] Phase 2 (completed: pull-to-refresh, photo gestures, motion removed for build stability)
-- [ ] Phase 3 (in progress: TreeList virtualization complete, fixing type issues)
-- [ ] Phase 4
-- [ ] Phase 5
+- [x] Phase 3 (completed: TreeList virtualization, map+bottom sheet master-detail, camera polish)
+- [x] Phase 4 (completed: offline indicator, Firestore persistence, PWA features)
+- [x] Phase 5 (completed: iOS blur effects, design tokens, dynamic type, haptics)
 
 
 ## References

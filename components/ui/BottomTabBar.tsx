@@ -33,7 +33,7 @@ export default function BottomTabBar() {
   }, [])
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-gray-200 pt-1 pb-[calc(env(safe-area-inset-bottom)+6px)]">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 ios-blur border-t border-gray-200 pt-1 pb-[calc(env(safe-area-inset-bottom)+6px)]">
       <div className="flex justify-around px-2">
         {TABS.map((tab) => {
           const isActive = pathname === tab.href || (tab.href !== '/' && pathname.startsWith(tab.href))

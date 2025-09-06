@@ -37,8 +37,8 @@ export default function LargeTitleHeader({ title, subtitle, className }: LargeTi
       {/* Compact title (sticks under top nav) */}
       <div
         className={clsx(
-          'sticky z-30 -top-px', // keep under top nav; -top-px helps avoid 1px gaps
-          'backdrop-blur bg-white/70 border-b border-transparent',
+          'sticky z-30 -top-px ios-blur', // keep under top nav; -top-px helps avoid 1px gaps
+          'border-b border-transparent',
           'transition-all duration-200 ease-out',
           collapsed ? 'py-2 border-gray-200' : 'py-0 border-transparent',
         )}

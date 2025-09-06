@@ -2,6 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* iOS Design System Variables */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+  --sar: env(safe-area-inset-right);
+  
+  /* iOS Spacing System */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* iOS Blur System */
+  --blur-light: blur(20px);
+  --blur-heavy: blur(40px);
+  
+  /* iOS Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.15);
+  
+  /* iOS Radius */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -594,4 +625,44 @@ body {
     /* Prevent iOS zoom */
     -webkit-text-size-adjust: 100% !important;
   }
+}
+
+/* iOS Font System */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dynamic Type Support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* iOS Blur Effects */
+.ios-blur {
+  backdrop-filter: var(--blur-light);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.ios-blur-heavy {
+  backdrop-filter: var(--blur-heavy);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* iOS Safe Areas */
+.safe-top {
+  padding-top: max(var(--spacing-md), var(--sat));
+}
+
+.safe-bottom {
+  padding-bottom: max(var(--spacing-md), var(--sab));
+}
+
+.pb-safe-bottom {
+  padding-bottom: max(var(--spacing-md), var(--sab));
 }

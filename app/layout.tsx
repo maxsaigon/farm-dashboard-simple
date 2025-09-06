@@ -4,6 +4,7 @@ import "./globals.css";
 import { EnhancedAuthProvider } from "@/lib/enhanced-auth-context";
 import { Navigation } from "@/components/Navigation";
 import BottomTabBar from "@/components/ui/BottomTabBar";
+import OfflineIndicator from "@/components/ui/OfflineIndicator";
 import EdgeSwipeBack from "@/components/EdgeSwipeBack";
 
 const geistSans = localFont({
@@ -123,6 +124,7 @@ export default function RootLayout({
         <EnhancedAuthProvider>
           <Navigation />
           <EdgeSwipeBack />
+          <OfflineIndicator />
           {children}
           <BottomTabBar />
         </EnhancedAuthProvider>

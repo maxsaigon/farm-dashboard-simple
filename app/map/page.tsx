@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic'
 import { TreeDetail } from '@/components/TreeDetail'
 import { EyeIcon } from '@heroicons/react/24/outline'
 import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
+import BottomSheet from '@/components/ui/BottomSheet'
 import AuthGuard from '@/components/AuthGuard'
 
 interface Zone {
@@ -554,15 +555,15 @@ function MapPageContent() {
           )}
         </div>
 
-        {/* Detail Sidebar */}
-        <div className={`lg:w-96 order-1 lg:order-2 ${(selectedTree || selectedZone) ? 'block' : 'hidden lg:block'}`}>
+        {/* Detail Sidebar - Desktop only */}
+        <div className={`lg:w-96 order-1 lg:order-2 hidden lg:block ${(selectedTree || selectedZone) ? 'block' : 'hidden lg:block'}`}>
           {selectedTree ? (
             <TreeDetail
               tree={selectedTree}
               onClose={handleCloseDetail}
               onTreeUpdate={handleTreeUpdate}
               className="h-full overflow-y-auto"
-              fullScreen={true}
+              fullScreen={false}
             />
           ) : selectedZone ? (
             <div className="h-full bg-white border-l border-gray-200 p-6 overflow-y-auto">
@@ -630,6 +631,39 @@ function MapPageContent() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Mobile Bottom Sheet */}
+      <div className="lg:hidden">
+        {selectedTree && (
+          <BottomSheet
+            isOpen={!!selectedTree}
+            onClose={handleCloseDetail}
+            initialDetent="medium"
+            detents={["full", "large", "medium"]}
+            header={
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">Cây trên bản đồ</h3>
+                  <p className="text-sm text-gray-500">{selectedTree.name || selectedTree.id}</p>
+                </div>
+                <button 
+                  onClick={handleCloseDetail}
+                  className="px-3 py-1.5 rounded-md text-sm bg-gray-100 hover:bg-gray-200"
+                >
+                  Đóng
+                </button>
+              </div>
+            }
+          >
+            <TreeDetail
+              tree={selectedTree}
+              onClose={handleCloseDetail}
+              onTreeUpdate={handleTreeUpdate}
+              disableMobileFullscreen={true}
+            />
+          </BottomSheet>
+        )}
       </div>
     </div>
   )
