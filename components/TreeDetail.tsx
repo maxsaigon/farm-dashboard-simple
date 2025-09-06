@@ -296,9 +296,10 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   }
 
 
-  // Create the main content
-  const mainContent = (
-    <div className={`bg-white ${isMobile ? '' : 'rounded-xl shadow-lg border border-gray-200'} ${className}`} data-testid="tree-detail">
+  // Helper function to render main content
+  const getMainContentJSX = () => {
+    return (
+      <div className={`bg-white ${isMobile ? '' : 'rounded-xl shadow-lg border border-gray-200'} ${className}`} data-testid="tree-detail">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200">
         <div className="flex items-center space-x-4">
@@ -589,11 +590,11 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
               onSave={handleCustomFieldsSave}
             />
           </div>
-      </div>
     </div>
-  )
+    )
+  }
 
-  // Return mobile full-screen modal or desktop sidebar layout
+ // Return mobile full-screen modal or desktop sidebar layout
   if (isMobile && tree && !disableMobileFullscreen) {
     const fullScreenContent = (
       <div className="fixed inset-0 bg-white z-[9999] overflow-hidden flex flex-col" style={{ touchAction: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -620,7 +621,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
         
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y pinch-zoom', paddingBottom: isEditing ? '100px' : 'env(safe-area-inset-bottom)' }}>
-          {mainContent}
+          {getMainContentJSX()}
         </div>
 
         {/* Sticky Bottom Action Bar for Edit Mode */}
@@ -674,7 +675,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
 
   return (
     <>
-      {mainContent}
+      {getMainContentJSX()}
       <ToastContainer />
     </>
   )

@@ -5,6 +5,7 @@ import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
+import AuthGuard from '@/components/AuthGuard'
 // Note: Icons removed as they were unused
 
 interface Zone {
@@ -113,145 +114,147 @@ export default function ZonesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 safe-bottom safe-top">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 p-0 mb-4">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <span className="text-2xl">📍</span>
+    <AuthGuard requiredPermission="farm:view" requireFarmAccess={true}>
+      <div className="min-h-screen bg-gray-50 p-4 safe-bottom safe-top">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="bg-white border-b border-gray-200 p-0 mb-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <span className="text-2xl">📍</span>
+                  </div>
+                  <div>
+                    <LargeTitleHeader title="Khu Vực Nông Trại" subtitle={displayFarm.name} />
+                  </div>
                 </div>
-                <div>
-                  <LargeTitleHeader title="Khu Vực Nông Trại" subtitle={displayFarm.name} />
+                
+                {/* Stats */}
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-lg">
+                    <span className="text-blue-600 font-bold">📍</span>
+                    <span className="text-blue-800 font-semibold text-lg">
+                      {zones.length} Khu Vực
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-green-50 px-3 py-2 rounded-lg">
+                    <span className="text-green-600 font-bold">🌳</span>
+                    <span className="text-green-800 font-semibold text-lg">
+                      {zones.reduce((total, zone) => total + zone.treeCount, 0)} Cây
+                    </span>
+                  </div>
                 </div>
               </div>
               
-              {/* Stats */}
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-lg">
-                  <span className="text-blue-600 font-bold">📍</span>
-                  <span className="text-blue-800 font-semibold text-lg">
-                    {zones.length} Khu Vực
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2 bg-green-50 px-3 py-2 rounded-lg">
-                  <span className="text-green-600 font-bold">🌳</span>
-                  <span className="text-green-800 font-semibold text-lg">
-                    {zones.reduce((total, zone) => total + zone.treeCount, 0)} Cây
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            <a
-              href="/map"
-              className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl transition-colors text-base font-bold shadow-md min-touch lg:w-auto w-full"
-              style={{
-                minHeight: '52px',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              <span className="text-xl">🗺️</span>
-              <span>Xem Trên Bản Đồ</span>
-            </a>
-          </div>
-        </div>
-
-        {/* Zones Grid - Enhanced for Farmers */}
-        {zones.length === 0 ? (
-          <div className="bg-gradient-to-br from-blue-50 to-green-50 rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-md">
-              <span className="text-3xl">📍</span>
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">Chưa Có Khu Vực</h3>
-            <p className="text-gray-700 text-lg mb-6">
-              Nông trại này chưa có khu vực nào được định nghĩa.
-              <br />Hãy tạo khu vực để quản lý cây trồng hiệu quả hơn.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-colors min-touch">
-                <span className="text-xl">➕</span>
-                <span>Tạo Khu Vực</span>
-              </button>
-              <button className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold transition-colors min-touch">
-                <span className="text-xl">❓</span>
-                <span>Hướng Dẫn</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-            {zones.map((zone) => (
-              <div
-                key={zone.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 overflow-hidden active:scale-98 min-touch"
-                style={{ WebkitTapHighlightColor: 'transparent' }}
+              <a
+                href="/map"
+                className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl transition-colors text-base font-bold shadow-md min-touch lg:w-auto w-full"
+                style={{
+                  minHeight: '52px',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
               >
-                {/* Zone Header - Enhanced */}
-                <div 
-                  className="h-2"
-                  style={{ backgroundColor: zone.color }}
-                ></div>
-                
-                <div className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div 
-                          className="w-6 h-6 rounded-full shadow-sm"
-                          style={{ backgroundColor: zone.color }}
-                        ></div>
-                        <h3 className="text-lg font-bold text-gray-900 truncate">
-                          {zone.name}
-                        </h3>
-                      </div>
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                        zone.isActive 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {zone.isActive ? '✓ Hoạt động' : '⊗ Không hoạt động'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {zone.description && (
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {zone.description}
-                    </p>
-                  )}
-
-                  {/* Zone Stats - Enhanced */}
-                  <div className="grid grid-cols-2 gap-3 mb-5">
-                    <div className="bg-green-50 p-4 rounded-xl text-center border border-green-100">
-                      <div className="text-2xl font-bold text-green-700 mb-1">{zone.treeCount}</div>
-                      <div className="text-sm text-green-600 font-medium">🌳 Cây trồng</div>
-                    </div>
-                    <div className="bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
-                      <div className="text-2xl font-bold text-blue-700 mb-1">{zone.area || 0}</div>
-                      <div className="text-sm text-blue-600 font-medium">📏 Hecta</div>
-                    </div>
-                  </div>
-
-
-                  {/* Actions - Enhanced */}
-                  <button
-                    onClick={() => handleViewOnMap(zone)}
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-4 rounded-xl text-base font-bold transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg active:scale-95 min-touch"
-                    style={{ WebkitTapHighlightColor: 'transparent' }}
-                  >
-                    <span className="text-xl">🗺️</span>
-                    <span>XEM TRÊN BẢN ĐỒ</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+                <span className="text-xl">🗺️</span>
+                <span>Xem Trên Bản Đồ</span>
+              </a>
+            </div>
           </div>
-        )}
+
+          {/* Zones Grid - Enhanced for Farmers */}
+          {zones.length === 0 ? (
+            <div className="bg-gradient-to-br from-blue-50 to-green-50 rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-md">
+                <span className="text-3xl">📍</span>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Chưa Có Khu Vực</h3>
+              <p className="text-gray-700 text-lg mb-6">
+                Nông trại này chưa có khu vực nào được định nghĩa.
+                <br />Hãy tạo khu vực để quản lý cây trồng hiệu quả hơn.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-colors min-touch">
+                  <span className="text-xl">➕</span>
+                  <span>Tạo Khu Vực</span>
+                </button>
+                <button className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold transition-colors min-touch">
+                  <span className="text-xl">❓</span>
+                  <span>Hướng Dẫn</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+              {zones.map((zone) => (
+                <div
+                  key={zone.id}
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 overflow-hidden active:scale-98 min-touch"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                >
+                  {/* Zone Header - Enhanced */}
+                  <div 
+                    className="h-2"
+                    style={{ backgroundColor: zone.color }}
+                  ></div>
+                  
+                  <div className="p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <div 
+                            className="w-6 h-6 rounded-full shadow-sm"
+                            style={{ backgroundColor: zone.color }}
+                          ></div>
+                          <h3 className="text-lg font-bold text-gray-900 truncate">
+                            {zone.name}
+                          </h3>
+                        </div>
+                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                          zone.isActive 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {zone.isActive ? '✓ Hoạt động' : '⊗ Không hoạt động'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {zone.description && (
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                        {zone.description}
+                      </p>
+                    )}
+
+                    {/* Zone Stats - Enhanced */}
+                    <div className="grid grid-cols-2 gap-3 mb-5">
+                      <div className="bg-green-50 p-4 rounded-xl text-center border border-green-100">
+                        <div className="text-2xl font-bold text-green-700 mb-1">{zone.treeCount}</div>
+                        <div className="text-sm text-green-600 font-medium">🌳 Cây trồng</div>
+                      </div>
+                      <div className="bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
+                        <div className="text-2xl font-bold text-blue-700 mb-1">{zone.area || 0}</div>
+                        <div className="text-sm text-blue-600 font-medium">📏 Hecta</div>
+                      </div>
+                    </div>
+
+
+                    {/* Actions - Enhanced */}
+                    <button
+                      onClick={() => handleViewOnMap(zone)}
+                      className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-4 rounded-xl text-base font-bold transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg active:scale-95 min-touch"
+                      style={{ WebkitTapHighlightColor: 'transparent' }}
+                    >
+                      <span className="text-xl">🗺️</span>
+                      <span>XEM TRÊN BẢN ĐỒ</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </AuthGuard>
   )
 }

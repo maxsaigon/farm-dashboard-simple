@@ -121,54 +121,33 @@ export default function InvestmentManagement() {
   const loadInvestments = async () => {
     try {
       setLoading(true)
-      // In a real implementation, this would load from Firebase
-      const mockInvestments: Investment[] = [
-        {
-          id: '1',
-          amount: 2500000,
-          category: 'Phân bón',
-          subcategory: 'NPK 16-16-8',
-          date: new Date('2024-01-15'),
-          notes: 'Bón phân đợt 1 năm 2024',
-          quantity: 50,
-          unit: 'kg',
-          pricePerUnit: 50000,
-          treeCount: 125,
-          isRecurring: true,
-          recurringPeriod: 'quarterly',
-          farmId: currentFarm?.id || '',
-          createdBy: user?.uid || ''
-        },
-        {
-          id: '2',
-          amount: 1200000,
-          category: 'Thuốc trừ sâu',
-          subcategory: 'Thuốc diệt sâu đục thân',
-          date: new Date('2024-01-20'),
-          notes: 'Phun thuốc phòng trừ sâu bệnh',
-          quantity: 3,
-          unit: 'chai',
-          pricePerUnit: 400000,
-          treeCount: 125,
-          isRecurring: false,
-          farmId: currentFarm?.id || '',
-          createdBy: user?.uid || ''
-        },
-        {
-          id: '3',
-          amount: 800000,
-          category: 'Lao động',
-          date: new Date('2024-01-25'),
-          notes: 'Cắt tỉa cành',
-          treeCount: 125,
-          isRecurring: false,
-          farmId: currentFarm?.id || '',
-          createdBy: user?.uid || ''
-        }
-      ]
-      setInvestments(mockInvestments)
+      
+      // Check permission before loading data
+      if (!hasPermission('farm:view', currentFarm?.id)) {
+        setInvestments([])
+        return
+      }
+
+      // TODO: Implement Firebase query to load investments
+      // const investmentsQuery = await db.collection('investments')
+      //   .where('farmId', '==', currentFarm?.id)
+      //   .where('isDeleted', '==', false)
+      //   .orderBy('date', 'desc')
+      //   .get()
+      // 
+      // const loadedInvestments = investmentsQuery.docs.map(doc => ({
+      //   id: doc.id,
+      //   ...doc.data(),
+      //   date: doc.data().date?.toDate()
+      // })) as Investment[]
+      // 
+      // setInvestments(loadedInvestments)
+
+      // For now, set empty array until Firebase integration is complete
+      setInvestments([])
     } catch (error) {
       console.error('Error loading investments:', error)
+      setInvestments([])
     } finally {
       setLoading(false)
     }
@@ -176,32 +155,32 @@ export default function InvestmentManagement() {
 
   const loadFertilizerCalculations = async () => {
     try {
-      // Load fertilizer calculations from Firebase
-      const mockCalculations: FertilizerCalculation[] = [
-        {
-          id: '1',
-          fertilizerType: 'NPK 16-16-8',
-          amountPerTree: 2.5,
-          unit: 'kg',
-          treeStatus: 'Mature',
-          season: 'Trước ra hoa',
-          createdDate: new Date(),
-          isActive: true
-        },
-        {
-          id: '2',
-          fertilizerType: 'Phân hữu cơ',
-          amountPerTree: 10,
-          unit: 'kg',
-          treeStatus: 'Young Tree',
-          season: 'Mùa mưa',
-          createdDate: new Date(),
-          isActive: true
-        }
-      ]
-      setFertilizerCalculations(mockCalculations)
+      // Check permission before loading data
+      if (!hasPermission('farm:view', currentFarm?.id)) {
+        setFertilizerCalculations([])
+        return
+      }
+
+      // TODO: Implement Firebase query to load fertilizer calculations
+      // const calculationsQuery = await db.collection('fertilizerCalculations')
+      //   .where('farmId', '==', currentFarm?.id)
+      //   .where('isActive', '==', true)
+      //   .orderBy('createdDate', 'desc')
+      //   .get()
+      // 
+      // const loadedCalculations = calculationsQuery.docs.map(doc => ({
+      //   id: doc.id,
+      //   ...doc.data(),
+      //   createdDate: doc.data().createdDate?.toDate()
+      // })) as FertilizerCalculation[]
+      // 
+      // setFertilizerCalculations(loadedCalculations)
+
+      // For now, set empty array until Firebase integration is complete
+      setFertilizerCalculations([])
     } catch (error) {
       console.error('Error loading fertilizer calculations:', error)
+      setFertilizerCalculations([])
     }
   }
 

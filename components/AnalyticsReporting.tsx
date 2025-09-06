@@ -120,133 +120,81 @@ export default function AnalyticsReporting() {
   const loadAnalyticsData = async () => {
     try {
       setLoading(true)
-      // Load analytics data from Firebase
-      // Mock comprehensive data for demonstration
-      const mockData: ReportData = {
+      
+      // Check permission before loading data
+      if (!hasPermission('farm:view', currentFarm?.id)) {
+        setReportData(null)
+        return
+      }
+
+      // TODO: Implement Firebase queries to aggregate analytics data
+      // This would involve multiple queries to get:
+      // 1. Farm overview statistics
+      // 2. Tree health distribution and trends
+      // 3. Productivity metrics
+      // 4. Investment summaries
+      // 5. Activity logs
+      // 6. Zone performance data
+      
+      // Example structure:
+      // const [trees, zones, investments, activities] = await Promise.all([
+      //   db.collection('trees').where('farmId', '==', currentFarm?.id).get(),
+      //   db.collection('zones').where('farmId', '==', currentFarm?.id).get(),
+      //   db.collection('investments').where('farmId', '==', currentFarm?.id).get(),
+      //   db.collection('activities').where('farmId', '==', currentFarm?.id).orderBy('date', 'desc').limit(10).get()
+      // ])
+      //
+      // const analyticsData = calculateAnalytics(trees, zones, investments, activities, filters)
+      // setReportData(analyticsData)
+
+      // For now, set empty data structure until Firebase integration is complete
+      const emptyReportData: ReportData = {
         farmOverview: {
-          totalTrees: 125,
-          totalZones: 3,
-          totalArea: 100000, // 10 hectares
-          totalPhotos: 456,
-          totalInvestment: 45000000,
-          averageHealth: 7.8,
-          productiveTrees: 98,
-          nonproductiveTrees: 27
+          totalTrees: 0,
+          totalZones: 0,
+          totalArea: 0,
+          totalPhotos: 0,
+          totalInvestment: 0,
+          averageHealth: 0,
+          productiveTrees: 0,
+          nonproductiveTrees: 0
         },
         treeHealth: {
-          good: 85,
-          fair: 25,
-          poor: 10,
-          disease: 5,
-          healthTrend: [
-            { month: 'T7/24', score: 7.2 },
-            { month: 'T8/24', score: 7.4 },
-            { month: 'T9/24', score: 7.6 },
-            { month: 'T10/24', score: 7.7 },
-            { month: 'T11/24', score: 7.8 },
-            { month: 'T12/24', score: 7.9 },
-            { month: 'T1/25', score: 7.8 }
-          ]
+          good: 0,
+          fair: 0,
+          poor: 0,
+          disease: 0,
+          healthTrend: []
         },
         productivity: {
-          totalFruit: 2850,
-          averageFruitPerTree: 22.8,
-          topPerformingZones: [
-            { zone: 'Khu A', avgFruit: 28.5 },
-            { zone: 'Khu B', avgFruit: 22.1 },
-            { zone: 'Khu C', avgFruit: 16.3 }
-          ],
-          fruitTrend: [
-            { month: 'T7/24', count: 2650 },
-            { month: 'T8/24', count: 2720 },
-            { month: 'T9/24', count: 2680 },
-            { month: 'T10/24', count: 2790 },
-            { month: 'T11/24', count: 2830 },
-            { month: 'T12/24', count: 2920 },
-            { month: 'T1/25', count: 2850 }
-          ]
+          totalFruit: 0,
+          averageFruitPerTree: 0,
+          topPerformingZones: [],
+          fruitTrend: []
         },
         investments: {
-          byCategory: [
-            { category: 'Phân bón', amount: 18000000, percentage: 40 },
-            { category: 'Thuốc BVTV', amount: 9000000, percentage: 20 },
-            { category: 'Lao động', amount: 9000000, percentage: 20 },
-            { category: 'Dụng cụ', amount: 4500000, percentage: 10 },
-            { category: 'Khác', amount: 4500000, percentage: 10 }
-          ],
-          monthlyTrend: [
-            { month: 'T7/24', amount: 3200000 },
-            { month: 'T8/24', amount: 4100000 },
-            { month: 'T9/24', amount: 3800000 },
-            { month: 'T10/24', amount: 4500000 },
-            { month: 'T11/24', amount: 3900000 },
-            { month: 'T12/24', amount: 5200000 },
-            { month: 'T1/25', amount: 2500000 }
-          ],
-          costPerTree: 360000,
-          roi: 15.8
+          byCategory: [],
+          monthlyTrend: [],
+          costPerTree: 0,
+          roi: 0
         },
         activities: {
-          photosTaken: 156,
-          treesInspected: 89,
-          aiAnalysisCompleted: 134,
-          maintenanceTasks: 23,
-          recentActivities: [
-            {
-              date: new Date('2024-01-15T10:30:00'),
-              type: 'photo_analysis',
-              description: 'Phân tích AI hoàn thành cho 12 ảnh',
-              user: 'Nguyễn Văn A'
-            },
-            {
-              date: new Date('2024-01-14T14:20:00'),
-              type: 'tree_inspection',
-              description: 'Kiểm tra sức khỏe khu vực A',
-              user: 'Trần Thị B'
-            },
-            {
-              date: new Date('2024-01-13T09:15:00'),
-              type: 'investment',
-              description: 'Thêm chi phí phân bón 2.5 triệu',
-              user: 'Lê Văn C'
-            }
-          ]
+          photosTaken: 0,
+          treesInspected: 0,
+          aiAnalysisCompleted: 0,
+          maintenanceTasks: 0,
+          recentActivities: []
         },
         zones: {
-          performance: [
-            {
-              zone: 'Khu A',
-              trees: 60,
-              health: 8.2,
-              productivity: 28.5,
-              efficiency: 92
-            },
-            {
-              zone: 'Khu B',
-              trees: 30,
-              health: 7.5,
-              productivity: 22.1,
-              efficiency: 85
-            },
-            {
-              zone: 'Khu C',
-              trees: 35,
-              health: 6.8,
-              productivity: 16.3,
-              efficiency: 73
-            }
-          ],
-          utilizationRate: 85,
-          expansionOpportunities: [
-            'Khu C có thể tăng mật độ trồng thêm 20%',
-            'Cải thiện hệ thống tưới khu B để tăng năng suất',
-            'Xem xét mở rộng sang khu vực D'
-          ]
+          performance: [],
+          utilizationRate: 0,
+          expansionOpportunities: []
         }
       }
-      setReportData(mockData)
+      setReportData(emptyReportData)
     } catch (error) {
       console.error('Error loading analytics data:', error)
+      setReportData(null)
     } finally {
       setLoading(false)
     }
@@ -254,15 +202,30 @@ export default function AnalyticsReporting() {
 
   const loadAvailableZones = async () => {
     try {
-      // Load available zones for filtering
-      const mockZones = [
-        { id: 'zone1', name: 'Khu A' },
-        { id: 'zone2', name: 'Khu B' },
-        { id: 'zone3', name: 'Khu C' }
-      ]
-      setAvailableZones(mockZones)
+      // Check permission before loading data
+      if (!hasPermission('farm:view', currentFarm?.id)) {
+        setAvailableZones([])
+        return
+      }
+
+      // TODO: Implement Firebase query to load zones for filtering
+      // const zonesQuery = await db.collection('zones')
+      //   .where('farmId', '==', currentFarm?.id)
+      //   .where('isActive', '==', true)
+      //   .select('name')
+      //   .get()
+      // 
+      // const zones = zonesQuery.docs.map(doc => ({
+      //   id: doc.id,
+      //   name: doc.data().name
+      // }))
+      // setAvailableZones(zones)
+
+      // For now, set empty array until Firebase integration is complete
+      setAvailableZones([])
     } catch (error) {
       console.error('Error loading zones:', error)
+      setAvailableZones([])
     }
   }
 

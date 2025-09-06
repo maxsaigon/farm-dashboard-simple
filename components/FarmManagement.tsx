@@ -134,20 +134,56 @@ export default function FarmManagement() {
 
   const loadFarmStatistics = async () => {
     try {
-      // Load statistics for each farm
+      // Check permission before loading data
+      if (!hasPermission('farm:view')) {
+        setFarmStats({})
+        return
+      }
+
+      // TODO: Implement Firebase queries to load real farm statistics
       const statsPromises = farms.map(async (farm) => {
-        // In real implementation, this would query Firebase for actual stats
-        const mockStats: FarmStatistics = {
-          totalUsers: Math.floor(Math.random() * 10) + 1,
-          totalTrees: Math.floor(Math.random() * 200) + 50,
-          totalZones: Math.floor(Math.random() * 5) + 1,
-          totalPhotos: Math.floor(Math.random() * 500) + 100,
-          totalInvestment: Math.floor(Math.random() * 50000000) + 10000000,
-          lastActivity: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-          healthScore: Math.random() * 3 + 7, // 7-10
-          productivity: Math.random() * 20 + 15 // 15-35
+        // Check individual farm permission
+        if (!hasPermission('farm:view', farm.id)) {
+          return { [farm.id]: null }
         }
-        return { [farm.id]: mockStats }
+
+        try {
+          // TODO: Query Firebase for actual statistics
+          // const [trees, zones, photos, investments, activities] = await Promise.all([
+          //   db.collection('trees').where('farmId', '==', farm.id).get(),
+          //   db.collection('zones').where('farmId', '==', farm.id).get(),
+          //   db.collection('photos').where('farmId', '==', farm.id).get(),
+          //   db.collection('investments').where('farmId', '==', farm.id).get(),
+          //   db.collection('activities').where('farmId', '==', farm.id).orderBy('date', 'desc').limit(1).get()
+          // ])
+          //
+          // const stats: FarmStatistics = {
+          //   totalUsers: await getUserCountForFarm(farm.id),
+          //   totalTrees: trees.size,
+          //   totalZones: zones.size,
+          //   totalPhotos: photos.size,
+          //   totalInvestment: investments.docs.reduce((sum, doc) => sum + doc.data().amount, 0),
+          //   lastActivity: activities.docs[0]?.data().date?.toDate() || new Date(),
+          //   healthScore: calculateAverageHealth(trees.docs),
+          //   productivity: calculateProductivity(trees.docs)
+          // }
+
+          // For now, return empty stats until Firebase integration is complete
+          const emptyStats: FarmStatistics = {
+            totalUsers: 0,
+            totalTrees: 0,
+            totalZones: 0,
+            totalPhotos: 0,
+            totalInvestment: 0,
+            lastActivity: new Date(),
+            healthScore: 0,
+            productivity: 0
+          }
+          return { [farm.id]: emptyStats }
+        } catch (error) {
+          console.error(`Error loading stats for farm ${farm.id}:`, error)
+          return { [farm.id]: null }
+        }
       })
       
       const statsResults = await Promise.all(statsPromises)
@@ -155,6 +191,7 @@ export default function FarmManagement() {
       setFarmStats(allStats)
     } catch (error) {
       console.error('Error loading farm statistics:', error)
+      setFarmStats({})
     }
   }
 

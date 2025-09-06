@@ -135,108 +135,34 @@ export default function ZoneManagement() {
   const loadZones = async () => {
     try {
       setLoading(true)
-      // Load zones from Firebase
-      // Mock data for demonstration
-      const mockZones: Zone[] = [
-        {
-          id: '1',
-          name: 'Khu A',
-          code: 'A',
-          farmId: currentFarm?.id || 'farm1',
-          description: 'Khu vực chính phía Bắc trang trại',
-          area: 50000, // 5 hectares
-          soilType: 'Đất phù sa',
-          plantingDensity: 120,
-          centerLatitude: 10.8235,
-          centerLongitude: 106.6295,
-          boundaryCoordinates: [
-            { lat: 10.8230, lng: 106.6290 },
-            { lat: 10.8240, lng: 106.6290 },
-            { lat: 10.8240, lng: 106.6300 },
-            { lat: 10.8230, lng: 106.6300 }
-          ],
-          treeCount: 60,
-          plantedTreeCount: 60,
-          youngTreeCount: 15,
-          matureTreeCount: 40,
-          deadTreeCount: 5,
-          averageHealth: 8.2,
-          lastInspectionDate: new Date('2024-01-10'),
-          waterSource: 'Giếng khoan',
-          accessRoad: true,
-          slope: 'gentle',
-          drainage: 'good',
-          createdDate: new Date('2023-01-01'),
-          isActive: true,
-          notes: 'Khu vực có điều kiện tốt nhất'
-        },
-        {
-          id: '2',
-          name: 'Khu B',
-          code: 'B',
-          farmId: currentFarm?.id || 'farm1',
-          description: 'Khu vực mở rộng phía Đông',
-          area: 30000, // 3 hectares
-          soilType: 'Đất cát',
-          plantingDensity: 100,
-          centerLatitude: 10.8240,
-          centerLongitude: 106.6310,
-          boundaryCoordinates: [
-            { lat: 10.8235, lng: 106.6305 },
-            { lat: 10.8245, lng: 106.6305 },
-            { lat: 10.8245, lng: 106.6315 },
-            { lat: 10.8235, lng: 106.6315 }
-          ],
-          treeCount: 30,
-          plantedTreeCount: 25,
-          youngTreeCount: 20,
-          matureTreeCount: 5,
-          deadTreeCount: 0,
-          averageHealth: 7.5,
-          lastInspectionDate: new Date('2024-01-08'),
-          waterSource: 'Hệ thống tưới',
-          accessRoad: true,
-          slope: 'flat',
-          drainage: 'fair',
-          createdDate: new Date('2023-06-01'),
-          isActive: true,
-          notes: 'Cần cải thiện hệ thống tưới tiêu'
-        },
-        {
-          id: '3',
-          name: 'Khu C',
-          code: 'C',
-          farmId: currentFarm?.id || 'farm1',
-          description: 'Khu thử nghiệm giống mới',
-          area: 20000, // 2 hectares
-          soilType: 'Đất thịt',
-          plantingDensity: 150,
-          centerLatitude: 10.8220,
-          centerLongitude: 106.6280,
-          boundaryCoordinates: [
-            { lat: 10.8215, lng: 106.6275 },
-            { lat: 10.8225, lng: 106.6275 },
-            { lat: 10.8225, lng: 106.6285 },
-            { lat: 10.8215, lng: 106.6285 }
-          ],
-          treeCount: 30,
-          plantedTreeCount: 20,
-          youngTreeCount: 25,
-          matureTreeCount: 5,
-          deadTreeCount: 0,
-          averageHealth: 6.8,
-          waterSource: 'Ao tự nhiên',
-          accessRoad: false,
-          slope: 'moderate',
-          drainage: 'poor',
-          createdDate: new Date('2023-09-01'),
-          isActive: true,
-          notes: 'Khu vực thử nghiệm, cần theo dõi chặt chẽ'
-        }
-      ]
-      setZones(mockZones)
+      
+      // Check permission before loading data
+      if (!hasPermission('farm:view', currentFarm?.id)) {
+        setZones([])
+        return
+      }
+
+      // TODO: Implement Firebase query to load zones
+      // const zonesQuery = await db.collection('zones')
+      //   .where('farmId', '==', currentFarm?.id)
+      //   .where('isDeleted', '==', false)
+      //   .orderBy('name')
+      //   .get()
+      // 
+      // const loadedZones = zonesQuery.docs.map(doc => ({
+      //   id: doc.id,
+      //   ...doc.data(),
+      //   createdDate: doc.data().createdDate?.toDate(),
+      //   lastInspectionDate: doc.data().lastInspectionDate?.toDate()
+      // })) as Zone[]
+      // 
+      // setZones(loadedZones)
+
+      // For now, set empty array until Firebase integration is complete
+      setZones([])
     } catch (error) {
       console.error('Error loading zones:', error)
+      setZones([])
     } finally {
       setLoading(false)
     }

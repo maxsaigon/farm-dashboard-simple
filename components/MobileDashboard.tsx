@@ -90,19 +90,22 @@ export default function MobileDashboard() {
   }, [])
 
   const loadDashboardData = async () => {
-    if (!currentFarm) return
+    if (!currentFarm || !hasPermission('farm:view', currentFarm.id)) return
 
     try {
-      // Mock data - replace with actual API calls
+      // Load real dashboard data from Firebase
+      // TODO: Implement actual Firebase queries to get farm statistics
+      
+      // For now, set empty stats until Firebase integration is complete
       setStats({
-        totalTrees: 1247,
-        healthyTrees: 1156,
-        treesNeedingAttention: 23,
-        totalPhotos: 3456,
-        todayPhotos: 12,
-        pendingTasks: 5,
-        activeZones: 8,
-        offlineData: isOnline ? 0 : 3
+        totalTrees: 0,
+        healthyTrees: 0,
+        treesNeedingAttention: 0,
+        totalPhotos: 0,
+        todayPhotos: 0,
+        pendingTasks: 0,
+        activeZones: 0,
+        offlineData: isOnline ? 0 : 0
       })
     } catch (error) {
       console.error('Error loading dashboard data:', error)

@@ -17,6 +17,7 @@ import { UserManagement } from '@/components/admin/UserManagement'
 import { FarmManagement } from '@/components/admin/FarmManagement'
 import { ZoneManagement } from '@/components/admin/ZoneManagement'
 import { SystemSettings } from '@/components/admin/SystemSettings'
+import AuthGuard from '@/components/AuthGuard'
 
 type AdminView = 'dashboard' | 'users' | 'farms' | 'zones' | 'settings'
 
@@ -112,88 +113,90 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">
-                🛡️ Super Admin Dashboard
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              {/* Search Bar */}
-              {currentView !== 'dashboard' && currentView !== 'settings' && (
-                <div className="relative">
-                  <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Tìm kiếm..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                </div>
-              )}
-              
-              <div className="text-sm text-gray-600">
-                Xin chào, <span className="font-semibold">{user.displayName || user.email}</span>
+    <AuthGuard requiredPermission="admin:manage" requireFarmAccess={true}>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  🛡️ Super Admin Dashboard
+                </h1>
               </div>
-              
-              <button
-                onClick={() => router.push('/')}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                Về Dashboard
-              </button>
+              <div className="flex items-center space-x-4">
+                {/* Search Bar */}
+                {currentView !== 'dashboard' && currentView !== 'settings' && (
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
+                
+                <div className="text-sm text-gray-600">
+                  Xin chào, <span className="font-semibold">{user.displayName || user.email}</span>
+                </div>
+                
+                <button
+                  onClick={() => router.push('/')}
+                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Về Dashboard
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar Navigation */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Chức năng quản trị</h2>
-              <nav className="space-y-2">
-                {navigationItems.map((item) => {
-                  const Icon = item.icon
-                  const isActive = currentView === item.id
-                  
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setCurrentView(item.id)}
-                      className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                        isActive
-                          ? 'bg-green-50 text-green-700 border border-green-200'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
-                    >
-                      <div className="flex items-center">
-                        <Icon className={`h-5 w-5 mr-3 ${isActive ? 'text-green-600' : 'text-gray-400'}`} />
-                        <div>
-                          <div className="font-medium">{item.name}</div>
-                          <div className="text-xs text-gray-500 mt-1">{item.description}</div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Sidebar Navigation */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Chức năng quản trị</h2>
+                <nav className="space-y-2">
+                  {navigationItems.map((item) => {
+                    const Icon = item.icon
+                    const isActive = currentView === item.id
+                    
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setCurrentView(item.id)}
+                        className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                          isActive
+                            ? 'bg-green-50 text-green-700 border border-green-200'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          <Icon className={`h-5 w-5 mr-3 ${isActive ? 'text-green-600' : 'text-gray-400'}`} />
+                          <div>
+                            <div className="font-medium">{item.name}</div>
+                            <div className="text-xs text-gray-500 mt-1">{item.description}</div>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </nav>
+                      </button>
+                    )
+                  })}
+                </nav>
+              </div>
             </div>
-          </div>
 
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            {renderCurrentView()}
+            {/* Main Content */}
+            <div className="lg:col-span-3">
+              {renderCurrentView()}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </AuthGuard>
   )
 }
 

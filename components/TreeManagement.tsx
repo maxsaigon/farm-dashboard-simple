@@ -96,93 +96,32 @@ export default function TreeManagement() {
   const loadTrees = async () => {
     try {
       setLoading(true)
-      // Load trees from Firebase
-      // Mock data for demonstration
-      const mockTrees: Tree[] = [
-        {
-          id: '1',
-          name: 'DUR-001',
-          farmId: currentFarm?.id || 'farm1',
-          latitude: 10.8231,
-          longitude: 106.6297,
-          gpsAccuracy: 5.2,
-          plantingDate: new Date('2020-01-15'),
-          variety: 'Monthong',
-          treeStatus: 'Mature',
-          healthStatus: 'Good',
-          notes: 'Cây phát triển tốt, cho trái đều',
-          qrCode: 'DUR001QR2024',
-          zoneCode: 'A-01',
-          manualFruitCount: 25,
-          lastCountDate: new Date('2024-01-10'),
-          treeHeight: 8.5,
-          trunkDiameter: 45.2,
-          fertilizedDate: new Date('2023-12-01'),
-          prunedDate: new Date('2023-11-15'),
-          aiFruitCount: 27,
-          lastAIAnalysisDate: new Date('2024-01-12'),
-          aiAccuracy: 0.92,
-          needsAttention: false,
-          photoCount: 12,
-          lastPhotoDate: new Date('2024-01-12')
-        },
-        {
-          id: '2',
-          name: 'DUR-002',
-          farmId: currentFarm?.id || 'farm1',
-          latitude: 10.8235,
-          longitude: 106.6299,
-          gpsAccuracy: 3.8,
-          plantingDate: new Date('2019-03-20'),
-          variety: 'Ri6',
-          treeStatus: 'Mature',
-          healthStatus: 'Fair',
-          notes: 'Có dấu hiệu sâu hại nhẹ',
-          qrCode: 'DUR002QR2024',
-          zoneCode: 'A-02',
-          manualFruitCount: 18,
-          lastCountDate: new Date('2024-01-08'),
-          treeHeight: 7.2,
-          trunkDiameter: 38.5,
-          healthNotes: 'Lá có vết đốm, cần theo dõi',
-          fertilizedDate: new Date('2023-12-01'),
-          aiFruitCount: 16,
-          lastAIAnalysisDate: new Date('2024-01-10'),
-          aiAccuracy: 0.87,
-          needsAttention: true,
-          photoCount: 8,
-          lastPhotoDate: new Date('2024-01-10')
-        },
-        {
-          id: '3',
-          name: 'DUR-003',
-          farmId: currentFarm?.id || 'farm1',
-          latitude: 10.8240,
-          longitude: 106.6301,
-          gpsAccuracy: 4.1,
-          plantingDate: new Date('2021-06-10'),
-          variety: 'Monthong',
-          treeStatus: 'Young Tree',
-          healthStatus: 'Good',
-          notes: 'Cây non, đang phát triển',
-          qrCode: 'DUR003QR2024',
-          zoneCode: 'B-01',
-          manualFruitCount: 5,
-          lastCountDate: new Date('2024-01-05'),
-          treeHeight: 4.2,
-          trunkDiameter: 22.8,
-          fertilizedDate: new Date('2023-12-15'),
-          aiFruitCount: 4,
-          lastAIAnalysisDate: new Date('2024-01-06'),
-          aiAccuracy: 0.89,
-          needsAttention: false,
-          photoCount: 6,
-          lastPhotoDate: new Date('2024-01-06')
-        }
-      ]
-      setTrees(mockTrees)
+      
+      // Check permission before loading data
+      if (!hasPermission('farm:view', currentFarm?.id)) {
+        setTrees([])
+        return
+      }
+
+      // TODO: Implement Firebase query to load trees
+      // const treesQuery = await db.collection('trees')
+      //   .where('farmId', '==', currentFarm?.id)
+      //   .where('isDeleted', '==', false)
+      //   .orderBy('name')
+      //   .get()
+      // 
+      // const loadedTrees = treesQuery.docs.map(doc => ({
+      //   id: doc.id,
+      //   ...doc.data()
+      // })) as Tree[]
+      // 
+      // setTrees(loadedTrees)
+
+      // For now, set empty array until Firebase integration is complete
+      setTrees([])
     } catch (error) {
       console.error('Error loading trees:', error)
+      setTrees([])
     } finally {
       setLoading(false)
     }
