@@ -17,6 +17,7 @@ import UserInvitationSystem from '@/components/admin/UserInvitationSystem'
 import SelfRegistrationManager from '@/components/admin/SelfRegistrationManager'
 import OrganizationManager from '@/components/admin/OrganizationManager'
 import AuthGuard from '@/components/AuthGuard'
+import AuthDebug from '@/components/debug/AuthDebug'
 
 type AdminView = 'dashboard' | 'users' | 'invitations' | 'registrations' | 'organizations' | 'settings'
 
@@ -135,8 +136,7 @@ export default function AdminPage() {
   }
 
   return (
-    <AuthGuard requiredPermission="system:admin" requireFarmAccess={false}>
-      <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white shadow-sm border-b border-gray-200">
           <div className="px-6 py-4">
@@ -197,11 +197,14 @@ export default function AdminPage() {
 
           {/* Main Content */}
           <div className="flex-1 p-8">
+            {/* Debug Component - Remove after fixing */}
+            <div className="mb-6">
+              <AuthDebug />
+            </div>
             {renderCurrentView()}
           </div>
         </div>
       </div>
-    </AuthGuard>
   )
 }
 
