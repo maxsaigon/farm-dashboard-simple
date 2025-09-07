@@ -30,12 +30,8 @@ const createEnhancedUserProfile = () => ({
   uid: SUPER_ADMIN.uid,
   email: SUPER_ADMIN.email,
   displayName: SUPER_ADMIN.displayName,
-  phoneNumber: null,
-  profilePicture: null,
-  photoURL: null,
   language: 'vi-VN',
   timezone: 'Asia/Ho_Chi_Minh',
-  lastLoginAt: null,
   loginCount: 0,
   isEmailVerified: true,
   isPhoneVerified: false,
@@ -53,7 +49,6 @@ const createEnhancedUserProfile = () => ({
       systemUpdates: true
     },
     dashboard: {
-      defaultFarm: null,
       widgetLayout: ['stats', 'recent-activity', 'quick-actions'],
       chartPreferences: {}
     },
@@ -63,11 +58,7 @@ const createEnhancedUserProfile = () => ({
       allowDataExport: true
     }
   },
-  currentFarmId: null,
-  roles: [], // Will be populated by userRoles collection
-  isActive: true,
-  createdAt: serverTimestamp(),
-  updatedAt: serverTimestamp()
+  isActive: true
 })
 
 // Super Admin Role Definition
@@ -76,7 +67,6 @@ const createSuperAdminRole = () => ({
   userId: SUPER_ADMIN.uid,
   roleType: 'super_admin',
   scopeType: 'system',
-  scopeId: null,
   permissions: [
     // System administration
     'system:admin', 'system:audit', 'system:backup',
@@ -100,8 +90,6 @@ const createSuperAdminRole = () => ({
     'api:read', 'api:write', 'api:manage'
   ],
   grantedBy: SUPER_ADMIN.uid,
-  grantedAt: serverTimestamp(),
-  expiresAt: null,
   isActive: true,
   metadata: {
     setupType: 'initial_super_admin',
@@ -124,13 +112,20 @@ async function setupSuperAdmin() {
     // 1. Create Enhanced User Profile
     console.log('📝 Creating enhanced user profile...')
     const userProfile = createEnhancedUserProfile()
-    await setDoc(doc(db, 'users', SUPER_ADMIN.uid), userProfile, { merge: true })
+    await setDoc(doc(db, 'users', SUPER_ADMIN.uid), {
+      ...userProfile,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true })
     console.log('✅ Enhanced user profile created')
 
     // 2. Create Super Admin Role
     console.log('🔐 Creating super admin role...')
     const superAdminRole = createSuperAdminRole()
-    await setDoc(doc(db, 'userRoles', superAdminRole.id), superAdminRole)
+    await setDoc(doc(db, 'userRoles', superAdminRole.id), {
+      ...superAdminRole,
+      grantedAt: serverTimestamp()
+    })
     console.log('✅ Super admin role created')
 
     // 3. Create/Update Admin Config
