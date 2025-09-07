@@ -1,31 +1,35 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/enhanced-auth-context'
+import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
 import { useRouter } from 'next/navigation'
 import { 
   UsersIcon, 
-  BuildingStorefrontIcon,
-  MapIcon,
+  BuildingOfficeIcon,
+  UserPlusIcon,
+  ClipboardDocumentCheckIcon,
   Cog6ToothIcon,
   ChartBarIcon,
-  ExclamationTriangleIcon,
-  MagnifyingGlassIcon
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline'
-import { AdminStatsCard } from '@/components/admin/AdminStatsCard'
-import { UserManagement } from '@/components/admin/UserManagement'
-import { FarmManagement } from '@/components/admin/FarmManagement'
-import { ZoneManagement } from '@/components/admin/ZoneManagement'
-import { SystemSettings } from '@/components/admin/SystemSettings'
+import UserRoleManager from '@/components/admin/UserRoleManager'
+import UserInvitationSystem from '@/components/admin/UserInvitationSystem'
+import SelfRegistrationManager from '@/components/admin/SelfRegistrationManager'
+import OrganizationManager from '@/components/admin/OrganizationManager'
 import AuthGuard from '@/components/AuthGuard'
 
-type AdminView = 'dashboard' | 'users' | 'farms' | 'zones' | 'settings'
+type AdminView = 'dashboard' | 'users' | 'invitations' | 'registrations' | 'organizations' | 'settings'
 
 export default function AdminPage() {
-  const { user, isSuperAdmin, loading } = useAuth()
+  const { user, isSuperAdmin, loading } = useEnhancedAuth()
   const router = useRouter()
   const [currentView, setCurrentView] = useState<AdminView>('dashboard')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    pendingRegistrations: 0,
+    activeInvitations: 0,
+    totalOrganizations: 0
+  })
 
   useEffect(() => {
     if (!loading && (!user || !isSuperAdmin())) {
@@ -33,12 +37,54 @@ export default function AdminPage() {
     }
   }, [user, isSuperAdmin, loading, router])
 
+  useEffect(() => {
+    if (isSuperAdmin()) {
+      loadAdminStats()
+    }
+  }, [isSuperAdmin])
+
+  const loadAdminStats = async () => {
+    try {
+      const { collection, getDocs, query, where } = await import('firebase/firestore')
+      const { db } = await import('@/lib/firebase')
+
+      // Load users count
+      const usersSnapshot = await getDocs(collection(db, 'users'))
+      
+      // Load pending registrations
+      const pendingQuery = query(
+        collection(db, 'pendingRegistrations'),
+        where('approvalStatus', '==', 'pending')
+      )
+      const pendingSnapshot = await getDocs(pendingQuery)
+
+      // Load active invitations
+      const invitationsQuery = query(
+        collection(db, 'farmInvitations'),
+        where('status', '==', 'pending')
+      )
+      const invitationsSnapshot = await getDocs(invitationsQuery)
+
+      // Load organizations
+      const orgsSnapshot = await getDocs(collection(db, 'organizations'))
+
+      setStats({
+        totalUsers: usersSnapshot.size,
+        pendingRegistrations: pendingSnapshot.size,
+        activeInvitations: invitationsSnapshot.size,
+        totalOrganizations: orgsSnapshot.size
+      })
+    } catch (error) {
+      console.error('Error loading admin stats:', error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải...</p>
+          <p className="text-gray-600">Loading admin panel...</p>
         </div>
       </div>
     )
@@ -48,14 +94,14 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <ExclamationTriangleIcon className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Không có quyền truy cập</h1>
-          <p className="text-gray-600 mb-4">Bạn cần quyền Super Admin để truy cập trang này.</p>
+          <ShieldCheckIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-4">You need super admin privileges to access this area.</p>
           <button
-            onClick={() => router.push('/')}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+            onClick={() => router.push('/login')}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
-            Về trang chủ
+            Go to Login
           </button>
         </div>
       </div>
@@ -63,136 +109,95 @@ export default function AdminPage() {
   }
 
   const navigationItems = [
-    {
-      id: 'dashboard' as AdminView,
-      name: 'Tổng quan',
-      icon: ChartBarIcon,
-      description: 'Thống kê tổng quát hệ thống'
-    },
-    {
-      id: 'users' as AdminView,
-      name: 'Quản lý người dùng',
-      icon: UsersIcon,
-      description: 'Quản lý tài khoản và phân quyền'
-    },
-    {
-      id: 'farms' as AdminView,
-      name: 'Quản lý nông trại',
-      icon: BuildingStorefrontIcon,
-      description: 'Tạo và quản lý nông trại'
-    },
-    {
-      id: 'zones' as AdminView,
-      name: 'Quản lý khu vực',
-      icon: MapIcon,
-      description: 'Quản lý zone và khu vực trồng trọt'
-    },
-    {
-      id: 'settings' as AdminView,
-      name: 'Cài đặt hệ thống',
-      icon: Cog6ToothIcon,
-      description: 'Cấu hình và cài đặt chung'
-    }
+    { id: 'dashboard', name: 'Dashboard', icon: ChartBarIcon },
+    { id: 'users', name: 'User Roles', icon: UsersIcon },
+    { id: 'invitations', name: 'Invitations', icon: UserPlusIcon },
+    { id: 'registrations', name: 'Registrations', icon: ClipboardDocumentCheckIcon },
+    { id: 'organizations', name: 'Organizations', icon: BuildingOfficeIcon },
+    { id: 'settings', name: 'Settings', icon: Cog6ToothIcon }
   ]
 
   const renderCurrentView = () => {
     switch (currentView) {
-      case 'dashboard':
-        return <AdminDashboard />
       case 'users':
-        return <UserManagement searchQuery={searchQuery} />
-      case 'farms':
-        return <FarmManagement searchQuery={searchQuery} />
-      case 'zones':
-        return <ZoneManagement searchQuery={searchQuery} />
+        return <UserRoleManager />
+      case 'invitations':
+        return <UserInvitationSystem />
+      case 'registrations':
+        return <SelfRegistrationManager />
+      case 'organizations':
+        return <OrganizationManager />
       case 'settings':
         return <SystemSettings />
       default:
-        return <AdminDashboard />
+        return <AdminDashboard stats={stats} onRefresh={loadAdminStats} />
     }
   }
 
   return (
-    <AuthGuard requiredPermission="org:admin" requireFarmAccess={true}>
+    <AuthGuard requiredPermission="system:admin" requireFarmAccess={false}>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  🛡️ Super Admin Dashboard
-                </h1>
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">System Administration</h1>
+                <p className="text-gray-600">Manage users, organizations, and system settings</p>
               </div>
-              <div className="flex items-center space-x-4">
-                {/* Search Bar */}
-                {currentView !== 'dashboard' && currentView !== 'settings' && (
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Tìm kiếm..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    />
-                  </div>
-                )}
-                
-                <div className="text-sm text-gray-600">
-                  Xin chào, <span className="font-semibold">{user.displayName || user.email}</span>
+              <div className="flex items-center space-x-3">
+                <div className="text-sm text-gray-500">
+                  Logged in as: <span className="font-medium">{user.email}</span>
                 </div>
-                
-                <button
-                  onClick={() => router.push('/')}
-                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  Về Dashboard
-                </button>
+                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                  <ShieldCheckIcon className="h-5 w-5 text-white" />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Sidebar Navigation */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Chức năng quản trị</h2>
-                <nav className="space-y-2">
-                  {navigationItems.map((item) => {
-                    const Icon = item.icon
-                    const isActive = currentView === item.id
-                    
-                    return (
+        <div className="flex">
+          {/* Sidebar Navigation */}
+          <div className="w-64 bg-white shadow-sm h-screen sticky top-0">
+            <nav className="mt-8 px-4">
+              <ul className="space-y-2">
+                {navigationItems.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <li key={item.id}>
                       <button
-                        key={item.id}
-                        onClick={() => setCurrentView(item.id)}
-                        className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                          isActive
+                        onClick={() => setCurrentView(item.id as AdminView)}
+                        className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                          currentView === item.id
                             ? 'bg-green-50 text-green-700 border border-green-200'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            : 'text-gray-700 hover:bg-gray-50'
                         }`}
                       >
-                        <div className="flex items-center">
-                          <Icon className={`h-5 w-5 mr-3 ${isActive ? 'text-green-600' : 'text-gray-400'}`} />
-                          <div>
-                            <div className="font-medium">{item.name}</div>
-                            <div className="text-xs text-gray-500 mt-1">{item.description}</div>
-                          </div>
-                        </div>
+                        <Icon className="h-5 w-5 mr-3" />
+                        {item.name}
+                        {/* Show badges for pending items */}
+                        {item.id === 'registrations' && stats.pendingRegistrations > 0 && (
+                          <span className="ml-auto bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                            {stats.pendingRegistrations}
+                          </span>
+                        )}
+                        {item.id === 'invitations' && stats.activeInvitations > 0 && (
+                          <span className="ml-auto bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full">
+                            {stats.activeInvitations}
+                          </span>
+                        )}
                       </button>
-                    )
-                  })}
-                </nav>
-              </div>
-            </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </nav>
+          </div>
 
-            {/* Main Content */}
-            <div className="lg:col-span-3">
-              {renderCurrentView()}
-            </div>
+          {/* Main Content */}
+          <div className="flex-1 p-8">
+            {renderCurrentView()}
           </div>
         </div>
       </div>
@@ -201,80 +206,117 @@ export default function AdminPage() {
 }
 
 // Admin Dashboard Overview Component
-function AdminDashboard() {
+function AdminDashboard({ stats, onRefresh }: { stats: any, onRefresh: () => void }) {
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Tổng quan hệ thống</h2>
-        <p className="text-gray-600">Thống kê và quản lý tổng quát Farm Manager</p>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">System Overview</h2>
+        <button
+          onClick={onRefresh}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+        >
+          Refresh Stats
+        </button>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <AdminStatsCard
-          title="Tổng người dùng"
-          value="0"
-          icon={UsersIcon}
-          color="blue"
-          trend={{ value: 0, isPositive: true }}
-        />
-        <AdminStatsCard
-          title="Tổng nông trại"
-          value="0"
-          icon={BuildingStorefrontIcon}
-          color="green"
-          trend={{ value: 0, isPositive: true }}
-        />
-        <AdminStatsCard
-          title="Tổng cây trồng"
-          value="0"
-          icon={MapIcon}
-          color="yellow"
-          trend={{ value: 0, isPositive: true }}
-        />
-        <AdminStatsCard
-          title="Zone hoạt động"
-          value="0"
-          icon={Cog6ToothIcon}
-          color="purple"
-          trend={{ value: 0, isPositive: true }}
-        />
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <UsersIcon className="h-8 w-8 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Total Users</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.totalUsers}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <ClipboardDocumentCheckIcon className="h-8 w-8 text-yellow-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Pending Registrations</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.pendingRegistrations}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <UserPlusIcon className="h-8 w-8 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Active Invitations</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.activeInvitations}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <BuildingOfficeIcon className="h-8 w-8 text-purple-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Organizations</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.totalOrganizations}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Recent Activities */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Hoạt động gần đây</h3>
-          <button className="text-green-600 hover:text-green-700 text-sm font-medium">
-            Xem tất cả
-          </button>
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
+            <UsersIcon className="h-6 w-6 text-blue-600 mb-2" />
+            <h4 className="font-medium text-gray-900">Manage User Roles</h4>
+            <p className="text-sm text-gray-500">Grant or revoke user permissions</p>
+          </div>
+          <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
+            <UserPlusIcon className="h-6 w-6 text-green-600 mb-2" />
+            <h4 className="font-medium text-gray-900">Send Invitations</h4>
+            <p className="text-sm text-gray-500">Invite new users to join farms</p>
+          </div>
+          <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
+            <BuildingOfficeIcon className="h-6 w-6 text-purple-600 mb-2" />
+            <h4 className="font-medium text-gray-900">Create Organization</h4>
+            <p className="text-sm text-gray-500">Set up new organizations</p>
+          </div>
         </div>
-        
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
         <div className="space-y-4">
-          <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                <UsersIcon className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Người dùng mới đăng ký</p>
-                <p className="text-xs text-gray-500">2 phút trước</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                <BuildingStorefrontIcon className="h-4 w-4 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Nông trại mới được tạo</p>
-                <p className="text-xs text-gray-500">1 giờ trước</p>
-              </div>
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0 w-2 h-2 bg-green-400 rounded-full mt-2"></div>
+            <div>
+              <p className="text-sm text-gray-900">System initialized with enhanced role management</p>
+              <p className="text-xs text-gray-500">Admin features now available</p>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Placeholder for SystemSettings component
+function SystemSettings() {
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-900">System Settings</h2>
+      <div className="bg-white rounded-lg shadow p-6">
+        <p className="text-gray-600">System settings panel will be implemented here.</p>
+        <p className="text-sm text-gray-500 mt-2">This will include global configuration options, security settings, and system maintenance tools.</p>
       </div>
     </div>
   )
