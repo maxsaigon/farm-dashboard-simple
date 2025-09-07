@@ -187,7 +187,12 @@ export default function FarmManagement() {
       })
       
       const statsResults = await Promise.all(statsPromises)
-      const allStats = statsResults.filter(Boolean).reduce((acc, curr) => ({ ...acc, ...curr }), {})
+      const allStats: any = {}
+      statsResults.forEach(stats => {
+        if (stats && typeof stats === 'object') {
+          Object.assign(allStats, stats)
+        }
+      })
       setFarmStats(allStats)
     } catch (error) {
       console.error('Error loading farm statistics:', error)

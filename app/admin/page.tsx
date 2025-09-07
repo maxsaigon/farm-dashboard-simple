@@ -29,7 +29,9 @@ export default function AdminPage() {
     totalUsers: 0,
     pendingRegistrations: 0,
     activeInvitations: 0,
-    totalOrganizations: 0
+    totalOrganizations: 0,
+    totalFarms: 0,
+    totalTrees: 0
   })
 
   useEffect(() => {
@@ -49,34 +51,85 @@ export default function AdminPage() {
       const { collection, getDocs, query, where } = await import('firebase/firestore')
       const { db } = await import('@/lib/firebase')
 
-      // Load users count
-      const usersSnapshot = await getDocs(collection(db, 'users'))
-      
-      // Load pending registrations
-      const pendingQuery = query(
-        collection(db, 'pendingRegistrations'),
-        where('approvalStatus', '==', 'pending')
-      )
-      const pendingSnapshot = await getDocs(pendingQuery)
+      const newStats = {
+        totalUsers: 0,
+        pendingRegistrations: 0,
+        activeInvitations: 0,
+        totalOrganizations: 0,
+        totalFarms: 0,
+        totalTrees: 0
+      }
 
-      // Load active invitations
-      const invitationsQuery = query(
-        collection(db, 'farmInvitations'),
-        where('status', '==', 'pending')
-      )
-      const invitationsSnapshot = await getDocs(invitationsQuery)
+      // Load users count (safe)
+      try {
+        const usersSnapshot = await getDocs(collection(db, 'users'))
+        newStats.totalUsers = usersSnapshot.size
+      } catch (error) {
+        console.warn('Could not load users collection:', error)
+      }
 
-      // Load organizations
-      const orgsSnapshot = await getDocs(collection(db, 'organizations'))
+      // Load farms count
+      try {
+        const farmsSnapshot = await getDocs(collection(db, 'farms'))
+        newStats.totalFarms = farmsSnapshot.size
+      } catch (error) {
+        console.warn('Could not load farms collection:', error)
+      }
 
-      setStats({
-        totalUsers: usersSnapshot.size,
-        pendingRegistrations: pendingSnapshot.size,
-        activeInvitations: invitationsSnapshot.size,
-        totalOrganizations: orgsSnapshot.size
-      })
+      // Load trees count
+      try {
+        const treesSnapshot = await getDocs(collection(db, 'trees'))
+        newStats.totalTrees = treesSnapshot.size
+      } catch (error) {
+        console.warn('Could not load trees collection:', error)
+      }
+
+      // Load organizations (safe)
+      try {
+        const orgsSnapshot = await getDocs(collection(db, 'organizations'))
+        newStats.totalOrganizations = orgsSnapshot.size
+      } catch (error) {
+        console.warn('Could not load organizations collection:', error)
+      }
+
+      // Load pending registrations (optional collection)
+      try {
+        const pendingQuery = query(
+          collection(db, 'pendingRegistrations'),
+          where('approvalStatus', '==', 'pending')
+        )
+        const pendingSnapshot = await getDocs(pendingQuery)
+        newStats.pendingRegistrations = pendingSnapshot.size
+      } catch (error) {
+        console.warn('Could not load pending registrations (collection may not exist):', error)
+      }
+
+      // Load active invitations (optional collection)
+      try {
+        const invitationsQuery = query(
+          collection(db, 'farmInvitations'),
+          where('status', '==', 'pending')
+        )
+        const invitationsSnapshot = await getDocs(invitationsQuery)
+        newStats.activeInvitations = invitationsSnapshot.size
+      } catch (error) {
+        console.warn('Could not load farm invitations (collection may not exist):', error)
+      }
+
+      setStats(newStats)
+      console.log('📊 Admin stats loaded:', newStats)
+
     } catch (error) {
       console.error('Error loading admin stats:', error)
+      // Set default stats if everything fails
+      setStats({
+        totalUsers: 0,
+        pendingRegistrations: 0,
+        activeInvitations: 0,
+        totalOrganizations: 0,
+        totalFarms: 0,
+        totalTrees: 0
+      })
     }
   }
 
@@ -197,10 +250,6 @@ export default function AdminPage() {
 
           {/* Main Content */}
           <div className="flex-1 p-8">
-            {/* Debug Component - Remove after fixing */}
-            <div className="mb-6">
-              <AuthDebug />
-            </div>
             {renderCurrentView()}
           </div>
         </div>
@@ -223,7 +272,7 @@ function AdminDashboard({ stats, onRefresh }: { stats: any, onRefresh: () => voi
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -268,6 +317,34 @@ function AdminDashboard({ stats, onRefresh }: { stats: any, onRefresh: () => voi
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Organizations</p>
               <p className="text-2xl font-semibold text-gray-900">{stats.totalOrganizations}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V9a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 01-2-2zm9-13.5V9" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Total Farms</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.totalFarms}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Total Trees</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.totalTrees}</p>
             </div>
           </div>
         </div>

@@ -39,9 +39,9 @@ async function analyzeDatabaseStructure() {
     ]
 
     const analysis = {
-      existingCollections: [],
-      dataStats: {},
-      migrationNeeded: []
+      existingCollections: [] as string[],
+      dataStats: {} as any,
+      migrationNeeded: [] as string[]
     }
 
     for (const collectionName of collections) {

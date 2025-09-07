@@ -37,11 +37,7 @@ export default function AuthDebug() {
             rolesFromDB: dbRoles,
             permissions: permissions,
             isSuperAdmin: isSuperAdmin(),
-            adminConfig: adminConfig,
-            authServiceState: {
-              currentUser: enhancedAuthService.currentUser,
-              currentRoles: enhancedAuthService.currentRoles
-            }
+            adminConfig: adminConfig
           })
         }
       } catch (error) {
