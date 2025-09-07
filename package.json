@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "setup:admin": "tsx scripts/setup-super-admin.ts",
+    "verify:admin": "tsx scripts/verify-admin.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -31,6 +33,7 @@
     "eslint-config-next": "14.2.31",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.20.5",
     "typescript": "^5"
   }
 }

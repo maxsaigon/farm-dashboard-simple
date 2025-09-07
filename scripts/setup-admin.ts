@@ -11,8 +11,8 @@ const db = getFirestore(app)
 
 const ADMIN_USER = {
   uid: 'O6aFgoNhDigSIXk6zdYSDrFWhWG2',
-  email: 'minhdai.bmt@gmail.com',
-  displayName: 'Admin User'
+  email: 'minhdai.bmt@gmail.com', // Update this to your actual email
+  displayName: 'Super Admin'
 }
 
 async function setupAdmin() {
