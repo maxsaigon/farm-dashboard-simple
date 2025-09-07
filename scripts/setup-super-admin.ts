@@ -6,7 +6,7 @@
  */
 
 import { initializeApp } from 'firebase/app'
-import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { getFirestore, doc, setDoc } from 'firebase/firestore'
 
 // Firebase config - using environment variables or defaults
 const firebaseConfig = {
@@ -114,8 +114,8 @@ async function setupSuperAdmin() {
     const userProfile = createEnhancedUserProfile()
     await setDoc(doc(db, 'users', SUPER_ADMIN.uid), {
       ...userProfile,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      createdAt: new Date(),
+      updatedAt: new Date()
     }, { merge: true })
     console.log('✅ Enhanced user profile created')
 
@@ -124,7 +124,7 @@ async function setupSuperAdmin() {
     const superAdminRole = createSuperAdminRole()
     await setDoc(doc(db, 'userRoles', superAdminRole.id), {
       ...superAdminRole,
-      grantedAt: serverTimestamp()
+      grantedAt: new Date()
     })
     console.log('✅ Super admin role created')
 
@@ -134,7 +134,7 @@ async function setupSuperAdmin() {
       superAdminUsers: [SUPER_ADMIN.uid],
       systemVersion: '2.0.0',
       enhancedRoleSystem: true,
-      lastUpdated: serverTimestamp(),
+      lastUpdated: new Date(),
       setupBy: SUPER_ADMIN.uid
     }, { merge: true })
     console.log('✅ Admin configuration updated')
@@ -153,7 +153,7 @@ async function setupSuperAdmin() {
         setupType: 'initial_system_setup',
         permissions: superAdminRole.permissions.length
       },
-      timestamp: serverTimestamp(),
+      timestamp: new Date(),
       status: 'success'
     })
     console.log('✅ Activity logged')

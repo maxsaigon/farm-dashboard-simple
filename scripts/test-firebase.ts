@@ -6,7 +6,7 @@
  */
 
 import { initializeApp } from 'firebase/app'
-import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
 
 // Firebase config
 const firebaseConfig = {
@@ -31,7 +31,7 @@ async function testFirebaseConnection() {
     const testDocId = `test_${Date.now()}`
     const testData = {
       message: 'Hello from setup script',
-      timestamp: serverTimestamp(),
+      timestamp: new Date(),
       isTest: true
     }
 
