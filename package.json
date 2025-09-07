@@ -11,7 +11,8 @@
     "setup:admin-alt": "tsx scripts/setup-super-admin.ts",
     "verify:admin": "tsx scripts/verify-admin.ts",
     "test:firebase": "tsx scripts/test-firebase.ts",
-    "test:minimal": "tsx scripts/minimal-test.ts"
+    "test:minimal": "tsx scripts/minimal-test.ts",
+    "sync:data": "tsx scripts/sync-existing-data.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
