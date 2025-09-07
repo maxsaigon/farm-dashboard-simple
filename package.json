@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "setup:admin": "tsx scripts/setup-super-admin.ts",
-    "verify:admin": "tsx scripts/verify-admin.ts"
+    "verify:admin": "tsx scripts/verify-admin.ts",
+    "test:firebase": "tsx scripts/test-firebase.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
