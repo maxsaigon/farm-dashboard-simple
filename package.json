@@ -12,7 +12,11 @@
     "verify:admin": "tsx scripts/verify-admin.ts",
     "test:firebase": "tsx scripts/test-firebase.ts",
     "test:minimal": "tsx scripts/minimal-test.ts",
-    "sync:data": "tsx scripts/sync-existing-data.ts"
+    "sync:data": "tsx scripts/sync-existing-data.ts",
+    "setup:firebase": "node setup-firebase.js",
+    "check:firebase": "node check-firebase-config.js",
+    "debug:farm-assignment": "tsx scripts/debug-farm-assignment.ts",
+    "fix:role-permissions": "tsx scripts/fix-role-permissions.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

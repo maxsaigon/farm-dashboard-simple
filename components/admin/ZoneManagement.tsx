@@ -1,43 +1,76 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  PlusIcon, 
-  PencilIcon, 
-  TrashIcon, 
-  MapIcon,
-  BuildingStorefrontIcon,
-  CheckCircleIcon,
-  XCircleIcon
-} from '@heroicons/react/24/outline'
-import { Zone } from '@/lib/gps-tracking-service'
-import { EnhancedFarm } from '@/lib/types-enhanced'
+import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
 import { AdminService } from '@/lib/admin-service'
+import { Zone } from '@/lib/types'
+import { 
+  MapIcon, 
+  PlusIcon, 
+  PencilIcon,
+  TrashIcon,
+  EyeIcon,
+  MagnifyingGlassIcon,
+  BuildingOfficeIcon,
+  Square3Stack3DIcon,
+  ChartBarIcon,
+  MapPinIcon,
+  CubeIcon,
+  ClipboardDocumentListIcon
+} from '@heroicons/react/24/outline'
 
-interface ZoneManagementProps {
-  searchQuery: string
+interface ZoneStats {
+  totalZones: number
+  activeZones: number
+  totalTrees: number
+  averageTreesPerZone: number
+  largestZone: { name: string; treeCount: number } | null
 }
 
-export function ZoneManagement({ searchQuery }: ZoneManagementProps) {
+export default function ZoneManagement() {
+  const { user } = useEnhancedAuth()
   const [zones, setZones] = useState<Zone[]>([])
-  const [farms, setFarms] = useState<any[]>([])
+  const [trees, setTrees] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null)
-  const [showZoneModal, setShowZoneModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterFarm, setFilterFarm] = useState<string>('all')
+  const [sortBy, setSortBy] = useState<string>('name')
+
+  const [stats, setStats] = useState<ZoneStats>({
+    totalZones: 0,
+    activeZones: 0,
+    totalTrees: 0,
+    averageTreesPerZone: 0,
+    largestZone: null
+  })
+
+  const [farms, setFarms] = useState<Array<{id: string, name: string}>>([])
 
   useEffect(() => {
     loadData()
   }, [])
 
+  useEffect(() => {
+    calculateStats()
+  }, [zones, trees])
+
   const loadData = async () => {
-    setLoading(true)
     try {
-      const [zonesData, farmsData] = await Promise.all([
+      setLoading(true)
+      
+      // Load zones, trees, and farms using AdminService
+      const [zonesData, treesData, farmsData] = await Promise.all([
         AdminService.getAllZones(),
+        AdminService.getAllTrees(),
         AdminService.getAllFarms()
       ])
+
       setZones(zonesData)
-      setFarms(farmsData)
+      setTrees(treesData)
+      setFarms(farmsData.map(f => ({ id: f.id, name: f.name })))
+      
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -45,49 +78,84 @@ export function ZoneManagement({ searchQuery }: ZoneManagementProps) {
     }
   }
 
-  const filteredZones = zones.filter(zone =>
-    zone.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    zone.farmId.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const calculateStats = () => {
+    const totalZones = zones.length
+    const activeZones = zones.filter(zone => zone.isActive !== false).length
+    const totalTrees = trees.length
 
-  const handleEditZone = (zone: Zone) => {
-    setSelectedZone(zone)
-    setShowZoneModal(true)
-  }
-
-  const handleDeleteZone = async (zoneId: string) => {
-    if (confirm('Bạn có chắc chắn muốn xóa zone này?')) {
-      try {
-        await AdminService.deleteZone(zoneId)
-        loadData()
-      } catch (error) {
-        console.error('Error deleting zone:', error)
+    // Calculate trees per zone
+    const zoneTreeCounts = zones.map(zone => {
+      const zoneTreeCount = trees.filter(tree => tree.zoneId === zone.id || tree.zoneCode === zone.code).length
+      return {
+        zone,
+        count: zoneTreeCount
       }
-    }
+    })
+
+    const averageTreesPerZone = totalZones > 0 ? totalTrees / totalZones : 0
+    const largestZone = zoneTreeCounts.reduce((largest, current) => 
+      current.count > (largest?.count || 0) ? current : largest, null as any
+    )
+
+    setStats({
+      totalZones,
+      activeZones,
+      totalTrees,
+      averageTreesPerZone,
+      largestZone: largestZone ? { name: largestZone.zone.name, treeCount: largestZone.count } : null
+    })
   }
 
-  const toggleZoneStatus = async (zone: Zone) => {
-    try {
-      await AdminService.updateZone(zone.id, { ...zone, isActive: !zone.isActive })
-      loadData()
-    } catch (error) {
-      console.error('Error updating zone status:', error)
-    }
+  const getZoneTreeCount = (zone: Zone) => {
+    return trees.filter(tree => tree.zoneId === zone.id || tree.zoneCode === zone.code).length
   }
 
-  const getFarmName = (farmId: string) => {
-    const farm = farms.find(f => f.id === farmId)
-    return farm?.name || `Farm ${farmId.slice(0, 8)}...`
+  const filteredAndSortedZones = zones.filter(zone => {
+    const matchesSearch = zone.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         zone.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         zone.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesFarm = filterFarm === 'all' || zone.farmId === filterFarm
+    
+    return matchesSearch && matchesFarm
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
+        return (a.name || '').localeCompare(b.name || '')
+      case 'code':
+        return (a.code || '').localeCompare(b.code || '')
+      case 'trees':
+        return getZoneTreeCount(b) - getZoneTreeCount(a)
+      case 'area':
+        return (b.area || 0) - (a.area || 0)
+      default:
+        return 0
+    }
+  })
+
+  const formatDate = (date?: Date) => {
+    if (!date) return 'N/A'
+    return date.toLocaleDateString()
+  }
+
+  const formatArea = (area?: number) => {
+    if (!area) return 'N/A'
+    if (area < 10000) {
+      return `${area.toLocaleString()} m²`
+    } else {
+      return `${(area / 10000).toFixed(2)} hectares`
+    }
   }
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
-          <div className="space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-20 bg-gray-200 rounded"></div>
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white p-6 rounded-lg shadow">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+              </div>
             ))}
           </div>
         </div>
@@ -98,512 +166,333 @@ export function ZoneManagement({ searchQuery }: ZoneManagementProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Quản lý Zone</h2>
-          <p className="text-gray-600 mt-1">Tạo và quản lý khu vực trong nông trại</p>
+          <h1 className="text-2xl font-bold text-gray-900">Zone Management</h1>
+          <p className="text-gray-600">Manage zones and areas across all farms</p>
         </div>
         <button
-          onClick={() => {
-            setSelectedZone(null)
-            setShowZoneModal(true)
-          }}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center"
+          onClick={loadData}
+          className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
-          Tạo zone mới
+          Refresh Data
         </button>
       </div>
 
-      {/* Zones Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
-            Danh sách Zone ({filteredZones.length})
-          </h3>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Square3Stack3DIcon className="h-6 w-6 text-purple-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Total Zones</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.totalZones}</p>
+            </div>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tên Zone
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Nông trại
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Diện tích
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Loại đất
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trạng thái
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Cảnh báo
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hành động
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredZones.map((zone) => (
-                <tr key={zone.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <MapIcon className="h-6 w-6 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Active Zones</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.activeZones}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <CubeIcon className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Trees in Zones</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.totalTrees}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <ChartBarIcon className="h-6 w-6 text-yellow-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Avg Trees/Zone</p>
+              <p className="text-2xl font-semibold text-gray-900">{Math.round(stats.averageTreesPerZone)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Largest Zone */}
+      {stats.largestZone && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Largest Zone</h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xl font-semibold text-gray-900">{stats.largestZone.name}</p>
+              <p className="text-gray-600">{stats.largestZone.treeCount} trees</p>
+            </div>
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <BuildingOfficeIcon className="h-8 w-8 text-purple-600" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filters and Controls */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+          {/* Search */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="block w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="Search zones..."
+            />
+          </div>
+
+          <div className="flex items-center space-x-4">
+            {/* Filters */}
+            <select
+              value={filterFarm}
+              onChange={(e) => setFilterFarm(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="all">All Farms</option>
+              {farms.map(farm => (
+                <option key={farm.id} value={farm.id}>{farm.name}</option>
+              ))}
+            </select>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="name">Sort by Name</option>
+              <option value="code">Sort by Code</option>
+              <option value="trees">Sort by Tree Count</option>
+              <option value="area">Sort by Area</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Zone List */}
+      {filteredAndSortedZones.length === 0 ? (
+        <div className="bg-white rounded-lg shadow p-12 text-center">
+          <Square3Stack3DIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Zones Found</h3>
+          <p className="text-gray-600 mb-4">
+            {zones.length === 0 
+              ? "No zones are available in the database yet." 
+              : "No zones match your current filters."}
+          </p>
+          {zones.length === 0 && (
+            <p className="text-sm text-gray-500">
+              Zones will appear here once they are created in the system.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredAndSortedZones.map((zone) => {
+            const treeCount = getZoneTreeCount(zone)
+            const farmName = farms.find(f => f.id === zone.farmId)?.name || 'Unknown Farm'
+            
+            return (
+              <div key={zone.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                <div className="p-6">
+                  <div className="flex items-start justify-between">
                     <div className="flex items-center">
-                      <MapIcon className="h-5 w-5 text-gray-400 mr-3" />
+                      <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                        <Square3Stack3DIcon className="h-6 w-6 text-purple-600" />
+                      </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{zone.name}</div>
-                        <div className="text-sm text-gray-500">ID: {zone.id.slice(0, 8)}...</div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {zone.name || `Zone ${zone.code}`}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          Code: {zone.code || 'N/A'}
+                        </p>
                       </div>
                     </div>
-                  </td>
-                  
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <BuildingStorefrontIcon className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-900">{getFarmName(zone.farmId)}</span>
-                    </div>
-                  </td>
-                  
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {zone.metadata.area.toFixed(2)} m²
-                  </td>
-                  
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {zone.metadata.soilType || 'Chưa xác định'}
-                    </span>
-                  </td>
-                  
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => toggleZoneStatus(zone)}
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        zone.isActive 
-                          ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                          : 'bg-red-100 text-red-800 hover:bg-red-200'
-                      } transition-colors cursor-pointer`}
-                    >
-                      {zone.isActive ? (
-                        <>
-                          <CheckCircleIcon className="h-3 w-3 mr-1" />
-                          Hoạt động
-                        </>
-                      ) : (
-                        <>
-                          <XCircleIcon className="h-3 w-3 mr-1" />
-                          Không hoạt động
-                        </>
-                      )}
-                    </button>
-                  </td>
-                  
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center space-x-2">
-                      {zone.alertOnEntry && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                          Vào
-                        </span>
-                      )}
-                      {zone.alertOnExit && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
-                          Ra
-                        </span>
-                      )}
-                      {!zone.alertOnEntry && !zone.alertOnExit && (
-                        <span className="text-gray-500 text-xs">Không có</span>
-                      )}
-                    </div>
-                  </td>
-                  
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => handleEditZone(zone)}
-                      className="text-blue-600 hover:text-blue-900"
-                      title="Chỉnh sửa"
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteZone(zone.id)}
-                      className="text-red-600 hover:text-red-900"
-                      title="Xóa"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        
-        {filteredZones.length === 0 && (
-          <div className="text-center py-12">
-            <MapIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Không có zone</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchQuery ? 'Không tìm thấy zone phù hợp' : 'Chưa có zone nào trong hệ thống'}
-            </p>
-            {!searchQuery && (
-              <div className="mt-6">
-                <button
-                  onClick={() => {
-                    setSelectedZone(null)
-                    setShowZoneModal(true)
-                  }}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-                >
-                  <PlusIcon className="h-5 w-5 mr-2" />
-                  Tạo zone đầu tiên
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                    {zone.isActive === false && (
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                        Inactive
+                      </span>
+                    )}
+                  </div>
 
-      {/* Zone Modal */}
-      {showZoneModal && (
-        <ZoneModal
-          zone={selectedZone}
-          farms={farms}
-          onClose={() => {
-            setShowZoneModal(false)
-            setSelectedZone(null)
-          }}
-          onSuccess={() => {
-            loadData()
-            setShowZoneModal(false)
-            setSelectedZone(null)
-          }}
-        />
-      )}
-    </div>
-  )
-}
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {zone.description || 'No description available'}
+                    </p>
+                  </div>
 
-// Zone Modal Component
-interface ZoneModalProps {
-  zone: Zone | null
-  farms: EnhancedFarm[]
-  onClose: () => void
-  onSuccess: () => void
-}
-
-function ZoneModal({ zone, farms, onClose, onSuccess }: ZoneModalProps) {
-  const [formData, setFormData] = useState({
-    name: zone?.name || '',
-    farmId: zone?.farmId || '',
-    isActive: zone?.isActive !== false,
-    alertOnEntry: zone?.alertOnEntry || false,
-    alertOnExit: zone?.alertOnExit || false,
-    soilType: zone?.metadata.soilType || '',
-    drainageLevel: zone?.metadata.drainageLevel || '',
-    area: zone?.metadata.area || 0,
-    perimeter: zone?.metadata.perimeter || 0,
-    boundaries: zone?.boundaries || []
-  })
-  const [loading, setLoading] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    
-    try {
-      const zoneData: Partial<Zone> = {
-        name: formData.name,
-        farmId: formData.farmId,
-        isActive: formData.isActive,
-        alertOnEntry: formData.alertOnEntry,
-        alertOnExit: formData.alertOnExit,
-        boundaries: formData.boundaries,
-        metadata: {
-          soilType: formData.soilType,
-          drainageLevel: formData.drainageLevel,
-          area: formData.area,
-          perimeter: formData.perimeter
-        }
-      }
-
-      if (zone) {
-        await AdminService.updateZone(zone.id, { ...zone, ...zoneData })
-      } else {
-        await AdminService.createZone(zoneData as Zone)
-      }
-      onSuccess()
-    } catch (error) {
-      console.error('Error saving zone:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const addBoundaryPoint = () => {
-    setFormData(prev => ({
-      ...prev,
-      boundaries: [...prev.boundaries, { lat: 0, lng: 0 }]
-    }))
-  }
-
-  const removeBoundaryPoint = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      boundaries: prev.boundaries.filter((_, i) => i !== index)
-    }))
-  }
-
-  const updateBoundaryPoint = (index: number, field: 'lat' | 'lng', value: number) => {
-    setFormData(prev => ({
-      ...prev,
-      boundaries: prev.boundaries.map((point, i) => 
-        i === index ? { ...point, [field]: value } : point
-      )
-    }))
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">
-          {zone ? 'Chỉnh sửa Zone' : 'Tạo Zone mới'}
-        </h3>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tên Zone *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                placeholder="Nhập tên zone"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nông trại *
-              </label>
-              <select
-                value={formData.farmId}
-                onChange={(e) => setFormData(prev => ({ ...prev, farmId: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                required
-              >
-                <option value="">Chọn nông trại...</option>
-                {farms.map((farm) => (
-                  <option key={farm.id} value={farm.id}>
-                    {farm.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Status and Alerts */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                />
-                <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
-                  Zone hoạt động
-                </label>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="alertOnEntry"
-                  checked={formData.alertOnEntry}
-                  onChange={(e) => setFormData(prev => ({ ...prev, alertOnEntry: e.target.checked }))}
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                />
-                <label htmlFor="alertOnEntry" className="ml-2 block text-sm text-gray-900">
-                  Cảnh báo khi vào
-                </label>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="alertOnExit"
-                  checked={formData.alertOnExit}
-                  onChange={(e) => setFormData(prev => ({ ...prev, alertOnExit: e.target.checked }))}
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                />
-                <label htmlFor="alertOnExit" className="ml-2 block text-sm text-gray-900">
-                  Cảnh báo khi ra
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Metadata */}
-          <div className="border-t border-gray-200 pt-6">
-            <h4 className="text-md font-medium text-gray-900 mb-4">Thông tin chi tiết</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Loại đất
-                </label>
-                <select
-                  value={formData.soilType}
-                  onChange={(e) => setFormData(prev => ({ ...prev, soilType: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Chọn loại đất...</option>
-                  <option value="clay">Đất sét</option>
-                  <option value="sandy">Đất cát</option>
-                  <option value="loamy">Đất thịt</option>
-                  <option value="silty">Đất bột</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mức độ thoát nước
-                </label>
-                <select
-                  value={formData.drainageLevel}
-                  onChange={(e) => setFormData(prev => ({ ...prev, drainageLevel: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Chọn mức độ...</option>
-                  <option value="poor">Kém</option>
-                  <option value="fair">Trung bình</option>
-                  <option value="good">Tốt</option>
-                  <option value="excellent">Rất tốt</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Diện tích (m²)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={formData.area}
-                  onChange={(e) => setFormData(prev => ({ ...prev, area: parseFloat(e.target.value) || 0 }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Chu vi (m)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={formData.perimeter}
-                  onChange={(e) => setFormData(prev => ({ ...prev, perimeter: parseFloat(e.target.value) || 0 }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Boundary Points */}
-          <div className="border-t border-gray-200 pt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="text-md font-medium text-gray-900">Điểm biên giới</h4>
-              <button
-                type="button"
-                onClick={addBoundaryPoint}
-                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 flex items-center"
-              >
-                <PlusIcon className="h-4 w-4 mr-1" />
-                Thêm điểm
-              </button>
-            </div>
-
-            <div className="space-y-3 max-h-60 overflow-y-auto">
-              {formData.boundaries.map((point, index) => (
-                <div key={index} className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg">
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Vĩ độ
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={point.lat}
-                        onChange={(e) => updateBoundaryPoint(index, 'lat', parseFloat(e.target.value) || 0)}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                        placeholder="10.762622"
-                      />
+                      <span className="text-gray-500">Farm:</span>
+                      <span className="ml-1 font-medium">{farmName}</span>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Kinh độ
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={point.lng}
-                        onChange={(e) => updateBoundaryPoint(index, 'lng', parseFloat(e.target.value) || 0)}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                        placeholder="106.660172"
-                      />
+                      <span className="text-gray-500">Trees:</span>
+                      <span className="ml-1 font-medium">{treeCount}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Area:</span>
+                      <span className="ml-1 font-medium">{formatArea(zone.area)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Created:</span>
+                      <span className="ml-1 font-medium">{formatDate(zone.createdDate)}</span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeBoundaryPoint(index)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
+
+                  {/* Zone Boundaries Info */}
+                  {zone.boundaries && zone.boundaries.length > 0 && (
+                    <div className="mt-4">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <MapPinIcon className="h-3 w-3 mr-1" />
+                        {zone.boundaries.length} boundary points
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex items-center justify-end space-x-2">
+                    <button
+                      onClick={() => {
+                        setSelectedZone(zone)
+                        setShowDetailsModal(true)
+                      }}
+                      className="p-2 text-gray-400 hover:text-purple-600"
+                      title="View details"
+                    >
+                      <EyeIcon className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
-
-            {formData.boundaries.length === 0 && (
-              <div className="text-center py-6 text-gray-500 text-sm">
-                Chưa có điểm biên giới nào. Thêm ít nhất 3 điểm để tạo zone.
               </div>
-            )}
-          </div>
+            )
+          })}
+        </div>
+      )}
 
-          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !formData.name || !formData.farmId}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Đang xử lý...' : (zone ? 'Cập nhật' : 'Tạo Zone')}
-            </button>
+      {/* Zone Details Modal */}
+      {showDetailsModal && selectedZone && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowDetailsModal(false)} />
+            
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Zone Details</h3>
+                
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Name</label>
+                      <p className="text-sm text-gray-900">{selectedZone.name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Code</label>
+                      <p className="text-sm text-gray-900">{selectedZone.code || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Status</label>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        selectedZone.isActive !== false 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {selectedZone.isActive !== false ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Trees in Zone</label>
+                      <p className="text-sm text-gray-900">{getZoneTreeCount(selectedZone)}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Area</label>
+                      <p className="text-sm text-gray-900">{formatArea(selectedZone.area)}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Farm</label>
+                      <p className="text-sm text-gray-900">
+                        {farms.find(f => f.id === selectedZone.farmId)?.name || 'Unknown Farm'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <p className="text-sm text-gray-900">{selectedZone.description || 'No description'}</p>
+                  </div>
+                  
+                  {selectedZone.boundaries && selectedZone.boundaries.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Boundary Points ({selectedZone.boundaries.length})
+                      </label>
+                      <div className="max-h-32 overflow-y-auto bg-gray-50 rounded-lg p-3">
+                        {selectedZone.boundaries.map((point, index) => (
+                          <div key={index} className="text-xs text-gray-600 mb-1">
+                            Point {index + 1}: {point.latitude?.toFixed(6)}, {point.longitude?.toFixed(6)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedZone.soil && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Soil Information</label>
+                      <div className="text-sm text-gray-900 space-y-1">
+                        {selectedZone.soil.type && <p>Type: {selectedZone.soil.type}</p>}
+                        {selectedZone.soil.ph && <p>pH: {selectedZone.soil.ph}</p>}
+                        {selectedZone.soil.nutrients && <p>Nutrients: {selectedZone.soil.nutrients}</p>}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedZone.climate && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Climate Information</label>
+                      <div className="text-sm text-gray-900 space-y-1">
+                        {selectedZone.climate.temperature && <p>Temperature: {selectedZone.climate.temperature}</p>}
+                        {selectedZone.climate.humidity && <p>Humidity: {selectedZone.climate.humidity}</p>}
+                        {selectedZone.climate.rainfall && <p>Rainfall: {selectedZone.climate.rainfall}</p>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
-        </form>
-      </div>
+        </div>
+      )}
     </div>
   )
 }

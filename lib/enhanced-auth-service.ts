@@ -250,12 +250,23 @@ export class EnhancedAuthService {
     )
     
     const rolesDocs = await getDocs(rolesQuery)
-    this.currentRoles = rolesDocs.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      grantedAt: doc.data().grantedAt?.toDate() || new Date(),
-      expiresAt: doc.data().expiresAt?.toDate(),
-    } as UserRole))
+    this.currentRoles = rolesDocs.docs.map(doc => {
+      const data = doc.data()
+      const role = {
+        id: doc.id,
+        ...data,
+        grantedAt: data.grantedAt?.toDate() || new Date(),
+        expiresAt: data.expiresAt?.toDate(),
+      } as UserRole
+      
+      // Ensure permissions are populated from ROLE_PERMISSIONS if not already set
+      if (!role.permissions || role.permissions.length === 0) {
+        role.permissions = ROLE_PERMISSIONS[role.roleType] || []
+        console.log(`🔧 AUTO-POPULATED permissions for ${role.roleType}:`, role.permissions)
+      }
+      
+      return role
+    })
 
     return this.currentRoles
   }
@@ -269,13 +280,17 @@ export class EnhancedAuthService {
   ): Promise<UserRole> {
     const roleId = `${userId}_${roleType}_${scopeType}_${scopeId || 'system'}`
     
+    // Ensure permissions are always populated from ROLE_PERMISSIONS
+    const permissions = ROLE_PERMISSIONS[roleType] || []
+    console.log(`🔧 GRANTING ROLE: ${roleType} with permissions:`, permissions)
+    
     const userRole: UserRole = {
       id: roleId,
       userId,
       roleType,
       scopeType,
       scopeId,
-      permissions: ROLE_PERMISSIONS[roleType] || [],
+      permissions,
       grantedBy: grantedBy || userId,
       grantedAt: new Date(),
       isActive: true
@@ -315,27 +330,52 @@ export class EnhancedAuthService {
 
   // Permission Checking
   hasPermission(permission: Permission, scopeId?: string): boolean {
-    if (!this.currentRoles.length) return false
+    console.log(`🔐 AUTH SERVICE: Checking permission ${permission} for scope ${scopeId}`)
+    console.log(`🔐 AUTH SERVICE: Current roles count:`, this.currentRoles.length)
+    
+    if (!this.currentRoles.length) {
+      console.log(`🔐 AUTH SERVICE: No roles found`)
+      return false
+    }
 
     // Super admin has all permissions
     const hasSuperAdmin = this.currentRoles.some(role => role.roleType === 'super_admin')
-    if (hasSuperAdmin) return true
+    if (hasSuperAdmin) {
+      console.log(`🔐 AUTH SERVICE: Super admin access granted`)
+      return true
+    }
 
     // Check specific permissions
-    return this.currentRoles.some(role => {
+    const hasAccess = this.currentRoles.some(role => {
+      console.log(`🔐 AUTH SERVICE: Checking role:`, {
+        roleType: role.roleType,
+        scopeType: role.scopeType,
+        scopeId: role.scopeId,
+        isActive: role.isActive,
+        permissions: role.permissions,
+        hasPermission: role.permissions.includes(permission)
+      })
+      
       // Check if role is active and not expired
       if (!role.isActive || (role.expiresAt && role.expiresAt < new Date())) {
+        console.log(`🔐 AUTH SERVICE: Role inactive or expired`)
         return false
       }
 
       // Check if scope matches (if specified)
       if (scopeId && role.scopeId && role.scopeId !== scopeId) {
+        console.log(`🔐 AUTH SERVICE: Scope mismatch: required ${scopeId}, role has ${role.scopeId}`)
         return false
       }
 
       // Check if permission is granted
-      return role.permissions.includes(permission)
+      const hasPermission = role.permissions.includes(permission)
+      console.log(`🔐 AUTH SERVICE: Permission ${permission} in role: ${hasPermission}`)
+      return hasPermission
     })
+    
+    console.log(`🔐 AUTH SERVICE: Final result: ${hasAccess}`)
+    return hasAccess
   }
 
   hasRole(roleType: RoleType, scopeId?: string): boolean {
