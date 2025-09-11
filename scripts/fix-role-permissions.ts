@@ -92,8 +92,8 @@ async function fixRolePermissions() {
       // Check if permissions are missing or empty
       const hasPermissions = roleData.permissions && roleData.permissions.length > 0
       
-      if (!hasPermissions && ROLE_PERMISSIONS[roleType]) {
-        const correctPermissions = ROLE_PERMISSIONS[roleType]
+      if (!hasPermissions && roleType in ROLE_PERMISSIONS) {
+        const correctPermissions = ROLE_PERMISSIONS[roleType as keyof typeof ROLE_PERMISSIONS]
         
         console.log(`🔧 Fixing role ${roleDoc.id} (${roleType}):`)
         console.log(`  - Adding ${correctPermissions.length} permissions`)

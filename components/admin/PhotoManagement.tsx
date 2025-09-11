@@ -72,7 +72,7 @@ export default function PhotoManagement() {
 
       setPhotos(photosData)
       setFarms(farmsData.map(f => ({ id: f.id, name: f.name })))
-      setUsers(usersData.map(u => ({ id: u.id, email: u.email })))
+      setUsers(usersData.filter(u => u.email).map(u => ({ id: u.uid, email: u.email! })))
       
     } catch (error) {
       console.error('Error loading data:', error)
@@ -88,33 +88,16 @@ export default function PhotoManagement() {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const photosThisMonth = photos.filter(photo => 
-      photo.uploadedAt && photo.uploadedAt >= startOfMonth
+      photo.uploadDate && photo.uploadDate >= startOfMonth
     ).length
 
     // Calculate storage used (estimated)
-    const totalSizeBytes = photos.reduce((sum, photo) => sum + (photo.fileSize || 2000000), 0) // Default 2MB per photo
+    const totalSizeBytes = photos.reduce((sum, photo) => sum + (photo.totalLocalSize || 2000000), 0) // Default 2MB per photo
     const storageUsed = formatFileSize(totalSizeBytes)
     const averageFileSize = formatFileSize(totalPhotos > 0 ? totalSizeBytes / totalPhotos : 0)
 
-    // Calculate top contributors
-    const contributorCounts: Record<string, { userEmail: string; count: number }> = {}
-    photos.forEach(photo => {
-      if (photo.uploadedBy) {
-        if (!contributorCounts[photo.uploadedBy]) {
-          const user = users.find(u => u.id === photo.uploadedBy)
-          contributorCounts[photo.uploadedBy] = {
-            userEmail: user?.email || 'Unknown User',
-            count: 0
-          }
-        }
-        contributorCounts[photo.uploadedBy].count++
-      }
-    })
-
-    const topContributors = Object.entries(contributorCounts)
-      .map(([userId, data]) => ({ userId, ...data }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
+    // Calculate top contributors (placeholder - Photo interface doesn't have uploadedBy field)
+    const topContributors: Array<{ userId: string; userEmail: string; count: number }> = []
 
     setStats({
       totalPhotos,
@@ -135,25 +118,25 @@ export default function PhotoManagement() {
 
   const getFilteredAndSortedPhotos = () => {
     let filtered = photos.filter(photo => {
-      const matchesSearch = photo.fileName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           photo.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesSearch = photo.filename?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           photo.userNotes?.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesFarm = filterFarm === 'all' || photo.farmId === filterFarm
-      const matchesUser = filterUser === 'all' || photo.uploadedBy === filterUser
+      const matchesUser = filterUser === 'all' // No uploadedBy field in Photo interface
       
       let matchesDate = true
-      if (filterDateRange !== 'all' && photo.uploadedAt) {
+      if (filterDateRange !== 'all' && photo.uploadDate) {
         const now = new Date()
         switch (filterDateRange) {
           case 'today':
-            matchesDate = photo.uploadedAt.toDateString() === now.toDateString()
+            matchesDate = photo.uploadDate.toDateString() === now.toDateString()
             break
           case 'week':
             const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-            matchesDate = photo.uploadedAt >= weekAgo
+            matchesDate = photo.uploadDate >= weekAgo
             break
           case 'month':
             const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-            matchesDate = photo.uploadedAt >= monthAgo
+            matchesDate = photo.uploadDate >= monthAgo
             break
         }
       }
@@ -165,13 +148,13 @@ export default function PhotoManagement() {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'newest':
-          return (b.uploadedAt?.getTime() || 0) - (a.uploadedAt?.getTime() || 0)
+          return (b.uploadDate?.getTime() || 0) - (a.uploadDate?.getTime() || 0)
         case 'oldest':
-          return (a.uploadedAt?.getTime() || 0) - (b.uploadedAt?.getTime() || 0)
+          return (a.uploadDate?.getTime() || 0) - (b.uploadDate?.getTime() || 0)
         case 'name':
-          return (a.fileName || '').localeCompare(b.fileName || '')
+          return (a.filename || '').localeCompare(b.filename || '')
         case 'size':
-          return (b.fileSize || 0) - (a.fileSize || 0)
+          return (b.totalLocalSize || 0) - (a.totalLocalSize || 0)
         default:
           return 0
       }
@@ -408,10 +391,10 @@ export default function PhotoManagement() {
                 }}
               >
                 <div className="aspect-square">
-                  {photo.thumbnailUrl || photo.downloadURL ? (
+                  {photo.thumbnailPath || photo.localPath ? (
                     <img
-                      src={photo.thumbnailUrl || photo.downloadURL}
-                      alt={photo.fileName || 'Photo'}
+                      src={photo.thumbnailPath || photo.localPath}
+                      alt={photo.filename || 'Photo'}
                       className="w-full h-full object-cover"
                       loading="lazy"
                     />
@@ -429,9 +412,9 @@ export default function PhotoManagement() {
                 </div>
 
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-2">
-                  <p className="text-white text-xs truncate">{photo.fileName}</p>
+                  <p className="text-white text-xs truncate">{photo.filename}</p>
                   <p className="text-gray-300 text-xs">
-                    {photo.fileSize ? formatFileSize(photo.fileSize) : 'Unknown size'}
+                    {photo.totalLocalSize ? formatFileSize(photo.totalLocalSize) : 'Unknown size'}
                   </p>
                 </div>
               </div>
@@ -453,10 +436,10 @@ export default function PhotoManagement() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-gray-900">Photo Details</h3>
                   <div className="flex items-center space-x-2">
-                    {selectedPhoto.downloadURL && (
+                    {selectedPhoto.localPath && (
                       <a
-                        href={selectedPhoto.downloadURL}
-                        download={selectedPhoto.fileName}
+                        href={selectedPhoto.localPath}
+                        download={selectedPhoto.filename}
                         className="p-2 text-gray-400 hover:text-blue-600"
                         title="Download photo"
                       >
@@ -476,10 +459,10 @@ export default function PhotoManagement() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Photo Display */}
                   <div className="bg-gray-100 rounded-lg overflow-hidden">
-                    {selectedPhoto.downloadURL ? (
+                    {selectedPhoto.localPath ? (
                       <img
-                        src={selectedPhoto.downloadURL}
-                        alt={selectedPhoto.fileName || 'Photo'}
+                        src={selectedPhoto.localPath}
+                        alt={selectedPhoto.filename || 'Photo'}
                         className="w-full h-auto max-h-96 object-contain"
                       />
                     ) : (
@@ -493,31 +476,31 @@ export default function PhotoManagement() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">File Name</label>
-                      <p className="text-sm text-gray-900">{selectedPhoto.fileName || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">{selectedPhoto.filename || 'N/A'}</p>
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Description</label>
-                      <p className="text-sm text-gray-900">{selectedPhoto.description || 'No description'}</p>
+                      <p className="text-sm text-gray-900">{selectedPhoto.userNotes || 'No description'}</p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700">File Size</label>
                         <p className="text-sm text-gray-900">
-                          {selectedPhoto.fileSize ? formatFileSize(selectedPhoto.fileSize) : 'Unknown'}
+                          {selectedPhoto.totalLocalSize ? formatFileSize(selectedPhoto.totalLocalSize) : 'Unknown'}
                         </p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Uploaded</label>
-                        <p className="text-sm text-gray-900">{formatDate(selectedPhoto.uploadedAt)}</p>
+                        <p className="text-sm text-gray-900">{formatDate(selectedPhoto.uploadDate)}</p>
                       </div>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Uploaded By</label>
                       <p className="text-sm text-gray-900">
-                        {users.find(u => u.id === selectedPhoto.uploadedBy)?.email || 'Unknown User'}
+                        {'Unknown User'}
                       </p>
                     </div>
 
@@ -544,10 +527,10 @@ export default function PhotoManagement() {
                       </div>
                     )}
 
-                    {selectedPhoto.capturedAt && (
+                    {selectedPhoto.timestamp && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Captured At</label>
-                        <p className="text-sm text-gray-900">{formatDate(selectedPhoto.capturedAt)}</p>
+                        <p className="text-sm text-gray-900">{formatDate(selectedPhoto.timestamp)}</p>
                       </div>
                     )}
                   </div>

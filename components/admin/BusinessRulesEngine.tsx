@@ -50,14 +50,14 @@ export default function BusinessRulesEngine() {
     totalExecutions: 0
   })
 
-  const [newRule, setNewRule] = useState<Partial<BusinessRule>>({
+  const [newRule, setNewRule] = useState({
     name: '',
     description: '',
-    category: 'user_onboarding',
-    status: 'draft',
+    category: 'automation' as const,
+    isActive: false,
     priority: 1,
-    conditions: [],
-    actions: []
+    conditions: [] as any[],
+    actions: [] as any[]
   })
 
   useEffect(() => {
@@ -74,18 +74,9 @@ export default function BusinessRulesEngine() {
       // Load real business rules from Firebase
       const realRules = await BusinessRulesService.getBusinessRules()
       
-      // Transform the data to match component's expected structure
-      const transformedRules = realRules.map(rule => ({
-        ...rule,
-        category: mapServiceCategoryToComponent(rule.category),
-        status: rule.isActive ? 'active' : 'inactive',
-        executionCount: rule.triggerCount,
-        successCount: rule.successCount,
-        failureCount: rule.failureCount,
-        lastExecuted: rule.lastTriggered
-      }))
+      // Use the real rules directly since they already match the BusinessRule interface
+      setRules(realRules)
       
-      setRules(transformedRules)
     } catch (error) {
       console.error('Error loading rules:', error)
     } finally {
@@ -93,23 +84,23 @@ export default function BusinessRulesEngine() {
     }
   }
 
-  // Helper function to map service categories to component categories
-  const mapServiceCategoryToComponent = (serviceCategory: string) => {
+  // Helper function to map service categories to component categories  
+  const mapServiceCategoryToComponent = (serviceCategory: string): BusinessRule['category'] => {
     switch (serviceCategory) {
-      case 'validation': return 'data_validation'
-      case 'automation': return 'user_onboarding'
+      case 'validation': return 'validation'
+      case 'automation': return 'automation'
       case 'notification': return 'notification'
-      case 'access_control': return 'permission_management'
-      case 'data_processing': return 'farm_assignment'
-      default: return 'custom'
+      case 'access_control': return 'access_control'
+      case 'data_processing': return 'data_processing'
+      default: return 'automation'
     }
   }
 
   const calculateStats = () => {
     const totalRules = rules.length
-    const activeRules = rules.filter(r => r.status === 'active').length
-    const draftRules = rules.filter(r => r.status === 'draft').length
-    const totalExecutions = rules.reduce((sum, rule) => sum + rule.executionCount, 0)
+    const activeRules = rules.filter(r => r.isActive).length
+    const draftRules = rules.filter(r => !r.isActive).length
+    const totalExecutions = rules.reduce((sum, rule) => sum + rule.triggerCount, 0)
 
     setStats({
       totalRules,
@@ -127,8 +118,8 @@ export default function BusinessRulesEngine() {
       const ruleData = {
         name: newRule.name.trim(),
         description: newRule.description || '',
-        category: mapComponentCategoryToService(newRule.category || 'custom'),
-        isActive: newRule.status === 'active',
+        category: mapComponentCategoryToService(newRule.category || 'automation'),
+        isActive: newRule.isActive || false,
         priority: newRule.priority || 1,
         conditions: newRule.conditions || [],
         actions: newRule.actions || [],
@@ -144,8 +135,8 @@ export default function BusinessRulesEngine() {
       setNewRule({
         name: '',
         description: '',
-        category: 'user_onboarding',
-        status: 'draft',
+        category: 'automation',
+        isActive: false,
         priority: 1,
         conditions: [],
         actions: []
@@ -158,13 +149,13 @@ export default function BusinessRulesEngine() {
   }
 
   // Helper function to map component categories to service categories
-  const mapComponentCategoryToService = (componentCategory: string) => {
+  const mapComponentCategoryToService = (componentCategory: string): BusinessRule['category'] => {
     switch (componentCategory) {
       case 'data_validation': return 'validation'
-      case 'user_onboarding': return 'automation'
+      case 'automation': return 'automation'
       case 'notification': return 'notification'
-      case 'permission_management': return 'access_control'
-      case 'farm_assignment': return 'data_processing'
+      case 'access_control': return 'access_control'
+      case 'data_processing': return 'data_processing'
       default: return 'automation'
     }
   }
@@ -204,7 +195,7 @@ export default function BusinessRulesEngine() {
         rule.id === ruleId 
           ? { 
               ...rule, 
-              status: rule.status === 'active' ? 'inactive' : 'active',
+              isActive: !rule.isActive,
               updatedAt: new Date()
             }
           : rule
@@ -222,8 +213,7 @@ export default function BusinessRulesEngine() {
       // Convert component rule back to service format for testing
       const serviceRule = {
         ...rule,
-        category: mapComponentCategoryToService(rule.category),
-        isActive: rule.status === 'active'
+        category: mapComponentCategoryToService(rule.category)
       }
 
       // Test rule with sample data
@@ -258,7 +248,9 @@ export default function BusinessRulesEngine() {
     const matchesSearch = rule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          rule.description.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = filterCategory === 'all' || rule.category === filterCategory
-    const matchesStatus = filterStatus === 'all' || rule.status === filterStatus
+    const matchesStatus = filterStatus === 'all' || 
+                         (filterStatus === 'active' && rule.isActive) ||
+                         (filterStatus === 'inactive' && !rule.isActive)
     return matchesSearch && matchesCategory && matchesStatus
   })
 
@@ -274,13 +266,8 @@ export default function BusinessRulesEngine() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800'
-      case 'inactive': return 'bg-red-100 text-red-800'
-      case 'draft': return 'bg-yellow-100 text-yellow-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
+  const getStatusColor = (isActive: boolean) => {
+    return isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
   }
 
   const formatTimeAgo = (date: Date) => {
@@ -437,8 +424,8 @@ export default function BusinessRulesEngine() {
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryColor(rule.category)}`}>
                       {rule.category.replace('_', ' ')}
                     </span>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(rule.status)}`}>
-                      {rule.status}
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(rule.isActive)}`}>
+                      {rule.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                   
@@ -448,13 +435,13 @@ export default function BusinessRulesEngine() {
                     <span>Priority: {rule.priority}</span>
                     <span>Conditions: {rule.conditions.length}</span>
                     <span>Actions: {rule.actions.length}</span>
-                    <span>Executions: {rule.executionCount}</span>
-                    {rule.lastExecuted && (
-                      <span>Last run: {formatTimeAgo(rule.lastExecuted)}</span>
+                    <span>Executions: {rule.triggerCount}</span>
+                    {rule.lastTriggered && (
+                      <span>Last run: {formatTimeAgo(rule.lastTriggered)}</span>
                     )}
                   </div>
 
-                  {rule.executionCount > 0 && (
+                  {rule.triggerCount > 0 && (
                     <div className="mt-3 flex items-center space-x-4 text-sm">
                       <div className="flex items-center text-green-600">
                         <CheckCircleIcon className="h-4 w-4 mr-1" />
@@ -492,10 +479,10 @@ export default function BusinessRulesEngine() {
                   
                   <button
                     onClick={() => toggleRuleStatus(rule.id)}
-                    className={`p-2 text-gray-400 hover:${rule.status === 'active' ? 'text-red-600' : 'text-green-600'}`}
-                    title={rule.status === 'active' ? 'Deactivate rule' : 'Activate rule'}
+                    className={`p-2 text-gray-400 hover:${rule.isActive ? 'text-red-600' : 'text-green-600'}`}
+                    title={rule.isActive ? 'Deactivate rule' : 'Activate rule'}
                   >
-                    {rule.status === 'active' ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
+                    {rule.isActive ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
                   </button>
                   
                   <button

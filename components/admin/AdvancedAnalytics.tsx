@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
-import { AnalyticsService, AnalyticsData } from '@/lib/analytics-service'
+import { AnalyticsService, AnalyticsData as ServiceAnalyticsData } from '@/lib/analytics-service'
 import { 
   ChartBarIcon,
   UsersIcon,
@@ -19,7 +19,7 @@ import {
   ListBulletIcon
 } from '@heroicons/react/24/outline'
 
-interface AnalyticsData {
+interface AdminAnalyticsData {
   userMetrics: {
     totalUsers: number
     activeUsers: number
@@ -60,7 +60,7 @@ interface TimeRange {
 
 export default function AdvancedAnalytics() {
   const { user } = useEnhancedAuth()
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
+  const [analytics, setAnalytics] = useState<AdminAnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d')
   const [selectedMetric, setSelectedMetric] = useState<'users' | 'farms' | 'content' | 'system'>('users')
@@ -85,10 +85,10 @@ export default function AdvancedAnalytics() {
       const analyticsData = await AnalyticsService.getAnalyticsData()
       
       // Transform the data to match the component's expected structure
-      const transformedData: AnalyticsData = {
+      const transformedData: AdminAnalyticsData = {
         userMetrics: {
           totalUsers: analyticsData.keyMetrics.totalUsers,
-          activeUsers: analyticsData.keyMetrics.activeUsers || Math.floor(analyticsData.keyMetrics.totalUsers * 0.7),
+          activeUsers: Math.floor(analyticsData.keyMetrics.totalUsers * 0.7), // Estimated from total users
           newUsersThisMonth: Math.floor(analyticsData.keyMetrics.totalUsers * 0.1),
           userGrowthRate: 12.5, // This would come from historical data comparison
           averageSessionDuration: 24.5, // This would come from session tracking

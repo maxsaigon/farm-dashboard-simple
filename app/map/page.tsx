@@ -481,7 +481,7 @@ function MapPageContent() {
       </div>
 
       {/* Map and Detail Layout */}
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-180px)]">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-180px)] lg:h-[calc(100vh-180px)] pb-16 lg:pb-0">
         <div className="flex-1 order-2 lg:order-1 relative">
           {loading ? (
             <div className="h-full flex items-center justify-center">

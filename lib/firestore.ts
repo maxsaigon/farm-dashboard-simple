@@ -100,9 +100,24 @@ export function subscribeToTrees(farmId: string, userId: string, callback: (tree
   }
   
   // Check farm access first for non-admin users
-  FarmService.checkFarmAccess(userId, farmId, ['read']).then(hasAccess => {
+  FarmService.checkFarmAccess(userId, farmId, ['read']).then(async hasAccess => {
     if (!hasAccess) {
       console.error('No access to farm:', farmId)
+      
+      // Try to get user's farms to see what they have access to
+      try {
+        const userFarms = await FarmService.getUserFarms(userId)
+        console.log('User has access to farms:', userFarms.map(f => ({ id: f.id, name: f.name })))
+        
+        if (userFarms.length === 0) {
+          console.error('User has no farm access at all. Please contact admin.')
+        } else {
+          console.error(`User does not have access to farm ${farmId}. Available farms:`, userFarms.map(f => f.id))
+        }
+      } catch (error) {
+        console.error('Error checking user farms:', error)
+      }
+      
       callback([])
       return
     }

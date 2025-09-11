@@ -18,7 +18,7 @@ import {
   Cog6ToothIcon
 } from '@heroicons/react/24/outline'
 
-interface SystemHealth {
+interface LocalSystemHealth {
   overall: 'healthy' | 'warning' | 'critical'
   uptime: number
   lastUpdate: Date
@@ -76,7 +76,7 @@ interface SystemAlert {
 
 export default function SystemMonitoring() {
   const { user } = useEnhancedAuth()
-  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null)
+  const [systemHealth, setSystemHealth] = useState<LocalSystemHealth | null>(null)
   const [loading, setLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [refreshInterval, setRefreshInterval] = useState(30) // seconds
@@ -102,7 +102,7 @@ export default function SystemMonitoring() {
       const realSystemHealth = await SystemMonitoringService.getSystemHealth()
       
       // Transform the data to match the component's expected structure
-      const transformedHealth: SystemHealth = {
+      const transformedHealth: LocalSystemHealth = {
         overall: realSystemHealth.overall,
         uptime: realSystemHealth.metrics.uptime,
         lastUpdate: realSystemHealth.lastUpdated,

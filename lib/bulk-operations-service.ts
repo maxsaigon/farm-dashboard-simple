@@ -148,8 +148,7 @@ export class BulkOperationsService {
       // For now, we'll simulate the process
       
       await this.updateOperationProgress(operationId, { 
-        status: 'running',
-        startedAt: new Date()
+        status: 'running'
       })
 
       // Simulate processing time

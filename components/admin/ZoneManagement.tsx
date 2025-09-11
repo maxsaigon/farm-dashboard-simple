@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
 import { AdminService } from '@/lib/admin-service'
-import { Zone } from '@/lib/types'
+import { Zone } from '@/lib/gps-tracking-service'
 import { 
   MapIcon, 
   PlusIcon, 
@@ -85,7 +85,7 @@ export default function ZoneManagement() {
 
     // Calculate trees per zone
     const zoneTreeCounts = zones.map(zone => {
-      const zoneTreeCount = trees.filter(tree => tree.zoneId === zone.id || tree.zoneCode === zone.code).length
+      const zoneTreeCount = trees.filter(tree => tree.zoneId === zone.id || tree.zoneCode === zone.name).length
       return {
         zone,
         count: zoneTreeCount
@@ -107,13 +107,11 @@ export default function ZoneManagement() {
   }
 
   const getZoneTreeCount = (zone: Zone) => {
-    return trees.filter(tree => tree.zoneId === zone.id || tree.zoneCode === zone.code).length
+    return trees.filter(tree => tree.zoneId === zone.id || tree.zoneCode === zone.name).length
   }
 
   const filteredAndSortedZones = zones.filter(zone => {
-    const matchesSearch = zone.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         zone.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         zone.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = zone.name?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesFarm = filterFarm === 'all' || zone.farmId === filterFarm
     
     return matchesSearch && matchesFarm
@@ -121,12 +119,12 @@ export default function ZoneManagement() {
     switch (sortBy) {
       case 'name':
         return (a.name || '').localeCompare(b.name || '')
-      case 'code':
-        return (a.code || '').localeCompare(b.code || '')
+      case 'id':
+        return (a.id || '').localeCompare(b.id || '')
       case 'trees':
         return getZoneTreeCount(b) - getZoneTreeCount(a)
       case 'area':
-        return (b.area || 0) - (a.area || 0)
+        return (b.metadata?.area || 0) - (a.metadata?.area || 0)
       default:
         return 0
     }
@@ -323,10 +321,10 @@ export default function ZoneManagement() {
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {zone.name || `Zone ${zone.code}`}
+                          {zone.name || `Zone ${zone.id}`}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          Code: {zone.code || 'N/A'}
+                          ID: {zone.id || 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -339,7 +337,7 @@ export default function ZoneManagement() {
 
                   <div className="mt-4">
                     <p className="text-sm text-gray-600 line-clamp-2">
-                      {zone.description || 'No description available'}
+                      {'No description available'}
                     </p>
                   </div>
 
@@ -354,11 +352,11 @@ export default function ZoneManagement() {
                     </div>
                     <div>
                       <span className="text-gray-500">Area:</span>
-                      <span className="ml-1 font-medium">{formatArea(zone.area)}</span>
+                      <span className="ml-1 font-medium">{formatArea(zone.metadata?.area)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Created:</span>
-                      <span className="ml-1 font-medium">{formatDate(zone.createdDate)}</span>
+                      <span className="text-gray-500">Status:</span>
+                      <span className="ml-1 font-medium">{zone.isActive ? 'Active' : 'Inactive'}</span>
                     </div>
                   </div>
 
@@ -408,8 +406,8 @@ export default function ZoneManagement() {
                       <p className="text-sm text-gray-900">{selectedZone.name || 'N/A'}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Code</label>
-                      <p className="text-sm text-gray-900">{selectedZone.code || 'N/A'}</p>
+                      <label className="block text-sm font-medium text-gray-700">ID</label>
+                      <p className="text-sm text-gray-900">{selectedZone.id || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Status</label>
@@ -427,7 +425,7 @@ export default function ZoneManagement() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Area</label>
-                      <p className="text-sm text-gray-900">{formatArea(selectedZone.area)}</p>
+                      <p className="text-sm text-gray-900">{formatArea(selectedZone.metadata?.area)}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Farm</label>
@@ -439,7 +437,7 @@ export default function ZoneManagement() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Description</label>
-                    <p className="text-sm text-gray-900">{selectedZone.description || 'No description'}</p>
+                    <p className="text-sm text-gray-900">{'No description'}</p>
                   </div>
                   
                   {selectedZone.boundaries && selectedZone.boundaries.length > 0 && (
@@ -450,34 +448,21 @@ export default function ZoneManagement() {
                       <div className="max-h-32 overflow-y-auto bg-gray-50 rounded-lg p-3">
                         {selectedZone.boundaries.map((point, index) => (
                           <div key={index} className="text-xs text-gray-600 mb-1">
-                            Point {index + 1}: {point.latitude?.toFixed(6)}, {point.longitude?.toFixed(6)}
+                            Point {index + 1}: {point.lat?.toFixed(6)}, {point.lng?.toFixed(6)}
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {selectedZone.soil && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Soil Information</label>
-                      <div className="text-sm text-gray-900 space-y-1">
-                        {selectedZone.soil.type && <p>Type: {selectedZone.soil.type}</p>}
-                        {selectedZone.soil.ph && <p>pH: {selectedZone.soil.ph}</p>}
-                        {selectedZone.soil.nutrients && <p>Nutrients: {selectedZone.soil.nutrients}</p>}
-                      </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Metadata</label>
+                    <div className="text-sm text-gray-900 space-y-1">
+                      {selectedZone.metadata?.soilType && <p>Soil Type: {selectedZone.metadata.soilType}</p>}
+                      {selectedZone.metadata?.drainageLevel && <p>Drainage: {selectedZone.metadata.drainageLevel}</p>}
+                      {selectedZone.metadata?.perimeter && <p>Perimeter: {selectedZone.metadata.perimeter}m</p>}
                     </div>
-                  )}
-
-                  {selectedZone.climate && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Climate Information</label>
-                      <div className="text-sm text-gray-900 space-y-1">
-                        {selectedZone.climate.temperature && <p>Temperature: {selectedZone.climate.temperature}</p>}
-                        {selectedZone.climate.humidity && <p>Humidity: {selectedZone.climate.humidity}</p>}
-                        {selectedZone.climate.rainfall && <p>Rainfall: {selectedZone.climate.rainfall}</p>}
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
 

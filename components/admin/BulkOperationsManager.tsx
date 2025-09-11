@@ -28,11 +28,27 @@ interface BulkStats {
   failedOperations: number
 }
 
+// Component-specific interface to avoid conflict with service interface
+interface ComponentBulkOperation {
+  id: string
+  type: 'user_import' | 'user_export' | 'farm_import' | 'farm_export' | 'role_assignment' | 'data_migration'
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+  progress: number
+  totalRecords: number
+  processedRecords: number
+  failedRecords: number
+  startedAt?: Date
+  completedAt?: Date
+  errorMessage?: string
+  createdBy: string
+  metadata: Record<string, any>
+}
+
 export default function BulkOperationsManager() {
   const { user } = useEnhancedAuth()
-  const [operations, setOperations] = useState<BulkOperation[]>([])
+  const [operations, setOperations] = useState<ComponentBulkOperation[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedOperation, setSelectedOperation] = useState<BulkOperation | null>(null)
+  const [selectedOperation, setSelectedOperation] = useState<ComponentBulkOperation | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [operationType, setOperationType] = useState<string>('user_import')
@@ -45,7 +61,7 @@ export default function BulkOperationsManager() {
   })
 
   const [newOperation, setNewOperation] = useState({
-    type: 'user_import' as BulkOperation['type'],
+    type: 'user_import' as ComponentBulkOperation['type'],
     description: '',
     options: {} as Record<string, any>
   })
@@ -71,7 +87,7 @@ export default function BulkOperationsManager() {
       const realOperations = await BulkOperationsService.getBulkOperations(50)
       
       // Transform the data to match component's expected structure
-      const transformedOperations = realOperations.map(op => ({
+      const transformedOperations: ComponentBulkOperation[] = realOperations.map(op => ({
         id: op.id,
         type: mapOperationType(op.type, op.target),
         status: op.status,
@@ -268,7 +284,7 @@ export default function BulkOperationsManager() {
     }
   }
 
-  const getOperationIcon = (type: BulkOperation['type']) => {
+  const getOperationIcon = (type: ComponentBulkOperation['type']) => {
     switch (type) {
       case 'user_import': return <CloudArrowUpIcon className="h-5 w-5" />
       case 'user_export': return <CloudArrowDownIcon className="h-5 w-5" />
@@ -280,7 +296,7 @@ export default function BulkOperationsManager() {
     }
   }
 
-  const getStatusIcon = (status: BulkOperation['status']) => {
+  const getStatusIcon = (status: ComponentBulkOperation['status']) => {
     switch (status) {
       case 'completed': return <CheckCircleIcon className="h-5 w-5 text-green-600" />
       case 'failed': return <XCircleIcon className="h-5 w-5 text-red-600" />
@@ -291,7 +307,7 @@ export default function BulkOperationsManager() {
     }
   }
 
-  const getStatusColor = (status: BulkOperation['status']) => {
+  const getStatusColor = (status: ComponentBulkOperation['status']) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800'
       case 'failed': return 'bg-red-100 text-red-800'
@@ -525,7 +541,7 @@ export default function BulkOperationsManager() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Operation Type</label>
                     <select
                       value={newOperation.type}
-                      onChange={(e) => setNewOperation(prev => ({ ...prev, type: e.target.value as BulkOperation['type'] }))}
+                      onChange={(e) => setNewOperation(prev => ({ ...prev, type: e.target.value as ComponentBulkOperation['type'] }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                     >
                       {operationTypes.map(type => (

@@ -36,8 +36,7 @@ export default function AuditCompliance() {
     totalLogs: 0,
     criticalEvents: 0,
     failedAttempts: 0,
-    complianceScore: 0,
-    lastAudit: new Date()
+    complianceScore: 0
   })
 
   useEffect(() => {
