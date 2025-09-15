@@ -40,21 +40,23 @@ interface FarmerFriendlyMapProps {
 // Farmer-friendly health status mapping
 const getHealthStatusInVietnamese = (status: string) => {
   const statusMap: { [key: string]: { label: string; color: string; icon: string } } = {
+    'Excellent': { label: 'Tuyệt vời', color: 'text-emerald-600 bg-emerald-100', icon: '🟢' },
     'Good': { label: 'Khỏe mạnh', color: 'text-green-600 bg-green-100', icon: '🟢' },
     'Fair': { label: 'Bình thường', color: 'text-yellow-600 bg-yellow-100', icon: '🟡' },
-    'Poor': { label: 'Yếu', color: 'text-orange-600 bg-orange-100', icon: '🟠' },
-    'Disease': { label: 'Bệnh', color: 'text-red-600 bg-red-100', icon: '🔴' },
-    'Dead': { label: 'Chết', color: 'text-gray-600 bg-gray-100', icon: '⚫' }
+    'Poor': { label: 'Yếu', color: 'text-red-600 bg-red-100', icon: '🔴' }
   }
   return statusMap[status] || statusMap['Good']
 }
 
 // Get tree age in farmer-friendly format
-const getTreeAge = (plantingDate: Date | null) => {
+const getTreeAge = (plantingDate: Date | string | null | undefined) => {
   if (!plantingDate) return 'Chưa rõ tuổi'
   
+  const date = plantingDate instanceof Date ? plantingDate : new Date(plantingDate)
+  if (isNaN(date.getTime())) return 'Chưa rõ tuổi'
+  
   const now = new Date()
-  const diffTime = Math.abs(now.getTime() - plantingDate.getTime())
+  const diffTime = Math.abs(now.getTime() - date.getTime())
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   const diffMonths = Math.floor(diffDays / 30)
   const diffYears = Math.floor(diffMonths / 12)
@@ -272,8 +274,8 @@ export default function FarmerFriendlyMap({
 
   // Simple visual map representation for farmers
   const SimpleMapView = () => {
-    const problemTrees = trees.filter(t => t.needsAttention || t.healthStatus === 'Poor' || t.healthStatus === 'Disease')
-    const healthyTrees = trees.filter(t => !t.needsAttention && (t.healthStatus === 'Good' || !t.healthStatus))
+    const problemTrees = trees.filter(t => t.needsAttention || t.healthStatus === 'Poor')
+    const healthyTrees = trees.filter(t => !t.needsAttention && (t.healthStatus === 'Good' || t.healthStatus === 'Excellent' || !t.healthStatus))
     
     return (
       <div className="bg-gradient-to-br from-green-50 to-blue-50 p-6 rounded-xl">

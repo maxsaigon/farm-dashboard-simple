@@ -197,13 +197,13 @@ function MapPageContent() {
     if (filters.searchText) {
       const searchLower = filters.searchText.toLowerCase()
       filteredTrees = trees.filter(tree => 
-        tree.name.toLowerCase().includes(searchLower) ||
-        tree.variety?.toLowerCase().includes(searchLower) ||
-        tree.qrCode?.toLowerCase().includes(searchLower)
+        (tree.name || '').toLowerCase().includes(searchLower) ||
+        (tree.variety || '').toLowerCase().includes(searchLower) ||
+        (tree.qrCode || '').toLowerCase().includes(searchLower)
       )
       filteredZones = zones.filter(zone =>
-        zone.name.toLowerCase().includes(searchLower) ||
-        zone.description?.toLowerCase().includes(searchLower)
+        (zone.name || '').toLowerCase().includes(searchLower) ||
+        (zone.description || '').toLowerCase().includes(searchLower)
       )
     }
 
@@ -211,8 +211,7 @@ function MapPageContent() {
     if (filters.showOnlyProblems) {
       filteredTrees = filteredTrees.filter(tree => 
         tree.needsAttention || 
-        tree.healthStatus === 'Poor' || 
-        tree.healthStatus === 'Disease'
+        tree.healthStatus === 'Poor'
       )
     }
 
@@ -255,8 +254,7 @@ function MapPageContent() {
 
   const problemTreesCount = trees.filter(tree => 
     tree.needsAttention || 
-    tree.healthStatus === 'Poor' || 
-    tree.healthStatus === 'Disease'
+    tree.healthStatus === 'Poor'
   ).length
 
   const filteredData = getFilteredData()
