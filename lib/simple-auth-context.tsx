@@ -97,6 +97,7 @@ interface SimpleAuthContextType {
   
   // Admin functions
   isAdmin: () => boolean
+  isFarmAdmin: () => boolean
   isFarmOwner: (farmId?: string) => boolean
   isFarmManager: (farmId?: string) => boolean
   
@@ -137,11 +138,36 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
           
           // Load farms user has access to
           const userFarms = await loadUserFarms(access)
-          setFarms(userFarms)
           
-          // Auto-select farm if user has only one
-          if (userFarms.length === 1 && !currentFarm) {
-            setCurrentFarmState(userFarms[0])
+          // If user has no farm access, create a default farm for them
+          if (userFarms.length === 0 && access.length === 0) {
+            console.log('🏗️ Creating default farm for new user:', firebaseUser.email)
+            try {
+              const defaultFarm = await createDefaultFarmForUser(firebaseUser, userProfile)
+              if (defaultFarm) {
+                // Reload farm access after creating default farm
+                const newAccess = await loadUserFarmAccess(firebaseUser.uid)
+                setFarmAccess(newAccess)
+                const newFarms = await loadUserFarms(newAccess)
+                setFarms(newFarms)
+                
+                // Auto-select the new default farm
+                if (newFarms.length > 0) {
+                  setCurrentFarmState(newFarms[0])
+                }
+              }
+            } catch (error) {
+              console.error('❌ Failed to create default farm:', error)
+              // Continue without farm - user can create one later
+              setFarms([])
+            }
+          } else {
+            setFarms(userFarms)
+            
+            // Auto-select farm if user has only one
+            if (userFarms.length === 1 && !currentFarm) {
+              setCurrentFarmState(userFarms[0])
+            }
           }
           
           // Update last login
@@ -155,7 +181,47 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
           setFarmAccess([])
         }
       } catch (error) {
-        console.error('❌ Auth state change error:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        console.warn('🔥 Auth system using demo mode due to Firestore unavailability:', errorMessage)
+        
+        // Provide demo data for offline/demo mode
+        if (firebaseUser) {
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName || 'Demo User',
+            emailVerified: firebaseUser.emailVerified,
+            createdAt: new Date(),
+            preferredLanguage: 'vi',
+            timezone: 'Asia/Ho_Chi_Minh'
+          })
+          
+          const demoFarmAccess = [{
+            farmId: 'demo-farm-001',
+            userId: firebaseUser.uid,
+            role: 'owner' as const,
+            grantedAt: new Date(),
+            grantedBy: firebaseUser.uid,
+            isActive: true
+          }]
+          
+          const demoFarm = {
+            id: 'demo-farm-001',
+            name: 'Nông trại Demo',
+            ownerName: firebaseUser.displayName || 'Demo Farmer',
+            totalArea: 2.5,
+            centerLatitude: 10.762622,
+            centerLongitude: 106.660172,
+            isActive: true,
+            createdDate: new Date()
+          }
+          
+          setFarmAccess(demoFarmAccess)
+          setFarms([demoFarm])
+          setCurrentFarmState(demoFarm)
+          
+          console.log('✅ Demo mode activated with demo farm for user:', firebaseUser.email)
+        }
       } finally {
         setLoading(false)
       }
@@ -163,6 +229,66 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
 
     return unsubscribe
   }, [currentFarm])
+
+  // Helper function to create default farm for new users
+  const createDefaultFarmForUser = async (firebaseUser: FirebaseUser, userProfile: SimpleUser): Promise<SimpleFarm | null> => {
+    try {
+      const defaultFarmData = {
+        name: `Nông trại của ${userProfile.displayName || 'Người dùng'}`,
+        ownerName: userProfile.displayName || firebaseUser.email || 'Chủ trại',
+        totalArea: 0,
+        centerLatitude: 10.762622, // Default to Ho Chi Minh City area
+        centerLongitude: 106.660172,
+        isActive: true,
+        createdDate: new Date()
+      }
+      
+      // Create farm document
+      const farmRef = doc(collection(db, 'farms'))
+      await setDoc(farmRef, {
+        ...defaultFarmData,
+        id: farmRef.id,
+        createdDate: serverTimestamp()
+      })
+      
+      // Create farm access for the user as owner
+      const accessRef = doc(collection(db, 'farmAccess'))
+      const farmAccess: FarmAccess = {
+        farmId: farmRef.id,
+        userId: firebaseUser.uid,
+        role: 'owner',
+        grantedAt: new Date(),
+        grantedBy: firebaseUser.uid,
+        isActive: true
+      }
+      
+      await setDoc(accessRef, {
+        ...farmAccess,
+        grantedAt: serverTimestamp()
+      })
+      
+      console.log('✅ Created default farm:', farmRef.id, 'for user:', firebaseUser.email)
+      
+      return {
+        id: farmRef.id,
+        ...defaultFarmData
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.warn('🔥 Cannot create farm in Firestore, using demo farm:', errorMessage)
+      // Return demo farm when Firestore is unavailable
+      return {
+        id: 'demo-farm-001',
+        name: `Nông trại của ${userProfile.displayName || 'Demo User'}`,
+        ownerName: userProfile.displayName || firebaseUser.email || 'Demo Farmer',
+        totalArea: 2.5,
+        centerLatitude: 10.762622,
+        centerLongitude: 106.660172,
+        isActive: true,
+        createdDate: new Date()
+      }
+    }
+  }
 
   // Persist current farm selection
   useEffect(() => {
@@ -186,8 +312,9 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
 
   // Helper functions
   const loadOrCreateUserProfile = async (firebaseUser: FirebaseUser): Promise<SimpleUser> => {
-    const userRef = doc(db, 'users', firebaseUser.uid)
-    const userDoc = await getDoc(userRef)
+    try {
+      const userRef = doc(db, 'users', firebaseUser.uid)
+      const userDoc = await getDoc(userRef)
     
     if (userDoc.exists()) {
       const data = userDoc.data()
@@ -224,6 +351,20 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       
       return newUser
     }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.warn('🔥 Firestore unavailable, using demo user profile:', errorMessage)
+      // Return demo user profile when Firestore is unavailable
+      return {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName || 'Demo User',
+        emailVerified: firebaseUser.emailVerified,
+        createdAt: new Date(),
+        preferredLanguage: 'vi',
+        timezone: 'Asia/Ho_Chi_Minh'
+      }
+    }
   }
 
   const loadUserFarmAccess = async (userId: string): Promise<FarmAccess[]> => {
@@ -241,8 +382,17 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         grantedAt: doc.data().grantedAt?.toDate() || new Date()
       })) as FarmAccess[]
     } catch (error) {
-      console.error('❌ Error loading farm access:', error)
-      return []
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.warn('🔥 Firestore unavailable for farm access, using demo mode:', errorMessage)
+      // Return demo farm access for demo user
+      return [{
+        farmId: 'demo-farm-001',
+        userId: userId,
+        role: 'owner',
+        grantedAt: new Date(),
+        grantedBy: userId,
+        isActive: true
+      }]
     }
   }
 
@@ -269,8 +419,19 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       const farms = await Promise.all(farmsPromises)
       return farms.filter(Boolean) as SimpleFarm[]
     } catch (error) {
-      console.error('❌ Error loading farms:', error)
-      return []
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.warn('🔥 Firestore unavailable for farms, using demo mode:', errorMessage)
+      // Return demo farm for demo access
+      return access.map(a => ({
+        id: a.farmId,
+        name: 'Nông trại Demo',
+        ownerName: 'Demo Farmer',
+        totalArea: 2.5,
+        centerLatitude: 10.762622,
+        centerLongitude: 106.660172,
+        isActive: true,
+        createdDate: new Date()
+      }))
     }
   }
 
@@ -339,9 +500,14 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   }
 
   const isAdmin = (): boolean => {
-    // Check if user has owner role on any farm or is system admin
-    return farmAccess.some(a => a.role === 'owner' && a.isActive) ||
-           Boolean(user?.email && ['admin@farm.com'].includes(user.email))
+    // Super admin check - only specific emails or system admins
+    const superAdminEmails = ['admin@farm.com', 'superadmin@farm.com', 'daibui.sg@gmail.com']
+    return Boolean(user?.email && superAdminEmails.includes(user.email))
+  }
+
+  const isFarmAdmin = (): boolean => {
+    // Check if user has owner role on any farm (farm-level admin)
+    return farmAccess.some(a => a.role === 'owner' && a.isActive)
   }
 
   const isFarmOwner = (farmId?: string): boolean => {
@@ -400,6 +566,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     
     // Admin functions
     isAdmin,
+    isFarmAdmin,
     isFarmOwner,
     isFarmManager,
     

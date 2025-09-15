@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { SimpleAuthProvider } from "@/lib/simple-auth-context";
+import DemoModeIndicator from "@/components/DemoModeIndicator";
 import { Navigation } from "@/components/Navigation";
 import BottomTabBar from "@/components/ui/BottomTabBar";
 import OfflineIndicator from "@/components/ui/OfflineIndicator";
@@ -122,6 +123,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SimpleAuthProvider>
+          <DemoModeIndicator />
           <Navigation />
           <EdgeSwipeBack />
           <OfflineIndicator />

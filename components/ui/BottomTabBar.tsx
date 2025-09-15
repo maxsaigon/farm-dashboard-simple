@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MapIcon, ViewfinderCircleIcon, CameraIcon, ViewfinderCircleIcon as ZoneIcon, RadioIcon } from '@heroicons/react/24/outline'
+import { MapIcon, ViewfinderCircleIcon, CameraIcon, ViewfinderCircleIcon as ZoneIcon, RadioIcon, UserIcon } from '@heroicons/react/24/outline'
 import { useCallback } from 'react'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import type ReactType from 'react'
 
 interface TabItem {
@@ -17,12 +18,12 @@ const TABS: TabItem[] = [
   { id: 'map', name: 'Bản đồ', href: '/map', icon: MapIcon },
   { id: 'trees', name: 'Cây', href: '/trees', icon: ViewfinderCircleIcon },
   { id: 'camera', name: 'Camera', href: '/camera', icon: CameraIcon },
-  { id: 'positioning', name: 'Định vị', href: '/positioning', icon: RadioIcon },
   { id: 'zones', name: 'Khu', href: '/zones', icon: ZoneIcon },
 ]
 
 export default function BottomTabBar() {
   const pathname = usePathname()
+  const { user, signOut } = useSimpleAuth()
 
   const haptic = useCallback(() => {
     try {
@@ -31,6 +32,18 @@ export default function BottomTabBar() {
       }
     } catch {}
   }, [])
+
+  const handleUserAction = () => {
+    haptic()
+    if (user) {
+      // Show user menu or sign out directly
+      if (confirm(`Đăng xuất tài khoản ${user.displayName || user.email}?`)) {
+        signOut()
+      }
+    } else {
+      window.location.href = '/login'
+    }
+  }
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[9999] ios-blur border-t border-gray-200 pt-1 pb-[calc(env(safe-area-inset-bottom)+6px)]">
@@ -55,6 +68,25 @@ export default function BottomTabBar() {
             </Link>
           )
         })}
+        
+        {/* User Profile Tab */}
+        <button
+          onClick={handleUserAction}
+          className={`flex flex-col items-center px-3 py-2 rounded-xl transition-colors ${
+            user ? 'text-green-700' : 'text-gray-400 hover:text-gray-600'
+          }`}
+          aria-label={user ? 'Tài khoản' : 'Đăng nhập'}
+        >
+          <span className={`p-2 rounded-lg ${user ? 'bg-green-50' : ''} relative`}>
+            <UserIcon className="h-5 w-5" />
+            {user && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white"></span>
+            )}
+          </span>
+          <span className="text-[11px] mt-1 font-medium">
+            {user ? 'Tài khoản' : 'Đăng nhập'}
+          </span>
+        </button>
       </div>
     </nav>
   )

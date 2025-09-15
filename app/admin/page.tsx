@@ -4,27 +4,13 @@ import { useState, useEffect } from 'react'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { useRouter } from 'next/navigation'
 import { ShieldCheckIcon } from '@heroicons/react/24/outline'
-import UserRoleManager from '@/components/admin/UserRoleManager'
-import UserInvitationSystem from '@/components/admin/UserInvitationSystem'
-import SelfRegistrationManager from '@/components/admin/SelfRegistrationManager'
-import OrganizationManager from '@/components/admin/OrganizationManager'
-import ModernAdminLayout from '@/components/admin/ModernAdminLayout'
-import EnhancedAdminDashboard from '@/components/admin/EnhancedAdminDashboard'
-import EnhancedFarmManagement from '@/components/admin/EnhancedFarmManagement'
-import EnhancedUserManagement from '@/components/admin/EnhancedUserManagement'
-import TreeManagement from '@/components/admin/TreeManagement'
-import PhotoManagement from '@/components/admin/PhotoManagement'
-import ZoneManagement from '@/components/admin/ZoneManagement'
-import FarmAssignmentSystem from '@/components/admin/FarmAssignmentSystem'
-import BulkOperationsManager from '@/components/admin/BulkOperationsManager'
-import BusinessRulesEngine from '@/components/admin/BusinessRulesEngine'
-import SystemConfiguration from '@/components/admin/SystemConfiguration'
-import AdvancedAnalytics from '@/components/admin/AdvancedAnalytics'
-import AuditCompliance from '@/components/admin/AuditCompliance'
-import SystemMonitoring from '@/components/admin/SystemMonitoring'
-import AuthGuard from '@/components/AuthGuard'
+import Link from 'next/link'
+// Simplified Admin Components
+import SimpleAdminDashboard from '@/components/admin/SimpleAdminDashboard'
+import SimpleFarmAssignmentSystem from '@/components/admin/SimpleFarmAssignmentSystem'
+import SimpleUserManagement from '@/components/admin/SimpleUserManagement'
 
-type AdminView = 'dashboard' | 'farms' | 'trees' | 'photos' | 'zones' | 'users' | 'user-management' | 'farm-assignments' | 'bulk-operations' | 'invitations' | 'registrations' | 'organizations' | 'business-rules' | 'system-config' | 'analytics' | 'audit' | 'monitoring' | 'settings'
+type AdminView = 'dashboard' | 'user-management' | 'farm-assignments' | 'settings'
 
 export default function AdminPage() {
   const { user, isAdmin, loading } = useSimpleAuth()
@@ -69,53 +55,98 @@ export default function AdminPage() {
   const renderCurrentView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <EnhancedAdminDashboard />
-      case 'farms':
-        return <EnhancedFarmManagement />
-      case 'trees':
-        return <TreeManagement />
-      case 'photos':
-        return <PhotoManagement />
-      case 'zones':
-        return <ZoneManagement />
-      case 'users':
-        return <UserRoleManager />
+        return <SimpleAdminDashboard />
       case 'user-management':
-        return <EnhancedUserManagement />
+        return <SimpleUserManagement />
       case 'farm-assignments':
-        return <FarmAssignmentSystem />
-      case 'bulk-operations':
-        return <BulkOperationsManager />
-      case 'invitations':
-        return <UserInvitationSystem />
-      case 'registrations':
-        return <SelfRegistrationManager />
-      case 'organizations':
-        return <OrganizationManager />
-      case 'business-rules':
-        return <BusinessRulesEngine />
-      case 'system-config':
-        return <SystemConfiguration />
-      case 'analytics':
-        return <AdvancedAnalytics />
-      case 'audit':
-        return <AuditCompliance />
-      case 'monitoring':
-        return <SystemMonitoring />
+        return <SimpleFarmAssignmentSystem />
       case 'settings':
         return <SystemSettings />
       default:
-        return <EnhancedAdminDashboard />
+        return <SimpleAdminDashboard />
     }
   }
 
   return (
-    <ModernAdminLayout 
-      currentView={currentView} 
-      onViewChange={setCurrentView}
-    >
-      {renderCurrentView()}
-    </ModernAdminLayout>
+    <div className="min-h-screen bg-gray-50">
+      {/* Super Admin Check */}
+      {!user || !isAdmin() ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center max-w-md p-8">
+            <ShieldCheckIcon className="h-20 w-20 text-gray-400 mx-auto mb-6" />
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Chỉ dành cho Super Admin</h1>
+            <p className="text-gray-600 mb-6">
+              Trang này chỉ dành cho quản trị viên hệ thống. 
+              Bạn cần quyền super admin để truy cập.
+            </p>
+            <div className="space-y-3">
+              <Link
+                href="/"
+                className="block w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+              >
+                Về trang chủ
+              </Link>
+              {!user && (
+                <Link
+                  href="/login"
+                  className="block w-full bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                >
+                  Đăng nhập
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+      <div className="min-h-screen bg-gray-50">
+        {/* Simple Admin Layout */}
+        <div className="bg-white shadow">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <h1 className="text-xl font-semibold text-gray-900">Admin Panel</h1>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-500">👋 {user?.displayName || user?.email}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <nav className="flex space-x-8" aria-label="Tabs">
+              {[
+                { id: 'dashboard', name: '📊 Tổng quan', description: 'Bảng điều khiển' },
+                { id: 'user-management', name: '👥 Người dùng', description: 'Quản lý người dùng' },
+                { id: 'farm-assignments', name: '🏭 Phân quyền', description: 'Gán quyền nông trại' },
+                { id: 'settings', name: '⚙️ Cài đặt', description: 'Cài đặt hệ thống' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentView(tab.id as AdminView)}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                    currentView === tab.id
+                      ? 'border-green-500 text-green-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex flex-col items-center">
+                    <span>{tab.name}</span>
+                    <span className="text-xs text-gray-400 mt-1">{tab.description}</span>
+                  </div>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="px-4 sm:px-6 lg:px-8 py-8">
+          {renderCurrentView()}
+        </div>
+      </div>
+      )}
+    </div>
   )
 }
 
