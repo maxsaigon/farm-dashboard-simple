@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { 
   HomeIcon, 
   ViewfinderCircleIcon,
@@ -30,7 +30,7 @@ interface TabItem {
 }
 
 export default function MobileLayout({ children, currentTab = 'dashboard' }: MobileLayoutProps) {
-  const { user, currentFarm } = useEnhancedAuth()
+  const { user, currentFarm } = useSimpleAuth()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
 

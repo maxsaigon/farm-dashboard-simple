@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { gpsTrackingService, LocationUpdate, TrackingSession, GeofenceEvent } from '@/lib/gps-tracking-service'
 import { MobileInput } from './MobileCards'
 import { 
@@ -38,7 +38,7 @@ interface TreePositioningMode {
 }
 
 export default function RealTimeTreePositioning() {
-  const { user, currentFarm } = useEnhancedAuth()
+  const { user, currentFarm } = useSimpleAuth()
   
   // Tracking state
   const [isTracking, setIsTracking] = useState(false)

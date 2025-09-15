@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { MigrationService } from '@/lib/migration-service'
 import { ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 
 export function MigrationPrompt() {
-  const { user } = useAuth()
+  const { user } = useSimpleAuth()
   const [migrationStatus, setMigrationStatus] = useState<{
     hasLegacyData: boolean
     hasNewData: boolean

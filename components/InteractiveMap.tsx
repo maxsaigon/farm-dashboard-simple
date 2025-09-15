@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { useGoogleMaps } from '@/lib/google-maps-loader'
 import { subscribeToTrees } from '@/lib/firestore'
 import { collection, getDocs, query, where } from 'firebase/firestore'
@@ -74,7 +74,7 @@ interface MapFilters {
 }
 
 export default function InteractiveMap() {
-  const { currentFarm, hasPermission } = useEnhancedAuth()
+  const { currentFarm, hasPermission } = useSimpleAuth()
   const { isLoaded: isGoogleMapsLoaded, isLoading: isGoogleMapsLoading, error: googleMapsError } = useGoogleMaps()
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)

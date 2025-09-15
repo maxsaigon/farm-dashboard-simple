@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Farm } from '@/lib/types'
 import { FarmService } from '@/lib/farm-service'
-import { useAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 
 interface FarmSelectorProps {
   selectedFarmId?: string
@@ -12,7 +12,7 @@ interface FarmSelectorProps {
 }
 
 export function FarmSelector({ selectedFarmId, onFarmChange, className = '' }: FarmSelectorProps) {
-  const { user } = useAuth()
+  const { user } = useSimpleAuth()
   const [farms, setFarms] = useState<Farm[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)

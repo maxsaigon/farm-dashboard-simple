@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Tree } from '@/lib/types'
@@ -36,7 +36,7 @@ const MapWrapperNoSSR = dynamic(() => import('@/components/MapWrapper').then(mod
 })
 
 export default function MapPage() {
-  const { currentFarm } = useEnhancedAuth()
+  const { currentFarm } = useSimpleAuth()
   const [trees, setTrees] = useState<Tree[]>([])
   const [zones, setZones] = useState<Zone[]>([])
   const [selectedTree, setSelectedTree] = useState<Tree | null>(null)

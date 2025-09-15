@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { AdminService } from '@/lib/admin-service'
 import { Tree, ManualEntry, Photo, Farm } from '@/lib/types'
 import { 
@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export function AdminDashboard() {
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin } = useSimpleAuth()
   const [allTrees, setAllTrees] = useState<Tree[]>([])
   const [allEntries, setAllEntries] = useState<ManualEntry[]>([])
   const [allPhotos, setAllPhotos] = useState<Photo[]>([])

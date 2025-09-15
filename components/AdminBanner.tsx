@@ -1,10 +1,10 @@
 'use client'
 
-import { useAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { ShieldCheckIcon, CogIcon } from '@heroicons/react/24/outline'
 
 export function AdminBanner() {
-  const { user, isAdmin, currentFarm } = useAuth()
+  const { user, isAdmin, currentFarm } = useSimpleAuth()
 
   if (!isAdmin || !user) return null
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { subscribeToTrees } from '@/lib/firestore'
 import { Tree } from '@/lib/types'
 import { 
@@ -29,7 +29,7 @@ interface TreeListProps {
 }
 
 export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, className = '', pageSize = 20 }: TreeListProps) {
-  const { user, currentFarm } = useAuth()
+  const { user, currentFarm } = useSimpleAuth()
   const [trees, setTrees] = useState<Tree[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')

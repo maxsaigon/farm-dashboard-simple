@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { 
   HomeIcon,
   MapIcon,
@@ -22,7 +22,7 @@ import {
 export function Navigation() {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { user, signOut, isSuperAdmin, loading } = useAuth()
+  const { user, signOut, isAdmin, loading } = useSimpleAuth()
 
   const navigation = [
     {
@@ -42,7 +42,7 @@ export function Navigation() {
   ]
 
   // Add Super Admin navigation if user is super admin
-  const allNavigation = isSuperAdmin() 
+  const allNavigation = isAdmin() 
     ? [
         ...navigation,
         {

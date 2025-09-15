@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { updateTree, deleteTree } from '@/lib/firestore'
 import { Tree } from '@/lib/types'
 import { 
@@ -32,7 +32,7 @@ interface TreeDetailProps {
 }
 
 export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, className = '', fullScreen = false, disableMobileFullscreen = false }: TreeDetailProps) {
-  const { user, currentFarm } = useAuth()
+  const { user, currentFarm } = useSimpleAuth()
   const { showSuccess, showError, ToastContainer } = useToast()
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
