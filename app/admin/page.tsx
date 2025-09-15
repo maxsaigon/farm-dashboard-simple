@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { useRouter } from 'next/navigation'
 import { ShieldCheckIcon } from '@heroicons/react/24/outline'
 import UserRoleManager from '@/components/admin/UserRoleManager'
@@ -27,15 +27,15 @@ import AuthGuard from '@/components/AuthGuard'
 type AdminView = 'dashboard' | 'farms' | 'trees' | 'photos' | 'zones' | 'users' | 'user-management' | 'farm-assignments' | 'bulk-operations' | 'invitations' | 'registrations' | 'organizations' | 'business-rules' | 'system-config' | 'analytics' | 'audit' | 'monitoring' | 'settings'
 
 export default function AdminPage() {
-  const { user, isSuperAdmin, loading } = useEnhancedAuth()
+  const { user, isAdmin, loading } = useSimpleAuth()
   const router = useRouter()
   const [currentView, setCurrentView] = useState<AdminView>('dashboard')
 
   useEffect(() => {
-    if (!loading && (!user || !isSuperAdmin())) {
+    if (!loading && (!user || !isAdmin())) {
       router.push('/login')
     }
-  }, [user, isSuperAdmin, loading, router])
+  }, [user, isAdmin, loading, router])
 
   if (loading) {
     return (
@@ -48,7 +48,7 @@ export default function AdminPage() {
     )
   }
 
-  if (!user || !isSuperAdmin()) {
+  if (!user || !isAdmin()) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

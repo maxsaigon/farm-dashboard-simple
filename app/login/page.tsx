@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '../../lib/enhanced-auth-context'
+import { useSimpleAuth } from '../../lib/simple-auth-context'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
-  const { user, signIn } = useAuth()
+  const { user, signIn } = useSimpleAuth()
 
   // Redirect if already logged in
   useEffect(() => {

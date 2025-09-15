@@ -6,7 +6,7 @@ import AuthGuard from '@/components/AuthGuard'
 
 export default function CameraPage() {
   return (
-    <AuthGuard requiredPermission="farms:read" requireFarmAccess={true}>
+    <AuthGuard requiredPermission="read" requireFarmAccess={true}>
       <MobileCameraCapture />
     </AuthGuard>
   )

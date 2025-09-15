@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { 
   collection, 
   query, 
@@ -14,7 +14,7 @@ import {
 import { db } from '@/lib/firebase'
 
 export default function DebugFarmAssignmentPage() {
-  const { user, roles, farms, refreshUserData } = useEnhancedAuth()
+  const { user, farms, farmAccess, refreshUserData } = useSimpleAuth()
   const [diagnosticResult, setDiagnosticResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
 
@@ -31,10 +31,10 @@ export default function DebugFarmAssignmentPage() {
         issues: [] as string[],
         recommendations: [] as string[],
         currentContext: {
-          rolesCount: roles.length,
+          farmAccessCount: farmAccess.length,
           farmsCount: farms.length,
-          farmRoles: roles.filter(r => r.scopeType === 'farm'),
-          activeRoles: roles.filter(r => r.scopeType === 'farm' && r.isActive)
+          activeFarmAccess: farmAccess.filter(a => a.isActive),
+          farmRoles: farmAccess.map(a => a.role)
         },
         databaseCheck: {
           rolesInDB: [] as any[],
@@ -205,9 +205,8 @@ export default function DebugFarmAssignmentPage() {
             <h3 className="font-medium text-blue-900 mb-2">Current Status</h3>
             <div className="text-sm text-blue-800">
               <p><strong>User:</strong> {user.email}</p>
-              <p><strong>Total Roles:</strong> {roles.length}</p>
-              <p><strong>Farm Roles:</strong> {roles.filter(r => r.scopeType === 'farm').length}</p>
-              <p><strong>Active Farm Roles:</strong> {roles.filter(r => r.scopeType === 'farm' && r.isActive).length}</p>
+              <p><strong>Farm Access:</strong> {farmAccess.length}</p>
+              <p><strong>Active Access:</strong> {farmAccess.filter(a => a.isActive).length}</p>
               <p><strong>Accessible Farms:</strong> {farms.length}</p>
             </div>
           </div>

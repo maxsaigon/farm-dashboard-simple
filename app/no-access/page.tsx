@@ -1,11 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useAuth } from '../../lib/enhanced-auth-context'
+import { useSimpleAuth } from '../../lib/simple-auth-context'
 
 export default function NoAccessPage() {
   const router = useRouter()
-  const { user, signOut } = useAuth()
+  const { user, signOut } = useSimpleAuth()
 
   const handleLogout = async () => {
     try {

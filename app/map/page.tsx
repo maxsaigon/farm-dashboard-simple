@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, Suspense } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { useSearchParams } from 'next/navigation'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -38,7 +38,7 @@ const MapWrapperNoSSR = dynamic(() => import('@/components/MapWrapper'), {
 })
 
 function MapPageContent() {
-  const { currentFarm } = useEnhancedAuth()
+  const { currentFarm } = useSimpleAuth()
   const searchParams = useSearchParams()
   const focusZoneId = searchParams.get('zone')
   
@@ -671,7 +671,7 @@ function MapPageContent() {
 
 export default function MapPage() {
   return (
-    <AuthGuard requiredPermission="farms:read" requireFarmAccess={true}>
+    <AuthGuard requiredPermission="read" requireFarmAccess={true}>
       <Suspense fallback={
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">

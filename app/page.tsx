@@ -2,18 +2,18 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '../lib/enhanced-auth-context'
+import { useSimpleAuth } from '../lib/simple-auth-context'
 
 export default function HomePage() {
   const router = useRouter()
-  const { user, loading, currentFarm, hasPermission } = useAuth()
+  const { user, loading, currentFarm, hasPermission } = useSimpleAuth()
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
         // Force redirect to login if not authenticated
         router.push('/login')
-      } else if (!currentFarm || !hasPermission('farms:read', currentFarm?.id)) {
+      } else if (!currentFarm || !hasPermission('read')) {
         // If user doesn't have access to any farm, show no access message
         router.push('/no-access')
       } else {

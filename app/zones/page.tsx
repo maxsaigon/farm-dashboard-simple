@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
@@ -21,7 +21,7 @@ interface Zone {
 }
 
 export default function ZonesPage() {
-  const { currentFarm } = useEnhancedAuth()
+  const { currentFarm } = useSimpleAuth()
   const [zones, setZones] = useState<Zone[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -114,7 +114,7 @@ export default function ZonesPage() {
   }
 
   return (
-    <AuthGuard requiredPermission="farms:read" requireFarmAccess={true}>
+    <AuthGuard requiredPermission="read" requireFarmAccess={true}>
       <div className="min-h-screen bg-gray-50 p-4 safe-bottom safe-top">
         <div className="max-w-6xl mx-auto">
           {/* Header */}

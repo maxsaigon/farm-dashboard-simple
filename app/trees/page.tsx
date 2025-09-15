@@ -28,7 +28,7 @@ export default function TreesPage() {
   }
 
   return (
-    <AuthGuard requiredPermission="farms:read" requireFarmAccess={true}>
+    <AuthGuard requiredPermission="read" requireFarmAccess={true}>
       <div className="min-h-screen bg-gray-50 p-4">
         <div className="max-w-7xl mx-auto">
           {/* Header */}

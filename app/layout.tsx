@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { EnhancedAuthProvider } from "@/lib/enhanced-auth-context";
+import { SimpleAuthProvider } from "@/lib/simple-auth-context";
 import { Navigation } from "@/components/Navigation";
 import BottomTabBar from "@/components/ui/BottomTabBar";
 import OfflineIndicator from "@/components/ui/OfflineIndicator";
@@ -121,13 +121,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <EnhancedAuthProvider>
+        <SimpleAuthProvider>
           <Navigation />
           <EdgeSwipeBack />
           <OfflineIndicator />
           {children}
           <BottomTabBar />
-        </EnhancedAuthProvider>
+        </SimpleAuthProvider>
       </body>
     </html>
   );

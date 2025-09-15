@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '../lib/enhanced-auth-context'
-import { Permission } from '@/lib/types-enhanced'
+import { useSimpleAuth } from '../lib/simple-auth-context'
+import { Permission } from '@/lib/simple-auth-context'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -19,7 +19,7 @@ export default function AuthGuard({
   requireFarmAccess = true
 }: AuthGuardProps) {
   const router = useRouter()
-  const { user, loading, currentFarm, hasPermission } = useAuth()
+  const { user, loading, currentFarm, hasPermission } = useSimpleAuth()
 
   useEffect(() => {
     if (!loading) {
@@ -36,13 +36,13 @@ export default function AuthGuard({
       }
 
       // Check specific permission if required
-      if (requiredPermission && !hasPermission(requiredPermission, currentFarm?.id)) {
+      if (requiredPermission && !hasPermission(requiredPermission)) {
         router.push(fallbackPath)
         return
       }
 
       // Check basic farm view permission if farm access is required
-      if (requireFarmAccess && !hasPermission('farms:read', currentFarm?.id)) {
+      if (requireFarmAccess && !hasPermission('read')) {
         router.push('/no-access')
         return
       }
@@ -72,12 +72,12 @@ export default function AuthGuard({
   }
 
   // Don't render children if specific permission is required but not available
-  if (requiredPermission && !hasPermission(requiredPermission, currentFarm?.id)) {
+  if (requiredPermission && !hasPermission(requiredPermission)) {
     return null
   }
 
   // Don't render children if basic farm view permission is required but not available
-  if (requireFarmAccess && !hasPermission('farms:read', currentFarm?.id)) {
+  if (requireFarmAccess && !hasPermission('read')) {
     return null
   }
 
