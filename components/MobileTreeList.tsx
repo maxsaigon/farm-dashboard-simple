@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { MobileTreeCard } from './MobileCards'
 import MobileLayout from './MobileLayout'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { subscribeToTrees } from '@/lib/firestore'
 import { 
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -14,23 +16,7 @@ import {
   AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline'
 
-interface Tree {
-  id: string
-  name: string
-  latitude?: number
-  longitude?: number
-  plantingDate?: Date
-  variety?: string
-  treeStatus: 'Young Tree' | 'Mature' | 'Old Tree' | 'Dead'
-  healthStatus: 'Good' | 'Fair' | 'Poor' | 'Disease'
-  qrCode?: string
-  manualFruitCount?: number
-  aiFruitCount?: number
-  needsAttention: boolean
-  photoCount: number
-  lastPhotoDate?: Date
-  zone?: string
-}
+import { Tree } from '@/lib/types'
 
 interface FilterState {
   search: string
@@ -43,6 +29,7 @@ interface FilterState {
 }
 
 export default function MobileTreeList() {
+  const { user, currentFarm } = useSimpleAuth()
   const [trees, setTrees] = useState<Tree[]>([])
   const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
@@ -57,30 +44,33 @@ export default function MobileTreeList() {
     hasPhotos: false
   })
 
-  // Load trees data
+  // Load trees data using real-time subscription
   useEffect(() => {
-    loadTrees()
-  }, [])
-
-  const loadTrees = async () => {
-    setLoading(true)
-    try {
-      // Load real trees data from API - no mock data
-      // TODO: Implement actual API call to load trees
-      setTrees([])
-    } catch (error) {
-      console.error('Error loading trees:', error)
-    } finally {
+    if (!user || !currentFarm) {
       setLoading(false)
+      return
     }
-  }
+
+    setLoading(true)
+    
+    const unsubscribe = subscribeToTrees(
+      currentFarm.id, 
+      user.uid, 
+      (loadedTrees) => {
+        setTrees(loadedTrees)
+        setLoading(false)
+      }
+    )
+
+    return unsubscribe
+  }, [user, currentFarm])
 
   // Filter trees based on current filters
   const filteredTrees = useMemo(() => {
     return trees.filter(tree => {
       // Search filter
-      if (filters.search && !tree.name.toLowerCase().includes(filters.search.toLowerCase()) && 
-          !tree.id.toLowerCase().includes(filters.search.toLowerCase())) {
+      if (filters.search && !(tree.name?.toLowerCase().includes(filters.search.toLowerCase()) || 
+          tree.id.toLowerCase().includes(filters.search.toLowerCase()))) {
         return false
       }
 
@@ -95,7 +85,7 @@ export default function MobileTreeList() {
       }
 
       // Zone filter
-      if (filters.zone && tree.zone !== filters.zone) {
+      if (filters.zone && tree.zoneCode !== filters.zone) {
         return false
       }
 
@@ -109,10 +99,10 @@ export default function MobileTreeList() {
         return false
       }
 
-      // Photos filter
-      if (filters.hasPhotos && tree.photoCount === 0) {
-        return false
-      }
+      // Photos filter - Skip since photoCount is not available in Tree type
+      // if (filters.hasPhotos && (!tree.photoCount || tree.photoCount === 0)) {
+      //   return false
+      // }
 
       return true
     })
@@ -154,8 +144,8 @@ export default function MobileTreeList() {
     }).length
   }
 
-  const zones = Array.from(new Set(trees.map(tree => tree.zone).filter(Boolean)))
-  const healthStatuses = ['Good', 'Fair', 'Poor', 'Disease']
+  const zones = Array.from(new Set(trees.map(tree => tree.zoneCode).filter(Boolean)))
+  const healthStatuses = ['Good', 'Fair', 'Poor', 'Disease', 'Excellent'] 
   const treeStatuses = ['Young Tree', 'Mature', 'Old Tree', 'Dead']
 
   return (

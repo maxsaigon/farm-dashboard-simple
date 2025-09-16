@@ -11,27 +11,14 @@ import {
   HeartIcon
 } from '@heroicons/react/24/outline'
 
+import { Tree } from '@/lib/types'
+
 // Mobile Tree Card optimized for touch
 export interface MobileTreeCardProps {
-  tree: {
-    id: string
-    name: string
-    latitude?: number
-    longitude?: number
-    plantingDate?: Date
-    variety?: string
-    treeStatus: 'Young Tree' | 'Mature' | 'Old Tree' | 'Dead'
-    healthStatus: 'Good' | 'Fair' | 'Poor' | 'Disease'
-    qrCode?: string
-    manualFruitCount?: number
-    aiFruitCount?: number
-    needsAttention: boolean
-    photoCount: number
-    lastPhotoDate?: Date
-  }
-  onSelect?: (tree: any) => void
-  onQuickPhoto?: (tree: any) => void
-  onViewLocation?: (tree: any) => void
+  tree: Tree
+  onSelect?: (tree: Tree) => void
+  onQuickPhoto?: (tree: Tree) => void
+  onViewLocation?: (tree: Tree) => void
 }
 
 export function MobileTreeCard({ tree, onSelect, onQuickPhoto, onViewLocation }: MobileTreeCardProps) {
@@ -55,8 +42,8 @@ export function MobileTreeCard({ tree, onSelect, onQuickPhoto, onViewLocation }:
     }
   }
 
-  const daysSincePhoto = tree.lastPhotoDate 
-    ? Math.floor((new Date().getTime() - tree.lastPhotoDate.getTime()) / (1000 * 60 * 60 * 24))
+  const daysSincePhoto = tree.updatedAt 
+    ? Math.floor((new Date().getTime() - tree.updatedAt.getTime()) / (1000 * 60 * 60 * 24))
     : null
 
   return (
@@ -69,10 +56,10 @@ export function MobileTreeCard({ tree, onSelect, onQuickPhoto, onViewLocation }:
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-gray-900 truncate text-lg">
-              {tree.name}
+              {tree.name || 'Unnamed Tree'}
             </h3>
             <p className="text-sm text-gray-500 mt-1">
-              {tree.variety} • ID: {tree.id.slice(-6)}
+              {tree.variety || 'Unknown variety'} • ID: {tree.id.slice(-6)}
             </p>
           </div>
           
@@ -84,9 +71,9 @@ export function MobileTreeCard({ tree, onSelect, onQuickPhoto, onViewLocation }:
         </div>
 
         {/* Health Status Badge */}
-        <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium mt-3 ${getHealthColor(tree.healthStatus)}`}>
-          {getStatusIcon(tree.healthStatus)}
-          <span className="ml-1">{tree.healthStatus}</span>
+        <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium mt-3 ${getHealthColor(tree.healthStatus || 'Good')}`}>
+          {getStatusIcon(tree.healthStatus || 'Good')}
+          <span className="ml-1">{tree.healthStatus || 'Good'}</span>
         </div>
       </div>
 
@@ -103,18 +90,15 @@ export function MobileTreeCard({ tree, onSelect, onQuickPhoto, onViewLocation }:
             </div>
           )}
 
-          {/* Photos */}
-          <div className="flex items-center space-x-2">
-            <CameraIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-            <span className="text-sm text-gray-600">
-              {tree.photoCount} ảnh
-              {daysSincePhoto && (
-                <span className={`ml-1 ${daysSincePhoto > 7 ? 'text-amber-600' : 'text-gray-500'}`}>
-                  ({daysSincePhoto}d)
-                </span>
-              )}
-            </span>
-          </div>
+          {/* Last Updated */}
+          {daysSincePhoto && (
+            <div className="flex items-center space-x-2">
+              <CameraIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+              <span className="text-sm text-gray-600">
+                Updated {daysSincePhoto}d ago
+              </span>
+            </div>
+          )}
 
           {/* QR Code */}
           {tree.qrCode && (
@@ -125,11 +109,11 @@ export function MobileTreeCard({ tree, onSelect, onQuickPhoto, onViewLocation }:
           )}
 
           {/* Fruit Count */}
-          {(tree.manualFruitCount || tree.aiFruitCount) && (
+          {(tree.manualFruitCount > 0 || tree.aiFruitCount > 0) && (
             <div className="flex items-center space-x-2">
               <HeartIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
               <span className="text-sm text-gray-600">
-                {tree.aiFruitCount || tree.manualFruitCount} quả
+                {tree.aiFruitCount > 0 ? tree.aiFruitCount : tree.manualFruitCount} quả
               </span>
             </div>
           )}

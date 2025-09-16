@@ -501,7 +501,9 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
 
   const isAdmin = (): boolean => {
     // Super admin check - only specific emails or system admins
-    const superAdminEmails = ['admin@farm.com', 'superadmin@farm.com', 'daibui.sg@gmail.com']
+    const superAdminEmails = [
+      'minhdai.bmt@gmail.com'  // Only super admin
+    ]
     return Boolean(user?.email && superAdminEmails.includes(user.email))
   }
 
