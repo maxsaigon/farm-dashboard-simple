@@ -13,7 +13,8 @@ import {
   CheckCircleIcon,
   ClockIcon,
   EyeIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { ImageGallery } from './ImageGallery'
 import { CustomFieldsSection } from './CustomFieldsSection'
@@ -42,6 +43,9 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   const [customFields, setCustomFields] = useState<TreeCustomFields | undefined>()
   const [isMobile, setIsMobile] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
+
+  // When true, we render a true full-screen modal for mobile devices
+  const mobileFullscreenMode = isMobile && !disableMobileFullscreen
 
   // Mobile detection and body scroll locking
   useEffect(() => {
@@ -300,10 +304,13 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
 
   // Simplified return - just return the tree detail component
   if (!tree) return null
+  const headerPaddingClass = mobileFullscreenMode ? 'px-4 py-3' : 'p-6'
+  const bodyPaddingClass = mobileFullscreenMode ? 'p-4' : 'p-6'
+
   const content = (
-    <div className={`bg-white ${isMobile ? '' : 'rounded-xl shadow-lg border border-gray-200'} ${className}`} data-testid="tree-detail">
+    <div className={`bg-white ${isMobile && !mobileFullscreenMode ? '' : ''} ${!isMobile ? 'rounded-xl shadow-lg border border-gray-200' : ''} ${className}`} data-testid="tree-detail">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      <div className={`flex items-center justify-between ${headerPaddingClass} border-b border-gray-200`}>
         <div className="flex items-center space-x-4">
           {!isMobile && (
             <button
@@ -322,21 +329,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
               <h2 className="text-xl font-bold text-gray-900">
                 {tree.name || `Cây ${tree.variety || tree.zoneName || tree.id.slice(0, 8)}`}
               </h2>
-              <div className="flex items-center space-x-2 mt-1">
-                {tree.variety && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {tree.variety}
-                  </span>
-                )}
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getHealthStatusColor(tree.healthStatus)}`}>
-                  {tree.healthStatus || 'Chưa đánh giá'}
-                </span>
-                {tree.needsAttention && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                    Cần chú ý
-                  </span>
-                )}
-              </div>
+             
             </div>
           </div>
         </div>
@@ -382,10 +375,21 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
             </>
           )}
         </div>
+        {/* Close button (always available, visible on desktop modal/portal) */}
+        <div className="ml-3">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            aria-label="Đóng"
+            data-testid="close-button"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
-      {/* Simplified Farmer-Focused Content */}
-      <div className={`p-6 space-y-8 ${isMobile ? '' : 'max-h-[calc(100vh-200px)] overflow-y-auto'}`}>
+  {/* Simplified Farmer-Focused Content */}
+  <div className={`${bodyPaddingClass} space-y-8 ${mobileFullscreenMode ? 'h-[calc(100vh-56px)] overflow-y-auto' : (isMobile ? '' : 'max-h-[calc(100vh-200px)] overflow-y-auto')}`}>
         
         {/* Essential Tree Information - What farmers actually need */}
         <div className="space-y-6">
@@ -597,14 +601,27 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   )
 
   // If forcePortal is requested, render the content into document.body
-  if (forcePortal && typeof document !== 'undefined') {
+  if (typeof document !== 'undefined') {
     try {
-      return createPortal(
-        <div className="fixed inset-y-0 right-0 w-full lg:w-96 z-[100001] p-4 lg:p-6 overflow-y-auto">
-          {content}
-        </div>,
-        document.body
-      )
+      // Mobile full-screen modal portal (no padding/margins)
+      if (mobileFullscreenMode) {
+        return createPortal(
+          <div className="fixed inset-0 z-[100001] bg-white overflow-y-auto">
+            {content}
+          </div>,
+          document.body
+        )
+      }
+
+      // Desktop/right-side portal used when forcePortal is true
+      if (forcePortal) {
+        return createPortal(
+          <div className="fixed inset-y-0 right-0 w-full lg:w-96 z-[100001] p-4 lg:p-6 overflow-y-auto">
+            {content}
+          </div>,
+          document.body
+        )
+      }
     } catch (error) {
       console.warn('TreeDetail portal failed, rendering inline as fallback', error)
       return content

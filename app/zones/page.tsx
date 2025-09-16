@@ -20,6 +20,36 @@ interface Zone {
   createdAt: Date
 }
 
+// Compute polygon area (hectares) from latitude/longitude coordinates.
+// Uses a local equirectangular projection relative to the polygon centroid
+// and the planar shoelace formula. Accurate enough for farm-sized polygons.
+function polygonAreaHectares(coords: Array<{ latitude: number; longitude: number }>): number {
+  if (!coords || coords.length < 3) return 0
+
+  const R = 6371000 // earth radius in meters
+
+  // Compute centroid latitude for scale
+  const lat0 = coords.reduce((sum, p) => sum + p.latitude, 0) / coords.length
+  const lat0Rad = (lat0 * Math.PI) / 180
+
+  // Convert to x/y (meters) using equirectangular approximation
+  const points = coords.map(p => {
+    const x = (p.longitude * Math.PI / 180) * R * Math.cos(lat0Rad)
+    const y = (p.latitude * Math.PI / 180) * R
+    return { x, y }
+  })
+
+  // Shoelace formula
+  let sum = 0
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length
+    sum += points[i].x * points[j].y - points[j].x * points[i].y
+  }
+  const areaMeters2 = Math.abs(sum) / 2
+  const areaHectares = areaMeters2 / 10000
+  return areaHectares
+}
+
 export default function ZonesPage() {
   const { currentFarm } = useSimpleAuth()
   const [zones, setZones] = useState<Zone[]>([])
@@ -57,6 +87,8 @@ export default function ZonesPage() {
         const data = doc.data()
         const boundaries = data.boundary || data.boundaries || data.coordinates || data.polygon || data.points || []
         
+        const computedArea = Array.isArray(boundaries) && boundaries.length >= 3 ? polygonAreaHectares(boundaries) : (data.area || 0)
+
         return {
           id: doc.id,
           name: data.name || `Zone ${doc.id}`,
@@ -64,7 +96,7 @@ export default function ZonesPage() {
           color: data.color || '#3b82f6',
           boundaries: boundaries,
           treeCount: data.treeCount || 0,
-          area: data.area || 0,
+          area: Math.round((computedArea + Number.EPSILON) * 100) / 100, // round to 2 decimals
           isActive: data.isActive !== false,
           createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date()
         }

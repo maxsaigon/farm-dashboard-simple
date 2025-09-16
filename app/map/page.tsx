@@ -25,6 +25,24 @@ interface Zone {
   createdAt: Date
 }
 
+function polygonAreaHectares(coords: Array<{ latitude: number; longitude: number }>): number {
+  if (!coords || coords.length < 3) return 0
+  const R = 6371000
+  const lat0 = coords.reduce((s, p) => s + p.latitude, 0) / coords.length
+  const lat0Rad = (lat0 * Math.PI) / 180
+  const points = coords.map(p => ({
+    x: (p.longitude * Math.PI / 180) * R * Math.cos(lat0Rad),
+    y: (p.latitude * Math.PI / 180) * R
+  }))
+  let sum = 0
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length
+    sum += points[i].x * points[j].y - points[j].x * points[i].y
+  }
+  const areaMeters2 = Math.abs(sum) / 2
+  return areaMeters2 / 10000
+}
+
 const MapWrapperNoSSR = dynamic(() => import('@/components/MapWrapper'), {
   ssr: false,
   loading: () => (
@@ -175,6 +193,7 @@ function MapPageContent() {
         const boundaries = data.boundary || data.boundaries || data.coordinates || data.polygon || data.points || []
         const metadata = data.metadata || {}
         
+        const computedArea = Array.isArray(boundaries) && boundaries.length >= 3 ? polygonAreaHectares(boundaries) : (data.area || metadata.area || 0)
         return {
           id: doc.id,
           name: data.name || `Zone ${doc.id}`,
@@ -182,7 +201,7 @@ function MapPageContent() {
           color: data.color || '#3b82f6',
           boundaries: boundaries,
           treeCount: data.treeCount || 0,
-          area: data.area || metadata.area || 0,
+          area: Math.round((computedArea + Number.EPSILON) * 100) / 100,
           isActive: data.isActive !== false,
           createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date()
         }
@@ -350,41 +369,71 @@ function MapPageContent() {
   return (
     <div className="min-h-screen bg-gray-50 safe-bottom">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-0 safe-top">
+      <div className="bg-white border-b border-gray-200 p-0 ">
         <div className="flex flex-col space-y-4">
           
 
-          {/* Compact Toolbar: title, counts, toggles */}
-          <div className="flex items-center justify-between">
-            
+          {/* Title and Stats */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
+            <div className="flex-1">
+              
+              
+              
 
-            <div className="flex items-center space-x-3">
-              <div className="text-sm text-gray-700">
-                {loading ? 'Đang tải...' : `${trees.length} cây • ${zones.length} khu vực`}
-              </div>
+              <div className="mt-3 w-full flex items-center justify-center">
+                <div className="flex items-center space-x-3">
+                  {/* Compact toggle buttons showing counts */}
+                  <button
+                    onClick={() => setShowTrees(!showTrees)}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-semibold transition-colors min-touch ${
+                      showTrees ? 'bg-green-600 text-white' : 'bg-white text-green-700 border border-green-200'
+                    }`}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    <span className="text-lg">🌳</span>
+                    <span>{loading ? 'Đang tải...' : `${trees.length} Cây`}</span>
+                  </button>
 
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setShowTrees(!showTrees)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium border ${showTrees ? 'bg-green-600 text-white border-green-600' : 'bg-white text-green-700 border-green-200'}`}
-                >
-                  {showTrees ? 'Hiện Cây' : 'Ẩn Cây'}
-                </button>
-                <button
-                  onClick={() => setShowZones(!showZones)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium border ${showZones ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-700 border-blue-200'}`}
-                >
-                  {showZones ? 'Hiện Khu vực' : 'Ẩn Khu vực'}
-                </button>
-                <a
-                  href="/zones"
-                  className="px-3 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold"
-                >
-                  Danh sách Khu vực
-                </a>
+                  <button
+                    onClick={() => setShowZones(!showZones)}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-semibold transition-colors min-touch ${
+                      showZones ? 'bg-blue-600 text-white' : 'bg-white text-blue-700 border border-blue-200'
+                    }`}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    <span className="text-lg">📍</span>
+                    <span>{loading ? 'Đang tải...' : `${zones.length} Khu vực`}</span>
+                  </button>
+
+                  {/* Focused zone pill (if any) */}
+                  {focusedZone && (
+                    <div className="flex items-center space-x-2 bg-blue-100 text-blue-800 px-3 py-2 rounded-full text-sm font-semibold">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: focusedZone.color }}
+                      />
+                      <span className="max-w-xs truncate">{focusedZone.name}</span>
+                      <button
+                        onClick={() => {
+                          setFocusedZone(null)
+                          setSelectedZone(null)
+                          window.history.pushState({}, '', '/map')
+                        }}
+                        className="ml-1 px-2 py-1 rounded-full bg-white hover:bg-gray-100 text-sm"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+            
+            
           </div>
+          
+          {/* Large Action Buttons for Farmers - Enhanced */}
+          
         </div>
       </div>
 
@@ -472,7 +521,6 @@ function MapPageContent() {
               onTreeUpdate={handleTreeUpdate}
               className="h-full overflow-y-auto"
               fullScreen={false}
-              forcePortal={true}
             />
           ) : selectedZone ? (
             <div className="h-full bg-white border-l border-gray-200 p-6 overflow-y-auto">

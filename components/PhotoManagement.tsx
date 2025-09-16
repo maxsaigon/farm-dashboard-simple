@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import Z_INDEX from './ui/zIndex'
 import {
   PhotoIcon,
   CameraIcon,
@@ -842,7 +843,8 @@ function PhotoDetailModal({
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9998]"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+      style={{ zIndex:  Z_INDEX ? Z_INDEX.bottomSheet - 1 : 9998 }}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose()

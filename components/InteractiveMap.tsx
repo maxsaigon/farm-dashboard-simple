@@ -25,6 +25,8 @@ import {
   PencilIcon
 } from '@heroicons/react/24/outline'
 
+import Z_INDEX from './ui/zIndex'
+
 interface TreeMarker {
   id: string
   name: string
@@ -191,8 +193,7 @@ export default function InteractiveMap() {
     if (!currentFarm?.id) return []
 
     try {
-      console.log('Loading trees for farm:', currentFarm.id)
-      const treesRef = collection(db, 'farms', currentFarm.id, 'trees')
+  console.log('Loading trees for farm:', currentFarm.id)
       
       // Try to load all trees first, then filter by GPS coordinates
       const treesSnapshot = await getDocs(treesRef)
@@ -824,7 +825,7 @@ export default function InteractiveMap() {
 
       {/* Tree Details Modal */}
       {showTreeDetails && selectedTree && (
-        <div className="fixed inset-0 z-[9997] flex items-end justify-center p-4 sm:items-center">
+        <div style={{ position: 'fixed', inset: 0, zIndex: Z_INDEX.bottomSheet - 2 }} className="flex items-end justify-center p-4 sm:items-center">
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowTreeDetails(false)} />
           <div className="bg-white rounded-t-xl sm:rounded-xl shadow-xl w-full max-w-md relative max-h-[80vh] overflow-y-auto">
             <div className="p-6">
@@ -904,7 +905,7 @@ export default function InteractiveMap() {
 
       {/* Zone Details Modal */}
       {showZoneDetails && selectedZone && (
-        <div className="fixed inset-0 z-[9997] flex items-end justify-center p-4 sm:items-center">
+        <div style={{ position: 'fixed', inset: 0, zIndex: Z_INDEX.bottomSheet - 2 }} className="flex items-end justify-center p-4 sm:items-center">
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowZoneDetails(false)} />
           <div className="bg-white rounded-t-xl sm:rounded-xl shadow-xl w-full max-w-md relative max-h-[80vh] overflow-y-auto">
             <div className="p-6">

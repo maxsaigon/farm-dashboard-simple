@@ -16,8 +16,6 @@ interface TabItem {
 
 const TABS: TabItem[] = [
   { id: 'map', name: 'Bản đồ', href: '/map', icon: MapIcon },
-  { id: 'trees', name: 'Cây', href: '/trees', icon: ViewfinderCircleIcon },
-  { id: 'camera', name: 'Camera', href: '/camera', icon: CameraIcon },
   { id: 'zones', name: 'Khu', href: '/zones', icon: ZoneIcon },
 ]
 

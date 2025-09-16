@@ -59,6 +59,28 @@ export function OpenStreetMap({
 
   // Track fullscreen changes - Enhanced for mobile
   useEffect(() => {
+    // Expose safe global handlers so legacy inline onclick in popup HTML works
+    try {
+      ;(window as any).selectTree = (id: string) => {
+        try {
+          const found = trees.find(t => t.id === id)
+          if (found && onTreeSelect) onTreeSelect(found)
+        } catch (e) {
+          console.warn('selectTree global handler error', e)
+        }
+      }
+
+      ;(window as any).selectZone = (id: string) => {
+        try {
+          const found = zones.find(z => z.id === id)
+          if (found && onZoneSelect) onZoneSelect(found)
+        } catch (e) {
+          console.warn('selectZone global handler error', e)
+        }
+      }
+    } catch (e) {
+      console.warn('Error attaching global popup handlers', e)
+    }
     const handleFullscreenChange = () => {
       // Check for all possible fullscreen states across browsers
       const isCurrentlyFullscreen = !!(
@@ -566,6 +588,21 @@ export function OpenStreetMap({
                     </div>
                   `
                 }
+                // Attach click handler to the 'Xem chi tiết' button inside the popup if present
+                try {
+                  const btn = document.getElementById(`${popupId}-button`)
+                  if (btn) {
+                    // Remove existing listener if any by cloning (safe way)
+                    const newBtn = btn.cloneNode(true) as HTMLElement
+                    btn.parentNode?.replaceChild(newBtn, btn)
+                    newBtn.addEventListener('click', (ev) => {
+                      ev.stopPropagation()
+                      if (onTreeSelect) onTreeSelect(tree)
+                    })
+                  }
+                } catch (error) {
+                  console.warn('Error attaching popup button listener:', error)
+                }
               } catch (error) {
                 console.warn('Error loading tree image for popup:', error)
                 // Fallback to placeholder
@@ -656,6 +693,47 @@ export function OpenStreetMap({
       }
     }
   }, [trees, zones, onTreeSelect, onZoneSelect])
+
+  // Helper to rebuild layer groups (used after fullscreen toggles)
+  const refreshLayers = () => {
+    if (!mapRef.current || !markersRef.current || !zonesRef.current) return
+    try {
+      markersRef.current.clearLayers()
+      zonesRef.current.clearLayers()
+
+      // Re-add zones
+      zones.forEach(zone => {
+        if (zone.boundaries && zone.boundaries.length >= 3) {
+          const latLngs = zone.boundaries.map(p => [p.latitude, p.longitude] as [number, number])
+          const polygon = L.polygon(latLngs, { color: zone.color, weight: 2, opacity: 0.8, fillColor: zone.color, fillOpacity: zone.isActive ? 0.2 : 0.1 })
+          polygon.on('click', () => onZoneSelect?.(zone))
+          zonesRef.current.addLayer(polygon)
+        } else if (zone.boundaries && zone.boundaries.length > 0) {
+          const p = zone.boundaries[0]
+          const marker = L.marker([p.latitude, p.longitude], { icon: L.divIcon({ className: 'zone-marker-fallback', html: `<div style="background: ${zone.color}; color: white; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${zone.name}</div>` }) })
+          marker.on('click', () => onZoneSelect?.(zone))
+          zonesRef.current.addLayer(marker)
+        }
+      })
+
+      // Re-add trees
+      trees.forEach(tree => {
+        const lat = (tree as any).location?.latitude || (tree as any).latitude
+        const lng = (tree as any).location?.longitude || (tree as any).longitude
+        if (lat && lng && lat !== 0 && lng !== 0) {
+          const marker = L.marker([lat, lng], { icon: L.divIcon({ className: 'custom-tree-marker', html: `<div style="width:24px;height:24px;background:${getTreeColor(tree)};border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:white;font-weight:bold;box-shadow:0 2px 4px rgba(0,0,0,0.3);">🌳</div>` }) })
+          marker.on('click', () => onTreeSelect?.(tree))
+          markersRef.current.addLayer(marker)
+        }
+      })
+
+      // Attach groups if missing
+      if (mapRef.current && !mapRef.current.hasLayer(zonesRef.current)) zonesRef.current.addTo(mapRef.current)
+      if (mapRef.current && !mapRef.current.hasLayer(markersRef.current)) markersRef.current.addTo(mapRef.current)
+    } catch (error) {
+      console.warn('Error refreshing layers:', error)
+    }
+  }
 
   // Highlight selected tree
   useEffect(() => {
@@ -947,6 +1025,36 @@ export function OpenStreetMap({
                       // Wait a bit more for fullscreen to settle, then focus
                       setTimeout(() => {
                         if (mapRef.current) {
+                          // Ensure layer groups are attached to the map after fullscreen
+                          try {
+                            if (zonesRef.current && !mapRef.current.hasLayer(zonesRef.current)) {
+                              zonesRef.current.addTo(mapRef.current)
+                            }
+                            if (markersRef.current && !mapRef.current.hasLayer(markersRef.current)) {
+                              markersRef.current.addTo(mapRef.current)
+                            }
+                            // Bring markers above zones so points are visible
+                            // Bring individual marker layers to front and zone layers to back
+                            try {
+                              markersRef.current.eachLayer((layer: any) => {
+                                if (layer && typeof layer.bringToFront === 'function') {
+                                  try { layer.bringToFront() } catch (e) { /* ignore */ }
+                                }
+                              })
+                            } catch (e) { /* ignore */ }
+                            try {
+                              zonesRef.current.eachLayer((layer: any) => {
+                                if (layer && typeof layer.bringToBack === 'function') {
+                                  try { layer.bringToBack() } catch (e) { /* ignore */ }
+                                }
+                              })
+                            } catch (e) { /* ignore */ }
+                            // Rebuild layers to ensure proper display
+                            refreshLayers()
+                            console.log('🗺️ Re-attached and refreshed layer groups after fullscreen')
+                          } catch (error) {
+                            console.warn('🗺️ Error re-attaching layer groups:', error)
+                          }
                           // Create a feature group to calculate bounds for all farm content
                           const farmGroup = new L.FeatureGroup()
                           let treesAdded = 0
