@@ -352,130 +352,38 @@ function MapPageContent() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-0 safe-top">
         <div className="flex flex-col space-y-4">
-          {/* Large Title */}
-          <LargeTitleHeader title="Bản Đồ Nông Trại" subtitle={displayFarm.name} />
-
-          {/* Title and Stats */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                  <span className="text-2xl">🗺️</span>
-                </div>
-                <div>
-                  <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                    Bản Đồ Nông Trại
-                  </h1>
-                  <p className="text-base lg:text-lg text-gray-600 font-medium">
-                    {displayFarm.name}
-                  </p>
-                </div>
-              </div>
-              
-              {/* Stats Row */}
-              <div className="flex items-center space-x-4 text-sm lg:text-base">
-                <div className="flex items-center space-x-2 bg-green-50 px-3 py-2 rounded-lg">
-                  <span className="text-green-600 font-bold">🌳</span>
-                  <span className="text-green-800 font-semibold">
-                    {loading ? 'Đang tải...' : `${trees.length} Cây`}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-lg">
-                  <span className="text-blue-600 font-bold">📍</span>
-                  <span className="text-blue-800 font-semibold">
-                    {loading ? 'Đang tải...' : `${zones.length} Khu vực`}
-                  </span>
-                </div>
-              </div>
-
-              {focusedZone && (
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-xl text-base font-semibold flex items-center space-x-2 shadow-sm">
-                    <div 
-                      className="w-4 h-4 rounded-full shadow-sm" 
-                      style={{ backgroundColor: focusedZone.color }}
-                    ></div>
-                    <span>🎯 Đang xem: {focusedZone.name}</span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setFocusedZone(null)
-                      setSelectedZone(null)
-                      // Update URL to remove zone parameter
-                      window.history.pushState({}, '', '/map')
-                    }}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-base font-semibold transition-colors min-touch"
-                    style={{
-                      minHeight: '40px',
-                      WebkitTapHighlightColor: 'transparent'
-                    }}
-                  >
-                    ✕ Xem Tất Cả
-                  </button>
-                </div>
-              )}
-            </div>
-            
-            <a
-              href="/zones"
-              className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl transition-colors text-base font-bold shadow-md min-touch lg:w-auto w-full"
-              style={{
-                minHeight: '52px',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              <span className="text-xl">📍</span>
-              <span>Danh Sách Khu Vực</span>
-            </a>
-          </div>
           
-          {/* Large Action Buttons for Farmers - Enhanced */}
-          <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
-            <button
-              onClick={() => setShowTrees(!showTrees)}
-              className={`flex items-center justify-center space-x-3 px-8 py-4 rounded-2xl text-lg font-bold transition-all transform hover:scale-105 active:scale-95 shadow-lg min-touch w-full sm:w-auto ${
-                showTrees 
-                  ? 'bg-green-600 text-white shadow-green-300 border-2 border-green-400' 
-                  : 'bg-white text-green-700 hover:bg-green-50 border-2 border-green-200 hover:border-green-300'
-              }`}
-              style={{
-                minHeight: '64px',
-                minWidth: '180px',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              <span className="text-2xl">🌳</span>
-              <div className="flex flex-col items-start">
-                <span className="font-bold">HIỆN CÂY</span>
-                <span className="text-sm opacity-80">{showTrees ? 'Đang hiển thị' : 'Ẩn đi'}</span>
-              </div>
-              {showTrees && (
-                <div className="w-3 h-3 bg-green-200 rounded-full animate-pulse"></div>
-              )}
-            </button>
+
+          {/* Compact Toolbar: title, counts, toggles */}
+          <div className="flex items-center justify-between">
             
-            <button
-              onClick={() => setShowZones(!showZones)}
-              className={`flex items-center justify-center space-x-3 px-8 py-4 rounded-2xl text-lg font-bold transition-all transform hover:scale-105 active:scale-95 shadow-lg min-touch w-full sm:w-auto ${
-                showZones 
-                  ? 'bg-blue-600 text-white shadow-blue-300 border-2 border-blue-400' 
-                  : 'bg-white text-blue-700 hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300'
-              }`}
-              style={{
-                minHeight: '64px',
-                minWidth: '180px',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              <span className="text-2xl">📍</span>
-              <div className="flex flex-col items-start">
-                <span className="font-bold">HIỆN KHU VỰC</span>
-                <span className="text-sm opacity-80">{showZones ? 'Đang hiển thị' : 'Ẩn đi'}</span>
+
+            <div className="flex items-center space-x-3">
+              <div className="text-sm text-gray-700">
+                {loading ? 'Đang tải...' : `${trees.length} cây • ${zones.length} khu vực`}
               </div>
-              {showZones && (
-                <div className="w-3 h-3 bg-blue-200 rounded-full animate-pulse"></div>
-              )}
-            </button>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowTrees(!showTrees)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium border ${showTrees ? 'bg-green-600 text-white border-green-600' : 'bg-white text-green-700 border-green-200'}`}
+                >
+                  {showTrees ? 'Hiện Cây' : 'Ẩn Cây'}
+                </button>
+                <button
+                  onClick={() => setShowZones(!showZones)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium border ${showZones ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-700 border-blue-200'}`}
+                >
+                  {showZones ? 'Hiện Khu vực' : 'Ẩn Khu vực'}
+                </button>
+                <a
+                  href="/zones"
+                  className="px-3 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold"
+                >
+                  Danh sách Khu vực
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -564,6 +472,7 @@ function MapPageContent() {
               onTreeUpdate={handleTreeUpdate}
               className="h-full overflow-y-auto"
               fullScreen={false}
+              forcePortal={true}
             />
           ) : selectedZone ? (
             <div className="h-full bg-white border-l border-gray-200 p-6 overflow-y-auto">

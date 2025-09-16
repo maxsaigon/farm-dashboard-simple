@@ -29,9 +29,11 @@ interface TreeDetailProps {
   fullScreen?: boolean
   /** When true on mobile, disables the internal full-screen portal so the component can be embedded (e.g., in a BottomSheet). */
   disableMobileFullscreen?: boolean
+  /** When true, render the TreeDetail into a portal attached to document.body so it sits above map layers. */
+  forcePortal?: boolean
 }
 
-export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, className = '', fullScreen = false, disableMobileFullscreen = false }: TreeDetailProps) {
+export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, className = '', fullScreen = false, disableMobileFullscreen = false, forcePortal = false }: TreeDetailProps) {
   const { user, currentFarm } = useSimpleAuth()
   const { showSuccess, showError, ToastContainer } = useToast()
   const [isEditing, setIsEditing] = useState(false)
@@ -298,8 +300,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
 
   // Simplified return - just return the tree detail component
   if (!tree) return null
-
-  return (
+  const content = (
     <div className={`bg-white ${isMobile ? '' : 'rounded-xl shadow-lg border border-gray-200'} ${className}`} data-testid="tree-detail">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -594,4 +595,21 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       </div>
     </div>
   )
+
+  // If forcePortal is requested, render the content into document.body
+  if (forcePortal && typeof document !== 'undefined') {
+    try {
+      return createPortal(
+        <div className="fixed inset-y-0 right-0 w-full lg:w-96 z-[100001] p-4 lg:p-6 overflow-y-auto">
+          {content}
+        </div>,
+        document.body
+      )
+    } catch (error) {
+      console.warn('TreeDetail portal failed, rendering inline as fallback', error)
+      return content
+    }
+  }
+
+  return content
 }

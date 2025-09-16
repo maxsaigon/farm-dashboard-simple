@@ -141,10 +141,11 @@ export function BottomSheet({
   const top = targetTopFor(currentDetent)
 
   return (
-    <div className={clsx('fixed inset-0 z-50', 'flex flex-col')} aria-modal="true" role="dialog">
+    // Ensure BottomSheet sits above map layers (Leaflet uses high z-index on overlays)
+    <div className={clsx('fixed inset-0 z-[99999]', 'flex flex-col')} aria-modal="true" role="dialog">
       {/* Backdrop */}
       <motion.div
-        className={clsx('absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity', backdropClassName)}
+        className={clsx('absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity pointer-events-auto', backdropClassName)}
         onClick={onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -154,8 +155,8 @@ export function BottomSheet({
       {/* Sheet */}
       <motion.div
         ref={sheetRef}
-        className={clsx('absolute left-0 right-0 rounded-t-2xl bg-white shadow-xl', 'touch-none', className)}
-        style={{ top, transform: `translateY(${translateY}px)` }}
+  className={clsx('absolute left-0 right-0 rounded-t-2xl bg-white shadow-xl', 'touch-none', className)}
+  style={{ zIndex: 100000, top, transform: `translateY(${translateY}px)` }}
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1, transition: { type: 'spring', stiffness: 380, damping: 30 } }}
         exit={{ y: 40, opacity: 0, transition: { duration: 0.2 } }}
