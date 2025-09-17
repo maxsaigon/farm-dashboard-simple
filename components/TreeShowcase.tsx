@@ -7,6 +7,8 @@ import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { updateTree } from '@/lib/firestore'
 import { CheckCircleIcon, MapPinIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { useToast } from './Toast'
+import { db } from '@/lib/firebase'
+import { collection, getDocs, orderBy, limit, query } from 'firebase/firestore'
 
 interface Props {
   tree: Tree | null
@@ -18,10 +20,53 @@ export default function TreeShowcase({ tree, onSaved }: Props) {
   const { showSuccess, showError, ToastContainer } = useToast()
   const [count, setCount] = useState<number>(tree?.manualFruitCount || 0)
   const [saving, setSaving] = useState(false)
+  const [seasonLoading, setSeasonLoading] = useState(false)
+  const [lastSeason, setLastSeason] = useState<{ name?: string; perTreeCount: number } | null>(null)
 
   useEffect(() => {
     setCount(tree?.manualFruitCount || 0)
   }, [tree?.manualFruitCount])
+
+  // Fetch last season summary for the farm
+  useEffect(() => {
+    async function fetchLastSeason() {
+      if (!currentFarm?.id || !tree?.id) return
+      try {
+        setSeasonLoading(true)
+        const seasonsRef = collection(db, 'farms', currentFarm.id, 'seasons')
+        const q = query(seasonsRef, orderBy('endDate', 'desc'), limit(1))
+        const snap = await getDocs(q)
+        if (!snap.empty) {
+          const docSnap = snap.docs[0]
+          const data = docSnap.data() as any
+          // perTreeBreakdown is expected to be a map of treeId -> count or object { count }
+          const perTreeBreakdown = data.perTreeBreakdown || {}
+          const toNum = (v: any) => typeof v === 'number' ? v : (typeof v === 'string' ? (parseInt(v, 10) || 0) : 0)
+          let perTreeCount = 0
+          const entry = perTreeBreakdown[tree.id]
+          if (typeof entry === 'number' || typeof entry === 'string') {
+            perTreeCount = toNum(entry)
+          } else if (entry && typeof entry === 'object') {
+            if ('count' in entry) perTreeCount = toNum((entry as any).count)
+            else if ('total' in entry) perTreeCount = toNum((entry as any).total)
+            else if ('fruitCount' in entry) perTreeCount = toNum((entry as any).fruitCount)
+            else if ('numberOFfrust' in entry) perTreeCount = toNum((entry as any).numberOFfrust)
+            else if ('numberOfFrust' in entry) perTreeCount = toNum((entry as any).numberOfFrust)
+            else if ('frustCount' in entry) perTreeCount = toNum((entry as any).frustCount)
+          }
+          setLastSeason({ name: data.name, perTreeCount })
+        } else {
+          setLastSeason(null)
+        }
+      } catch (e) {
+        console.warn('Failed to fetch seasons', e)
+        setLastSeason(null)
+      } finally {
+        setSeasonLoading(false)
+      }
+    }
+    fetchLastSeason()
+  }, [currentFarm?.id, tree?.id])
 
   if (!tree) {
     return (
@@ -58,7 +103,26 @@ export default function TreeShowcase({ tree, onSaved }: Props) {
       </div>
 
       {/* Fruit count */}
-      <div className="px-4 py-3">
+      <div className="px-4 py-3 space-y-3">
+        {/* Last season summary */}
+        <div className="bg-white rounded-xl border border-amber-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-gray-500">Mùa trước</div>
+              {seasonLoading ? (
+                <div className="text-gray-400 text-sm">Đang tải…</div>
+              ) : lastSeason ? (
+                <div>
+                  <div className="text-lg font-medium text-gray-800">{lastSeason.name || 'Mùa gần nhất'}</div>
+                  <div className="text-2xl font-bold text-amber-600">{lastSeason.perTreeCount.toLocaleString()} trái</div>
+                </div>
+              ) : (
+                <div className="text-gray-400 text-sm">Chưa có dữ liệu mùa</div>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="bg-white rounded-xl border border-green-200 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
