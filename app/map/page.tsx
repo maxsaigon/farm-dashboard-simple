@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase'
 import { Tree } from '@/lib/types'
 import dynamic from 'next/dynamic'
 import { TreeDetail } from '@/components/TreeDetail'
+import TreeShowcase from '@/components/TreeShowcase'
 import { EyeIcon } from '@heroicons/react/24/outline'
 import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
 import BottomSheet from '@/components/ui/BottomSheet'
@@ -17,6 +18,7 @@ import logger from '@/lib/logger'
 interface Zone {
   id: string
   name: string
+  code?: string
   description?: string
   color: string
   boundaries: Array<{ latitude: number; longitude: number }> // FIXED: Use correct field names from Firebase
@@ -96,7 +98,19 @@ function MapPageContent() {
         loadZones(farmId)
       ])
       
-      setTrees(treesData)
+      // Map zone IDs/codes to human-friendly names
+      const codeToName = new Map<string, string>()
+      zonesData.forEach(z => {
+        if (z.id) codeToName.set(z.id, z.name)
+        if (z.code) codeToName.set(z.code, z.name)
+        if (z.name) codeToName.set(z.name, z.name)
+      })
+      const treesWithNames = treesData.map(t => ({
+        ...t,
+        zoneName: t.zoneName || (t.zoneCode ? codeToName.get(String(t.zoneCode)) : undefined)
+      }))
+
+      setTrees(treesWithNames)
       setZones(zonesData)
       console.log('Data loaded - Trees:', treesData.length, 'Zones:', zonesData.length)
       
@@ -198,6 +212,7 @@ function MapPageContent() {
         return {
           id: doc.id,
           name: data.name || `Zone ${doc.id}`,
+          code: data.code,
           description: data.description || '',
           color: data.color || '#3b82f6',
           boundaries: boundaries,
@@ -516,12 +531,9 @@ function MapPageContent() {
         {/* Detail Sidebar - Desktop only */}
         <div className={`lg:w-96 order-1 lg:order-2 hidden lg:block ${(selectedTree || selectedZone) ? 'block' : 'hidden lg:block'}`}>
           {selectedTree ? (
-            <TreeDetail
+            <TreeShowcase
               tree={selectedTree}
-              onClose={handleCloseDetail}
-              onTreeUpdate={handleTreeUpdate}
-              className="h-full overflow-y-auto"
-              fullScreen={false}
+              onSaved={handleTreeUpdate}
             />
           ) : selectedZone ? (
             <div className="h-full bg-white border-l border-gray-200 p-6 overflow-y-auto">
@@ -603,7 +615,7 @@ function MapPageContent() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">Cây trên bản đồ</h3>
-                  <p className="text-sm text-gray-500">{selectedTree.name || selectedTree.id}</p>
+                  <p className="text-sm text-gray-500">{selectedTree.name || selectedTree.variety} - {selectedTree.zoneName || selectedTree.zoneCode}</p>
                 </div>
                 <button 
                   onClick={handleCloseDetail}
@@ -614,11 +626,9 @@ function MapPageContent() {
               </div>
             }
           >
-            <TreeDetail
+            <TreeShowcase
               tree={selectedTree}
-              onClose={handleCloseDetail}
-              onTreeUpdate={handleTreeUpdate}
-              disableMobileFullscreen={true}
+              onSaved={handleTreeUpdate}
             />
           </BottomSheet>
         )}

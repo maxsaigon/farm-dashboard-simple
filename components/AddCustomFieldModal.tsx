@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import Z_INDEX from './ui/zIndex'
 import { 
   PREDEFINED_FIELDS, 
   FIELD_CATEGORIES,
@@ -58,11 +57,10 @@ export function AddCustomFieldModal({ isOpen, onClose, onAddField, existingField
 
   const modalContent = (
     <div 
-      className="fixed inset-0 bg-white overflow-hidden"
+      className="fixed inset-0 bg-white z-[9999] overflow-hidden"
       style={{ 
         touchAction: 'auto',
-        WebkitOverflowScrolling: 'touch',
-        zIndex: Z_INDEX.bottomSheet - 90
+        WebkitOverflowScrolling: 'touch'
       }}
     >
       <div 

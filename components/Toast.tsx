@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Z_INDEX from './ui/zIndex'
 import { CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/solid'
 
 export type ToastType = 'success' | 'error' | 'info'
@@ -57,7 +56,7 @@ export function Toast({ type, title, message, duration = 4000, onClose }: ToastP
   return (
     <div 
       className={`
-        fixed top-4 left-4 right-4 p-4 rounded-xl shadow-lg
+        fixed top-4 left-4 right-4 p-4 rounded-xl shadow-lg z-[10000] 
         transform transition-all duration-300 ease-out
         ${getToastStyles()}
         ${isVisible 
@@ -68,8 +67,7 @@ export function Toast({ type, title, message, duration = 4000, onClose }: ToastP
       style={{ 
         paddingTop: 'max(16px, calc(env(safe-area-inset-top) + 16px))',
         paddingLeft: 'max(16px, env(safe-area-inset-left))',
-        paddingRight: 'max(16px, env(safe-area-inset-right))',
-        zIndex: Z_INDEX.bottomSheet - 100
+        paddingRight: 'max(16px, env(safe-area-inset-right))'
       }}
     >
       <div className="flex items-start">
