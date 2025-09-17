@@ -12,6 +12,7 @@ import { EyeIcon } from '@heroicons/react/24/outline'
 import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
 import BottomSheet from '@/components/ui/BottomSheet'
 import AuthGuard from '@/components/AuthGuard'
+import logger from '@/lib/logger'
 
 interface Zone {
   id: string
@@ -121,12 +122,12 @@ function MapPageContent() {
           setShowZones(true)
           setShowTrees(true) // Keep trees visible but they'll be filtered to the zone
         } else {
-          console.warn('Zone not found:', focusZoneId)
-          console.warn('Available zones:', zonesData.map(z => ({ id: z.id, name: z.name })))
+          logger.warn('Zone not found:', focusZoneId)
+          logger.warn('Available zones:', zonesData.map(z => ({ id: z.id, name: z.name })))
         }
       }
     } catch (error) {
-      console.error('Error loading data:', error)
+      logger.error('Error loading data:', error)
       setError('Không thể tải dữ liệu bản đồ')
     } finally {
       setLoading(false)
@@ -164,7 +165,7 @@ function MapPageContent() {
       console.log('Loaded trees with GPS:', treesData.length)
       return treesData
     } catch (error) {
-      console.error('Error loading trees:', error)
+      logger.error('Error loading trees:', error)
       return []
     }
   }
@@ -222,7 +223,7 @@ function MapPageContent() {
       return zonesWithBoundaries.length > 0 ? zonesWithBoundaries : zonesData.slice(0, 3)
       
     } catch (error) {
-      console.error('Error loading zones:', error)
+      logger.error('Error loading zones:', error)
       return []
     }
   }
@@ -240,11 +241,11 @@ function MapPageContent() {
         setSelectedTree(null)
         console.log('🎯 Zone selected successfully:', zone.name)
       } else {
-        console.error('🎯 Invalid zone passed to handleZoneSelect:', zone)
+        logger.error('🎯 Invalid zone passed to handleZoneSelect:', zone)
       }
     } catch (error) {
-      console.error('🎯 Error in handleZoneSelect:', error)
-      console.error('🎯 Zone data:', zone)
+      logger.error('🎯 Error in handleZoneSelect:', error)
+      logger.error('🎯 Zone data:', zone)
     }
   }
 

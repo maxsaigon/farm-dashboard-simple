@@ -196,6 +196,7 @@ export default function InteractiveMap() {
   console.log('Loading trees for farm:', currentFarm.id)
       
       // Try to load all trees first, then filter by GPS coordinates
+      const treesRef = collection(db, 'trees')
       const treesSnapshot = await getDocs(treesRef)
       console.log('Found trees documents:', treesSnapshot.docs.length)
       
