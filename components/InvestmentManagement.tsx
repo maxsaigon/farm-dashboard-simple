@@ -312,7 +312,7 @@ export default function InvestmentManagement() {
       setSelectedInvestment(null)
     } catch (error) {
       console.error('Error saving investment:', error)
-      alert('Lỗi khi lưu đầu tư: ' + error.message)
+      alert('Lỗi khi lưu đầu tư: ' + (error instanceof Error ? error.message : String(error)))
     }
   }
 
