@@ -35,6 +35,8 @@ const missingVars = requiredEnvVars.filter(envVar => !process.env[envVar])
 if (missingVars.length > 0) {
   console.warn('Missing Firebase environment variables:', missingVars)
   console.warn('Using fallback demo configuration. Please set up environment variables for production.')
+} else {
+  console.log('✅ All Firebase environment variables loaded successfully')
 }
 
 let app: FirebaseApp
