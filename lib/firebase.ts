@@ -34,7 +34,7 @@ const requiredEnvVars = [
 const missingVars = requiredEnvVars.filter(envVar => !process.env[envVar])
 if (missingVars.length > 0) {
   console.warn('Missing Firebase environment variables:', missingVars)
-  console.warn('Using fallback demo configuration. Please set up .env.local for production.')
+  console.warn('Using fallback demo configuration. Please set up environment variables for production.')
 }
 
 let app: FirebaseApp
@@ -73,5 +73,6 @@ try {
   throw error
 }
 
+export const isDemoConfig = (firebaseConfig.apiKey === fallbackConfig.apiKey) || missingVars.length > 0
 export { db, auth, storage }
 export default app

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MapIcon, ViewfinderCircleIcon, CameraIcon, ViewfinderCircleIcon as ZoneIcon, RadioIcon, UserIcon } from '@heroicons/react/24/outline'
+import { MapIcon, ViewfinderCircleIcon, ViewfinderCircleIcon as ZoneIcon, UserIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
 import { useCallback } from 'react'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import type ReactType from 'react'
@@ -17,6 +17,7 @@ interface TabItem {
 const TABS: TabItem[] = [
   { id: 'map', name: 'Bản đồ', href: '/map', icon: MapIcon },
   { id: 'zones', name: 'Khu', href: '/zones', icon: ZoneIcon },
+  { id: 'money', name: 'Tiền', href: '/money', icon: CurrencyDollarIcon },
 ]
 
 export default function BottomTabBar() {

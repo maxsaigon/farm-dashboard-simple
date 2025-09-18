@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import {
   CurrencyDollarIcon,
   PlusIcon,
@@ -18,6 +18,7 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/solid'
+import { subscribeToInvestments as subInvestments, addInvestment as addInv, updateInvestment as updInv, deleteInvestment as delInv, migrateLegacyInvestments } from '@/lib/investment-service'
 
 interface Investment {
   id: string
@@ -55,12 +56,12 @@ interface InvestmentSummary {
 }
 
 export default function InvestmentManagement() {
-  const { user, hasPermission, currentFarm } = useEnhancedAuth()
+  const { user, hasPermission, currentFarm } = useSimpleAuth()
   const [investments, setInvestments] = useState<Investment[]>([])
-  const [fertilizerCalculations, setFertilizerCalculations] = useState<FertilizerCalculation[]>([])
+  
   const [loading, setLoading] = useState(true)
   const [showInvestmentModal, setShowInvestmentModal] = useState(false)
-  const [showCalculatorModal, setShowCalculatorModal] = useState(false)
+  
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'summary' | 'calculator'>('list')
   const [filterCategory, setFilterCategory] = useState('all')
@@ -108,11 +109,25 @@ export default function InvestmentManagement() {
   ]
 
   useEffect(() => {
-    if (hasPermission('investments:read')) {
+    if (hasPermission('read')) {
       loadInvestments()
-      loadFertilizerCalculations()
+      
     }
   }, [hasPermission, currentFarm])
+
+  // Realtime subscription for investments per active farm
+  useEffect(() => {
+    if (!user || !currentFarm?.id || !hasPermission('read')) {
+      setInvestments([])
+      return
+    }
+    const unsubscribe = subInvestments(user.uid, currentFarm.id, (items) => {
+      setInvestments(items as unknown as Investment[])
+    })
+    return () => { try { unsubscribe && unsubscribe() } catch {} }
+  }, [user?.uid, currentFarm?.id, hasPermission])
+
+  // Fertilizer calculations hidden in demo
 
   useEffect(() => {
     calculateSummary()
@@ -123,7 +138,7 @@ export default function InvestmentManagement() {
       setLoading(true)
       
       // Check permission before loading data
-      if (!hasPermission('farms:read', currentFarm?.id)) {
+      if (!hasPermission('read')) {
         setInvestments([])
         return
       }
@@ -144,7 +159,9 @@ export default function InvestmentManagement() {
       // setInvestments(loadedInvestments)
 
       // For now, set empty array until Firebase integration is complete
-      setInvestments([])
+      if (user && currentFarm?.id) {
+        try { await migrateLegacyInvestments(user.uid, currentFarm.id) } catch {}
+      }
     } catch (error) {
       console.error('Error loading investments:', error)
       setInvestments([])
@@ -153,10 +170,10 @@ export default function InvestmentManagement() {
     }
   }
 
-  const loadFertilizerCalculations = async () => {
+  /* const loadFertilizerCalculations = async () => {
     try {
       // Check permission before loading data
-      if (!hasPermission('farms:read', currentFarm?.id)) {
+      if (!hasPermission('read')) {
         setFertilizerCalculations([])
         return
       }
@@ -183,6 +200,7 @@ export default function InvestmentManagement() {
       setFertilizerCalculations([])
     }
   }
+  */
 
   const calculateSummary = () => {
     const now = new Date()
@@ -234,6 +252,13 @@ export default function InvestmentManagement() {
     })
   }
 
+  // Helper to get user display name
+  const getUserDisplayName = (userId: string): string => {
+    if (userId === user?.uid) return 'Bạn'
+    // You can extend this to lookup user names from farm members
+    return userId.substring(0, 8) + '...'
+  }
+
   const filteredInvestments = investments.filter(investment => {
     if (filterCategory !== 'all' && investment.category !== filterCategory) return false
     
@@ -259,29 +284,35 @@ export default function InvestmentManagement() {
 
   const handleSaveInvestment = async (investmentData: Partial<Investment>) => {
     try {
+      if (!user || !currentFarm?.id) throw new Error('Missing user or farm')
+      
       if (selectedInvestment) {
         // Update existing investment
-        setInvestments(prev => prev.map(inv => 
-          inv.id === selectedInvestment.id 
-            ? { ...inv, ...investmentData }
-            : inv
-        ))
+        await updInv(user.uid, currentFarm.id, selectedInvestment.id, investmentData)
       } else {
         // Create new investment
-        const newInvestment: Investment = {
-          id: Date.now().toString(),
-          farmId: currentFarm?.id || '',
-          createdBy: user?.uid || '',
-          isRecurring: false,
-          ...investmentData
-        } as Investment
-        setInvestments(prev => [...prev, newInvestment])
+        await addInv(user.uid, currentFarm.id, {
+          amount: investmentData.amount || 0,
+          category: investmentData.category || 'Khác',
+          subcategory: investmentData.subcategory,
+          date: investmentData.date || new Date(),
+          notes: investmentData.notes,
+          quantity: investmentData.quantity,
+          unit: investmentData.unit,
+          pricePerUnit: investmentData.pricePerUnit,
+          treeCount: investmentData.treeCount,
+          isRecurring: Boolean(investmentData.isRecurring),
+          recurringPeriod: investmentData.recurringPeriod,
+          createdBy: user.uid,
+          userId: user.uid,
+        } as any)
       }
       
       setShowInvestmentModal(false)
       setSelectedInvestment(null)
     } catch (error) {
       console.error('Error saving investment:', error)
+      alert('Lỗi khi lưu đầu tư: ' + error.message)
     }
   }
 
@@ -289,7 +320,8 @@ export default function InvestmentManagement() {
     if (!confirm('Bạn có chắc chắn muốn xóa khoản đầu tư này?')) return
     
     try {
-      setInvestments(prev => prev.filter(inv => inv.id !== investmentId))
+      if (!user || !currentFarm?.id) throw new Error('Missing user or farm')
+      await delInv(user.uid, currentFarm.id, investmentId)
     } catch (error) {
       console.error('Error deleting investment:', error)
     }
@@ -317,7 +349,7 @@ export default function InvestmentManagement() {
     window.URL.revokeObjectURL(url)
   }
 
-  if (!hasPermission('investments:read')) {
+  if (!hasPermission('read')) {
     return (
       <div className="text-center py-8">
         <ExclamationTriangleIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -333,17 +365,10 @@ export default function InvestmentManagement() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Quản lý đầu tư</h2>
-          <p className="text-gray-600">Theo dõi chi phí và tính toán phân bón</p>
+          <p className="text-gray-600">Theo dõi chi phí</p>
         </div>
         <div className="flex space-x-3">
-          <button
-            onClick={() => setShowCalculatorModal(true)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            <CalculatorIcon className="h-4 w-4 mr-2" />
-            Tính phân bón
-          </button>
-          {hasPermission('investments:export' as any) && (
+          {hasPermission('read') && (
             <button
               onClick={exportToCSV}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -352,7 +377,7 @@ export default function InvestmentManagement() {
               Xuất Excel
             </button>
           )}
-          {hasPermission('investments:write') && (
+          {hasPermission('write') && (
             <button
               onClick={() => setShowInvestmentModal(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
@@ -370,7 +395,7 @@ export default function InvestmentManagement() {
           {[
             { id: 'list', name: 'Danh sách', icon: CurrencyDollarIcon },
             { id: 'summary', name: 'Tổng quan', icon: ChartBarIcon },
-            { id: 'calculator', name: 'Máy tính phân bón', icon: CalculatorIcon }
+            
           ].map((tab) => (
             <button
               key={tab.id}
@@ -460,6 +485,13 @@ export default function InvestmentManagement() {
                                 </span>
                               )}
                             </div>
+                            {investment.createdBy && (
+                              <div className="flex items-center space-x-1 mt-1">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  👤 {getUserDisplayName(investment.createdBy)}
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-center space-x-4 mt-1">
                               <p className="text-lg font-semibold text-blue-600">
                                 {formatCurrency(investment.amount)}
@@ -479,7 +511,7 @@ export default function InvestmentManagement() {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          {hasPermission('investments:write') && (
+                          {hasPermission('write') && (
                             <button
                               onClick={() => {
                                 setSelectedInvestment(investment)
@@ -491,7 +523,7 @@ export default function InvestmentManagement() {
                               <PencilIcon className="h-4 w-4" />
                             </button>
                           )}
-                          {hasPermission('investments:delete') && (
+                          {hasPermission('delete') && (
                             <button
                               onClick={() => handleDeleteInvestment(investment.id)}
                               className="p-2 text-gray-400 hover:text-red-600"
@@ -515,12 +547,6 @@ export default function InvestmentManagement() {
         <InvestmentSummaryView summary={summary} />
       )}
 
-      {viewMode === 'calculator' && (
-        <FertilizerCalculatorView 
-          calculations={fertilizerCalculations}
-          onCalculationSaved={loadFertilizerCalculations}
-        />
-      )}
 
       {/* Investment Modal */}
       {showInvestmentModal && (
@@ -536,18 +562,6 @@ export default function InvestmentManagement() {
         />
       )}
 
-      {/* Calculator Modal */}
-      {showCalculatorModal && (
-        <FertilizerCalculatorModal
-          calculations={fertilizerCalculations}
-          fertilizerTypes={fertilizerTypes}
-          treeStatusOptions={treeStatusOptions}
-          seasonOptions={seasonOptions}
-          isOpen={showCalculatorModal}
-          onClose={() => setShowCalculatorModal(false)}
-          onSave={loadFertilizerCalculations}
-        />
-      )}
     </div>
   )
 }

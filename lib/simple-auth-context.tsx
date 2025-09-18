@@ -23,6 +23,26 @@ import {
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
 
+// Safe date conversion helper
+function convertToDate(value: any): Date | null {
+  if (!value) return null
+  if (value instanceof Date) return value
+  if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
+    try { return value.toDate() } catch { return null }
+  }
+  if (typeof value === 'number') return new Date(value * 1000)
+  if (typeof value === 'string') { 
+    const d = new Date(value)
+    return isNaN(d.getTime()) ? null : d
+  }
+  if (value && typeof value === 'object' && 'seconds' in value) {
+    const sec = value.seconds || 0
+    const ns = value.nanoseconds || 0
+    return new Date(sec * 1000 + ns / 1_000_000)
+  }
+  return null
+}
+
 // Simplified types for farm management
 export interface SimpleFarm {
   id: string
@@ -410,7 +430,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
           return {
             id: farmDoc.id,
             ...data,
-            createdDate: data.createdDate?.toDate() || new Date()
+            createdDate: convertToDate(data.createdDate) || new Date(),
           } as SimpleFarm
         }
         return null
