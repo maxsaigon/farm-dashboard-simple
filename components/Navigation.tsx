@@ -17,7 +17,8 @@ import {
   RadioIcon,
   ShieldCheckIcon,
   ArrowRightOnRectangleIcon,
-  UserIcon
+  UserIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 
 export function Navigation() {
@@ -40,6 +41,13 @@ export function Navigation() {
       href: '/zones',
       icon: ViewfinderCircleIcon,
       emoji: '📍'
+    },
+    {
+      name: 'Tiền bạc',
+      description: 'Theo dõi chi phí và đầu tư',
+      href: '/money',
+      icon: CurrencyDollarIcon,
+      emoji: '💰'
     }
   ]
 
@@ -273,7 +281,7 @@ export function Navigation() {
               {/* Quick Actions Section for Farmers */}
               <div className="pt-4 border-t border-gray-100 mx-2">
                 <p className="text-sm text-gray-500 px-3 pb-3 font-medium">THAO TÁC NHANH</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <button 
                     onClick={() => {
                       setIsMobileMenuOpen(false)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { db, isDemoConfig } from '@/lib/firebase'
 import { ExclamationTriangleIcon, XMarkIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 
 export default function DemoModeIndicator() {
@@ -37,7 +38,7 @@ export default function DemoModeIndicator() {
     }
   }, [])
 
-  // Don't show if not in demo mode or user has dismissed
+  // Hide if not in demo mode or user has dismissed
   if (!isDemoMode || !isVisible) {
     return null
   }
