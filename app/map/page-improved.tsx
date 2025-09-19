@@ -61,7 +61,7 @@ interface SimpleFilters {
 function MapPageContent() {
   const { currentFarm } = useSimpleAuth()
   const searchParams = useSearchParams()
-  const focusZoneId = searchParams.get('zone')
+  const focusZoneId = searchParams?.get('zone')
   
   const [trees, setTrees] = useState<Tree[]>([])
   const [zones, setZones] = useState<Zone[]>([])

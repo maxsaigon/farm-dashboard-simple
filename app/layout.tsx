@@ -7,6 +7,7 @@ import { Navigation } from "@/components/Navigation";
 import BottomTabBar from "@/components/ui/BottomTabBar";
 import OfflineIndicator from "@/components/ui/OfflineIndicator";
 import EdgeSwipeBack from "@/components/EdgeSwipeBack";
+import MobileOnlyWrapper from "@/components/MobileOnlyWrapper";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -23,8 +24,8 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
-  title: "Farm Manager - Quản lý trang trại thông minh",
-  description: "Ứng dụng quản lý trang trại thông minh cho việc theo dõi cây trồng, chụp ảnh AI và phân tích sức khỏe cây.",
+  title: "Farm Manager - Ứng dụng di động quản lý trang trại",
+  description: "Ứng dụng di động quản lý trang trại thông minh. Chỉ hỗ trợ trên điện thoại và máy tính bảng. Chụp ảnh AI, theo dõi cây trồng trực tiếp tại vườn.",
   keywords: [
     "farm management",
     "quản lý trang trại", 
@@ -32,7 +33,10 @@ export const metadata: Metadata = {
     "nông nghiệp",
     "AI analysis",
     "phân tích AI",
-    "Vietnam farming"
+    "Vietnam farming",
+    "mobile app",
+    "ứng dụng di động",
+    "smartphone farming"
   ],
   authors: [{ name: "Farm Manager Team" }],
   creator: "Farm Manager",
@@ -83,8 +87,8 @@ export const metadata: Metadata = {
     locale: "vi_VN",
     url: "https://farm-manager.vercel.app",
     siteName: "Farm Manager",
-    title: "Farm Manager - Quản lý trang trại thông minh",
-    description: "Ứng dụng quản lý trang trại thông minh cho việc theo dõi cây trồng, chụp ảnh AI và phân tích sức khỏe cây.",
+    title: "Farm Manager - Ứng dụng di động quản lý trang trại",
+    description: "Ứng dụng di động quản lý trang trại thông minh. Chỉ hỗ trợ trên điện thoại và máy tính bảng. Chụp ảnh AI, theo dõi cây trồng trực tiếp tại vườn.",
     images: [
       {
         url: "/og-image.jpg",
@@ -96,8 +100,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Farm Manager - Quản lý trang trại thông minh",
-    description: "Ứng dụng quản lý trang trại thông minh cho việc theo dõi cây trồng, chụp ảnh AI và phân tích sức khỏe cây.",
+    title: "Farm Manager - Ứng dụng di động quản lý trang trại",
+    description: "Ứng dụng di động quản lý trang trại thông minh. Chỉ hỗ trợ trên điện thoại và máy tính bảng. Chụp ảnh AI, theo dõi cây trồng trực tiếp tại vườn.",
     images: ["/og-image.jpg"],
     creator: "@farmmanager",
   },
@@ -122,14 +126,16 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SimpleAuthProvider>
-          <DemoModeIndicator />
-          <Navigation />
-          <EdgeSwipeBack />
-          <OfflineIndicator />
-          {children}
-          <BottomTabBar />
-        </SimpleAuthProvider>
+        <MobileOnlyWrapper>
+          <SimpleAuthProvider>
+            <DemoModeIndicator />
+            <Navigation />
+            <EdgeSwipeBack />
+            <OfflineIndicator />
+            {children}
+            <BottomTabBar />
+          </SimpleAuthProvider>
+        </MobileOnlyWrapper>
       </body>
     </html>
   );

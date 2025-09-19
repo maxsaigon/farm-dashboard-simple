@@ -1,8 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
+import { Tree } from '@/lib/types'
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PhotoIcon, EyeIcon, CalendarDaysIcon, MapPinIcon } from '@heroicons/react/24/outline'
+import Image from 'next/image'
 import { PhotoWithUrls, getPhotosWithUrls, subscribeToTreePhotos } from '@/lib/photo-service'
+import { getTreeImagesByPattern } from '@/lib/storage'
 import { getModalZClass, modalStack } from '@/lib/modal-z-index'
+
+interface ImageGalleryProps {
+  tree: Tree
+  className?: string
+}
 
 interface StorageImage {
   imageUrl: string
@@ -11,22 +20,6 @@ interface StorageImage {
 }
 
 type DisplayImage = PhotoWithUrls | StorageImage
-import { getTreeImagesByPattern } from '@/lib/storage'
-import { 
-  XMarkIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  PhotoIcon,
-  EyeIcon,
-  CalendarDaysIcon,
-  MapPinIcon
-} from '@heroicons/react/24/outline'
-import { Tree } from '@/lib/types'
-
-interface ImageGalleryProps {
-  tree: Tree
-  className?: string
-}
 
 export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   // Use correct farmId - prioritize tree.farmId, then fallback to known working farmId  
@@ -189,12 +182,28 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
 
   if (loading) {
     return (
-      <div className={`bg-white rounded-xl shadow-lg border border-gray-200 p-6 ${className}`}>
-        <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="grid grid-cols-3 gap-3">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="aspect-square bg-gray-200 rounded-lg"></div>
+      <div className={`bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden ${className}`}>
+        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-blue-50">
+          <div className="animate-pulse">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="h-8 w-8 bg-gray-300 rounded-full"></div>
+              <div className="h-6 bg-gray-300 rounded-lg w-48"></div>
+            </div>
+            <div className="flex space-x-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-8 bg-gray-300 rounded-lg w-20"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl animate-pulse">
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 100}ms` }}></div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -204,95 +213,140 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
 
   return (
     <>
-      <div className={`bg-white rounded-xl shadow-lg border border-gray-200 ${className}`}>
+      <div className={`bg-white border border-gray-100 backdrop-blur-sm ${className}`}>
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 via-blue-50 to-purple-50">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <PhotoIcon className="h-6 w-6 text-green-600" />
-              <h3 className="text-xl font-bold text-gray-900">Hình Ảnh Cây</h3>
-              <span className="text-sm text-gray-500">({totalImages} ảnh)</span>
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <PhotoIcon className="h-8 w-8 text-green-600 drop-shadow-sm" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 tracking-tight">Hình Ảnh Cây</h3>
+                <p className="text-sm text-gray-600 font-medium">
+                  {totalImages > 0 ? `${totalImages} ảnh được tìm thấy` : 'Chưa có ảnh nào'}
+                </p>
+              </div>
             </div>
+            {totalImages > 0 && (
+              <div className="hidden sm:flex items-center space-x-2 bg-white bg-opacity-70 rounded-full px-4 py-2 backdrop-blur-sm">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-gray-700">Đã tải xong</span>
+              </div>
+            )}
           </div>
 
-          {/* Tabs */}
-          <div className="flex space-x-1 mt-4">
-            {[
-              { key: 'all', label: 'Tất Cả', count: totalImages },
-              { key: 'general', label: 'Chung', count: getTabCount('general') },
-              { key: 'health', label: 'Sức Khỏe', count: getTabCount('health') },
-              { key: 'fruit_count', label: 'Đếm Trái', count: getTabCount('fruit_count') }
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as typeof activeTab)}
-                className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === tab.key
-                    ? 'bg-green-100 text-green-800 border border-green-200'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                {tab.label} ({tab.count})
-              </button>
-            ))}
-          </div>
+          
         </div>
 
-        {/* Image Grid */}
-        <div className="p-6">
+        {/* Enhanced Image Grid */}
+        <div className="p-6 bg-gradient-to-b from-gray-50 to-white">
           {filteredImages.length === 0 ? (
-            <div className="text-center py-12">
-              <PhotoIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có hình ảnh</h3>
-              <p className="text-gray-600">
-                Chưa có hình ảnh nào cho cây này trong danh mục "{
-                  activeTab === 'all' ? 'tất cả' :
-                  activeTab === 'general' ? 'chung' :
-                  activeTab === 'health' ? 'sức khỏe' : 'đếm trái'
-                }".
+            <div className="text-center py-16">
+              <div className="relative mb-6">
+                <div className="w-24 h-24 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full mx-auto flex items-center justify-center shadow-inner">
+                  <PhotoIcon className="h-12 w-12 text-gray-400" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-xl">🌿</span>
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Chưa có hình ảnh</h3>
+              <p className="text-gray-600 max-w-md mx-auto leading-relaxed">
+                Chưa có hình ảnh nào cho cây này trong danh mục{' '}
+                <span className="font-semibold text-blue-600">
+                  "{activeTab === 'all' ? 'tất cả' :
+                    activeTab === 'general' ? 'chung' :
+                    activeTab === 'health' ? 'sức khỏe' : 'đếm trái'}"
+                </span>
               </p>
+              <div className="mt-6">
+                <div className="inline-flex items-center space-x-2 text-sm text-gray-500 bg-blue-50 px-4 py-2 rounded-full">
+                  <span>💡</span>
+                  <span>Chụp ảnh để theo dõi cây trồng</span>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredImages.map((image, index) => (
                 <div
                   key={index}
-                  className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group"
+                  className="group relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-200/50"
                   onClick={() => setSelectedImage(index)}
+                  style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  {image.imageUrl ? (
-                    <img
-                      src={image.thumbnailUrl || image.imageUrl}
-                      alt={`Tree ${tree.name || tree.qrCode} photo ${index + 1}`}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <PhotoIcon className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-
-                  {/* Overlay */}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
-                    <EyeIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {/* Image Container */}
+                  <div className="relative w-full h-full overflow-hidden">
+                    {image.imageUrl ? (
+                      <>
+                        {/* Lazy Loading Placeholder */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse">
+                          <div className="w-full h-full flex items-center justify-center">
+                            <div className="w-8 h-8 bg-gray-300 rounded-full animate-bounce"></div>
+                          </div>
+                        </div>
+                        
+                        {/* Actual Image */}
+                        <img
+                          src={image.thumbnailUrl || image.imageUrl}
+                          alt={`Tree ${tree.name || tree.qrCode} photo ${index + 1}`}
+                          className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
+                          loading="lazy"
+                          onLoad={(e) => {
+                            // Hide placeholder when image loads
+                            const placeholder = e.currentTarget.previousElementSibling;
+                            if (placeholder) {
+                              (placeholder as HTMLElement).style.display = 'none';
+                            }
+                            e.currentTarget.style.opacity = '1';
+                          }}
+                          style={{ opacity: '0' }}
+                        />
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                        <div className="text-center">
+                          <PhotoIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <span className="text-xs text-gray-500">Không có ảnh</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Photo type badge */}
+                  {/* Enhanced Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                        <EyeIcon className="h-6 w-6 text-white drop-shadow-lg" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Enhanced Photo type badge */}
                   {'photoType' in image && image.photoType && (
-                    <div className="absolute top-2 left-2">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    <div className="absolute top-3 left-3 z-10">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm border border-white/20 ${
                         (image as PhotoWithUrls).photoType === 'health' 
-                          ? 'bg-red-100 text-red-800'
+                          ? 'bg-red-500/90 text-white'
                           : (image as PhotoWithUrls).photoType === 'fruit_count'
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-blue-100 text-blue-800'
+                          ? 'bg-orange-500/90 text-white'
+                          : 'bg-blue-500/90 text-white'
                       }`}>
-                        {(image as PhotoWithUrls).photoType === 'health' ? 'Sức Khỏe' :
-                         (image as PhotoWithUrls).photoType === 'fruit_count' ? 'Đếm Trái' : 'Chung'}
+                        {(image as PhotoWithUrls).photoType === 'health' ? '🏥 Sức Khỏe' :
+                         (image as PhotoWithUrls).photoType === 'fruit_count' ? '🍎 Đếm Trái' : '📸 Chung'}
                       </span>
                     </div>
                   )}
+
+                  {/* Image number indicator */}
+                  <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-full">
+                    {index + 1}
+                  </div>
+
+                  {/* Shimmer effect on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out"></div>
                 </div>
               ))}
             </div>
@@ -300,12 +354,11 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
         </div>
       </div>
 
-      {/* Fullscreen Modal */}
+      {/* Enhanced Fullscreen Modal */}
       {selectedImage !== null && (
         <div 
-          className={`fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center ${getModalZClass('PHOTO_VIEWER')}`}
+          className={`fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center ${getModalZClass('PHOTO_VIEWER')} animate-in fade-in duration-300`}
           onClick={(e) => {
-            // Click outside image to close
             if (e.target === e.currentTarget) {
               setSelectedImage(null)
             }
@@ -313,100 +366,129 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="max-w-5xl max-h-full w-full h-full flex flex-col p-4" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4 text-white">
-              <div className="flex items-center space-x-4">
-                <h3 className="text-lg font-semibold">
-                  {tree.name || `Cây ${tree.qrCode}`} - Ảnh {selectedImage + 1} / {totalImages}
-                </h3>
+          <div className="max-w-7xl max-h-full w-full h-full flex flex-col p-4 sm:p-6" onClick={(e) => e.stopPropagation()}>
+            {/* Enhanced Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-4 bg-black/40 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/10">
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">
+                      {tree.name || `Cây ${tree.qrCode}`}
+                    </h3>
+                    <p className="text-sm text-gray-300">
+                      Ảnh {selectedImage + 1} / {totalImages}
+                    </p>
+                  </div>
+                </div>
                 {'timestamp' in filteredImages[selectedImage] && (
-                  <div className="flex items-center space-x-4 text-sm">
-                    <div className="flex items-center space-x-1">
+                  <div className="hidden sm:flex items-center space-x-4 text-sm text-gray-300 border-l border-white/20 pl-4">
+                    <div className="flex items-center space-x-2">
                       <CalendarDaysIcon className="h-4 w-4" />
                       <span>{formatDate((filteredImages[selectedImage] as PhotoWithUrls).timestamp)}</span>
                     </div>
                     {(filteredImages[selectedImage] as PhotoWithUrls).latitude && (
-                      <div className="flex items-center space-x-1">
+                      <div className="flex items-center space-x-2">
                         <MapPinIcon className="h-4 w-4" />
-                        <span>GPS</span>
+                        <span>GPS có sẵn</span>
                       </div>
                     )}
                   </div>
                 )}
               </div>
+              
               <button
                 onClick={() => setSelectedImage(null)}
-                className="p-3 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors touch-manipulation"
+                className="bg-black/40 backdrop-blur-sm hover:bg-black/60 rounded-2xl p-4 text-white transition-all duration-200 border border-white/10 hover:border-white/30 group"
                 aria-label="Đóng hình ảnh"
-                style={{ minHeight: '44px', minWidth: '44px' }}
               >
-                <XMarkIcon className="h-8 w-8" />
+                <XMarkIcon className="h-6 w-6 group-hover:scale-110 transition-transform" />
               </button>
             </div>
 
-            {/* Image */}
-            <div className="flex-1 flex items-center justify-center relative">
+            {/* Enhanced Image Container */}
+            <div className="flex-1 flex items-center justify-center relative rounded-2xl overflow-hidden">
               {filteredImages[selectedImage].imageUrl && (
-                <img
-                  src={filteredImages[selectedImage].imageUrl}
-                  alt={`Tree photo ${selectedImage + 1}`}
-                  className="max-w-full max-h-full object-contain select-none"
-                  style={{ 
-                    touchAction: 'pan-x pan-y pinch-zoom',
-                    userSelect: 'none' 
-                  }}
-                  draggable={false}
-                />
+                <>
+                  {/* Image with enhanced styling */}
+                  <img
+                    src={filteredImages[selectedImage].imageUrl}
+                    alt={`Tree photo ${selectedImage + 1}`}
+                    className="max-w-full max-h-full object-contain select-none rounded-xl shadow-2xl"
+                    style={{ 
+                      touchAction: 'pan-x pan-y pinch-zoom',
+                      userSelect: 'none' 
+                    }}
+                    draggable={false}
+                  />
+                  
+                  {/* Subtle glow effect around image */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-blue-500/5 via-transparent to-purple-500/5 pointer-events-none rounded-xl"></div>
+                </>
               )}
 
-              {/* Navigation buttons */}
+              {/* Enhanced Navigation buttons */}
               {totalImages > 1 && (
                 <>
                   <button
                     onClick={prevImage}
-                    className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 hover:bg-opacity-80 rounded-full text-white transition-colors touch-manipulation"
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/40 backdrop-blur-sm hover:bg-black/60 rounded-2xl p-4 text-white transition-all duration-200 border border-white/10 hover:border-white/30 group hover:scale-110"
                     aria-label="Ảnh trước"
-                    style={{ minHeight: '48px', minWidth: '48px' }}
                   >
-                    <ChevronLeftIcon className="h-8 w-8" />
+                    <ChevronLeftIcon className="h-6 w-6 group-hover:scale-110 transition-transform" />
                   </button>
                   <button
                     onClick={nextImage}
-                    className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 p-3 bg-black bg-opacity-60 hover:bg-opacity-80 rounded-full text-white transition-colors touch-manipulation"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/40 backdrop-blur-sm hover:bg-black/60 rounded-2xl p-4 text-white transition-all duration-200 border border-white/10 hover:border-white/30 group hover:scale-110"
                     aria-label="Ảnh tiếp theo"
-                    style={{ minHeight: '48px', minWidth: '48px' }}
                   >
-                    <ChevronRightIcon className="h-8 w-8" />
+                    <ChevronRightIcon className="h-6 w-6 group-hover:scale-110 transition-transform" />
                   </button>
                 </>
               )}
 
-              {/* Image counter overlay for mobile */}
-              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-sm font-medium">
+              {/* Enhanced counter overlay */}
+              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-bold border border-white/20 shadow-lg">
                 {selectedImage + 1} / {totalImages}
               </div>
 
-              {/* Mobile instructions overlay - shows temporarily */}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-xs font-medium text-center animate-pulse sm:hidden">
-                👆 Chạm bên ngoài hoặc vuốt xuống để đóng
+              {/* Enhanced mobile instructions */}
+              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-6 py-3 rounded-full text-sm font-medium text-center border border-white/20 sm:hidden">
+                <div className="flex items-center space-x-2">
+                  <span>👆</span>
+                  <span>Chạm bên ngoài hoặc vuốt xuống để đóng</span>
+                </div>
               </div>
             </div>
 
-            {/* Footer - Photo info */}
+            {/* Enhanced Footer with photo info */}
             {'photoType' in filteredImages[selectedImage] && (
-              <div className="mt-4 text-white">
-                <div className="bg-black bg-opacity-50 rounded-lg p-4">
-                  {(filteredImages[selectedImage] as PhotoWithUrls).userNotes && (
-                    <p className="mb-2">
-                      <strong>Ghi chú:</strong> {(filteredImages[selectedImage] as PhotoWithUrls).userNotes}
-                    </p>
-                  )}
-                  {(filteredImages[selectedImage] as PhotoWithUrls).manualFruitCount && (
-                    <p>
-                      <strong>Số trái đếm:</strong> {(filteredImages[selectedImage] as PhotoWithUrls).manualFruitCount}
-                    </p>
-                  )}
+              <div className="mt-6">
+                <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {(filteredImages[selectedImage] as PhotoWithUrls).userNotes && (
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg">📝</span>
+                          <span className="text-sm font-bold text-white">Ghi chú:</span>
+                        </div>
+                        <p className="text-gray-300 text-sm leading-relaxed">
+                          {(filteredImages[selectedImage] as PhotoWithUrls).userNotes}
+                        </p>
+                      </div>
+                    )}
+                    {(filteredImages[selectedImage] as PhotoWithUrls).manualFruitCount && (
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg">🍎</span>
+                          <span className="text-sm font-bold text-white">Số trái đếm:</span>
+                        </div>
+                        <p className="text-green-400 text-lg font-bold">
+                          {(filteredImages[selectedImage] as PhotoWithUrls).manualFruitCount} trái
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

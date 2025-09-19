@@ -150,6 +150,9 @@ export class FirestoreSafe {
   }
 }
 
-// Convenience exports for common operations
-export const { getDocs: safeGetDocs, onSnapshot: safeOnSnapshot, query: safeQuery, collection: safeCollection } = FirestoreSafe
+// Convenience exports for common operations (bound to preserve 'this' context)
+export const safeGetDocs = FirestoreSafe.getDocs.bind(FirestoreSafe)
+export const safeOnSnapshot = FirestoreSafe.onSnapshot.bind(FirestoreSafe)
+export const safeQuery = FirestoreSafe.query.bind(FirestoreSafe)
+export const safeCollection = FirestoreSafe.collection.bind(FirestoreSafe)
 export { where, orderBy, limit } from 'firebase/firestore'

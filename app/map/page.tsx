@@ -9,6 +9,7 @@ import { Tree } from '@/lib/types'
 import dynamic from 'next/dynamic'
 import { TreeDetail } from '@/components/TreeDetail'
 import TreeShowcase from '@/components/TreeShowcase'
+import FullscreenTreeShowcase from '@/components/FullscreenTreeShowcase'
 import { EyeIcon } from '@heroicons/react/24/outline'
 import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
 import BottomSheet from '@/components/ui/BottomSheet'
@@ -61,7 +62,7 @@ const MapWrapperNoSSR = dynamic(() => import('@/components/MapWrapper'), {
 function MapPageContent() {
   const { currentFarm } = useSimpleAuth()
   const searchParams = useSearchParams()
-  const focusZoneId = searchParams.get('zone')
+  const focusZoneId = searchParams?.get('zone')
   
   const [trees, setTrees] = useState<Tree[]>([])
   const [zones, setZones] = useState<Zone[]>([])
@@ -72,6 +73,7 @@ function MapPageContent() {
   const [showZones, setShowZones] = useState(true)
   const [showTrees, setShowTrees] = useState(true)
   const [focusedZone, setFocusedZone] = useState<Zone | null>(null)
+  const [showFullscreenTree, setShowFullscreenTree] = useState(false)
 
   // Debug farm ID for testing
   const debugFarmId = "F210C3FC-F191-4926-9C15-58D6550A716A"
@@ -244,8 +246,10 @@ function MapPageContent() {
   }
 
   const handleTreeSelect = (tree: Tree) => {
+    console.log('🌳 Tree selected from map:', tree.name || tree.variety)
     setSelectedTree(tree)
     setSelectedZone(null)
+    setShowFullscreenTree(true)
   }
 
   const handleZoneSelect = (zone: Zone) => {
@@ -265,6 +269,14 @@ function MapPageContent() {
   }
 
   const handleCloseDetail = () => {
+    setSelectedTree(null)
+    setSelectedZone(null)
+  }
+
+  const handleCloseFullscreenTree = () => {
+    setShowFullscreenTree(false)
+    // After closing fullscreen, clear the selected tree completely
+    // This prevents any duplicate displays
     setSelectedTree(null)
     setSelectedZone(null)
   }
@@ -530,7 +542,7 @@ function MapPageContent() {
 
         {/* Detail Sidebar - Desktop only */}
         <div className={`lg:w-96 order-1 lg:order-2 hidden lg:block ${(selectedTree || selectedZone) ? 'block' : 'hidden lg:block'}`}>
-          {selectedTree ? (
+          {selectedTree && !showFullscreenTree ? (
             <TreeShowcase
               tree={selectedTree}
               onSaved={handleTreeUpdate}
@@ -605,9 +617,9 @@ function MapPageContent() {
 
       {/* Mobile Bottom Sheet */}
       <div className="lg:hidden">
-        {selectedTree && (
+        {selectedTree && !showFullscreenTree && (
           <BottomSheet
-            isOpen={!!selectedTree}
+            isOpen={!!selectedTree && !showFullscreenTree}
             onClose={handleCloseDetail}
             initialDetent="medium"
             detents={["full", "large", "medium"]}
@@ -633,6 +645,14 @@ function MapPageContent() {
           </BottomSheet>
         )}
       </div>
+
+      {/* Fullscreen Tree Showcase */}
+      <FullscreenTreeShowcase
+        tree={selectedTree}
+        isOpen={showFullscreenTree}
+        onClose={handleCloseFullscreenTree}
+        onSaved={handleTreeUpdate}
+      />
     </div>
   )
 }
