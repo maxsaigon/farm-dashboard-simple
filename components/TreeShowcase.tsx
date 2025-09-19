@@ -94,7 +94,7 @@ export default function TreeShowcase({ tree, onSaved }: Props) {
     <div className="bg-white min-h-screen relative z-[10011]">
       <ToastContainer />
       {/* Hero */}
-      <div className="relative bg-black">
+      <div className="relative">
         <div className=" bg-gray-100">
           <ImageGallery tree={tree} className="w-full h-full" />
         </div>

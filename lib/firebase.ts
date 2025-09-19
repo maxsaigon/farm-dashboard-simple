@@ -13,13 +13,14 @@ const fallbackConfig = {
   appId: "1:123456789:web:abcdef123456"
 }
 
+// Use direct config that we know works
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || fallbackConfig.apiKey,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || fallbackConfig.authDomain,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || fallbackConfig.projectId,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || fallbackConfig.storageBucket,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || fallbackConfig.messagingSenderId,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || fallbackConfig.appId
+  apiKey: "AIzaSyBEMsHC6A6azD2AFrCgW36j2s0H-ZcxrNw",
+  authDomain: "lettest-ecom.firebaseapp.com", 
+  projectId: "lettest-ecom",
+  storageBucket: "lettest-ecom.firebasestorage.app",
+  messagingSenderId: "832836231786",
+  appId: "1:832836231786:web:bc029ed19ed87ea3f0e013"
 }
 
 // Validate Firebase configuration
@@ -31,13 +32,7 @@ const requiredEnvVars = [
   'NEXT_PUBLIC_FIREBASE_APP_ID'
 ]
 
-const missingVars = requiredEnvVars.filter(envVar => !process.env[envVar])
-if (missingVars.length > 0) {
-  console.warn('Missing Firebase environment variables:', missingVars)
-  console.warn('Using fallback demo configuration. Please set up environment variables for production.')
-} else {
-  console.log('✅ All Firebase environment variables loaded successfully')
-}
+console.log('🔥 Firebase connected to project:', firebaseConfig.projectId)
 
 let app: FirebaseApp
 let db: Firestore
@@ -54,16 +49,18 @@ try {
     console.log('Using existing Firebase app')
   }
   
-  // Initialize Firebase services with custom settings
+  // Initialize Firebase services with safer settings for v12+
   try {
-    // Initialize Firestore with specific settings to avoid assertion errors
+    // More conservative Firestore initialization to avoid assertion errors
     db = initializeFirestore(app, {
-      cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-      experimentalForceLongPolling: false, // Disable long polling which can cause issues
+      cacheSizeBytes: 40 * 1024 * 1024, // 40MB instead of unlimited
+      experimentalForceLongPolling: false,
+      ignoreUndefinedProperties: true, // Help with type safety
     })
     console.log('Firestore initialized with custom settings')
   } catch (firestoreError) {
     console.warn('Custom Firestore initialization failed, using default:', firestoreError)
+    // Fallback to default getFirestore
     db = getFirestore(app)
   }
   
@@ -75,6 +72,6 @@ try {
   throw error
 }
 
-export const isDemoConfig = (firebaseConfig.apiKey === fallbackConfig.apiKey) || missingVars.length > 0
+export const isDemoConfig = false
 export { db, auth, storage }
 export default app
