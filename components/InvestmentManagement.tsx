@@ -19,6 +19,28 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/solid'
 import { subscribeToInvestments as subInvestments, addInvestment as addInv, updateInvestment as updInv, deleteInvestment as delInv, migrateLegacyInvestments } from '@/lib/investment-service'
+import { db } from '@/lib/firebase'
+import { collection, getDocs, query, where } from 'firebase/firestore'
+
+// Helper function to get season info from date
+function getSeasonFromDate(date: Date): { year: number, phase: string } {
+  const month = date.getMonth() // 0-11
+  const year = date.getFullYear()
+  
+  // Durian season timeline (adjust for your region)
+  if (month >= 3 && month <= 5) {        // Apr-Jun
+    return { year, phase: 'pre_season' }   // Preparation
+  } else if (month >= 6 && month <= 8) {  // Jul-Sep  
+    return { year, phase: 'in_season' }    // Active season
+  } else if (month >= 9 && month <= 11) { // Oct-Dec
+    return { year, phase: 'post_season' }  // Harvest/cleanup
+  } else {                               // Jan-Mar
+    return { 
+      year: month <= 2 ? year - 1 : year, // Jan-Mar belongs to previous season
+      phase: 'off_season' 
+    }
+  }
+}
 
 interface Investment {
   id: string
@@ -544,7 +566,14 @@ export default function InvestmentManagement() {
       )}
 
       {viewMode === 'summary' && (
-        <InvestmentSummaryView summary={summary} />
+        <div className="space-y-6">
+          {/* Season Investment Card */}
+          <SeasonInvestmentCard 
+            farmId={currentFarm?.id || ''} 
+            currentSeasonYear={getSeasonFromDate(new Date()).year}
+          />
+          <InvestmentSummaryView summary={summary} />
+        </div>
       )}
 
 
@@ -562,6 +591,155 @@ export default function InvestmentManagement() {
         />
       )}
 
+    </div>
+  )
+}
+
+// Season Investment Summary Component
+function SeasonInvestmentCard({ farmId, currentSeasonYear }: { farmId: string, currentSeasonYear: number }) {
+  const [investmentData, setInvestmentData] = useState<{
+    lastSeason: { year: number, total: number, count: number },
+    currentSeason: { year: number, total: number, count: number }
+  }>({
+    lastSeason: { year: currentSeasonYear - 1, total: 0, count: 0 },
+    currentSeason: { year: currentSeasonYear, total: 0, count: 0 }
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadInvestmentData = async () => {
+      try {
+        setLoading(true)
+        
+        // Load current season investments
+        const currentSeasonRef = collection(db, 'farms', farmId, 'investments')
+        const currentSeasonQuery = query(
+          currentSeasonRef,
+          where('date', '>=', new Date(`${currentSeasonYear}-01-01`)),
+          where('date', '<=', new Date(`${currentSeasonYear}-12-31`))
+        )
+        const currentSnapshot = await getDocs(currentSeasonQuery)
+        
+        // Load last season investments  
+        const lastSeasonRef = collection(db, 'farms', farmId, 'investments')
+        const lastSeasonQuery = query(
+          lastSeasonRef,
+          where('date', '>=', new Date(`${currentSeasonYear - 1}-01-01`)),
+          where('date', '<=', new Date(`${currentSeasonYear - 1}-12-31`))
+        )
+        const lastSnapshot = await getDocs(lastSeasonQuery)
+
+        // Calculate totals
+        const currentTotal = currentSnapshot.docs.reduce((sum, doc) => {
+          const data = doc.data()
+          return sum + (data.amount || 0)
+        }, 0)
+
+        const lastTotal = lastSnapshot.docs.reduce((sum, doc) => {
+          const data = doc.data()
+          return sum + (data.amount || 0)
+        }, 0)
+
+        setInvestmentData({
+          lastSeason: { 
+            year: currentSeasonYear - 1, 
+            total: lastTotal, 
+            count: lastSnapshot.docs.length 
+          },
+          currentSeason: { 
+            year: currentSeasonYear, 
+            total: currentTotal, 
+            count: currentSnapshot.docs.length 
+          }
+        })
+      } catch (error) {
+        console.error('Error loading investment data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (farmId) {
+      loadInvestmentData()
+    }
+  }, [farmId, currentSeasonYear])
+
+  if (loading) {
+    return (
+      <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl border border-blue-200 p-6 shadow-sm">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="h-16 bg-gray-200 rounded"></div>
+            <div className="h-16 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const { lastSeason, currentSeason } = investmentData
+  const difference = currentSeason.total - lastSeason.total
+  const percentageChange = lastSeason.total > 0 ? (difference / lastSeason.total) * 100 : 0
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(amount)
+  }
+
+  return (
+    <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl border border-blue-200 p-6 shadow-sm">
+      <div className="flex items-center space-x-2 mb-4">
+        <span className="text-2xl">💰</span>
+        <h3 className="text-lg font-semibold text-gray-900">Chi phí đầu tư theo mùa</h3>
+      </div>
+      
+      {/* Investment Comparison */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="bg-white/60 rounded-lg p-4">
+          <div className="text-sm text-gray-600 mb-1">Mùa trước ({lastSeason.year})</div>
+          <div className="text-2xl font-bold text-blue-600">
+            {formatCurrency(lastSeason.total)}
+          </div>
+          <div className="text-xs text-gray-500">
+            {lastSeason.count} khoản đầu tư
+          </div>
+        </div>
+        
+        <div className="bg-white/60 rounded-lg p-4">
+          <div className="text-sm text-gray-600 mb-1">Mùa này ({currentSeason.year})</div>
+          <div className="text-2xl font-bold text-green-600">
+            {formatCurrency(currentSeason.total)}
+          </div>
+          <div className="text-xs text-gray-500">
+            {currentSeason.count} khoản đầu tư
+          </div>
+        </div>
+      </div>
+      
+      {/* Comparison */}
+      {lastSeason.total > 0 && (
+        <div className="bg-white/60 rounded-lg p-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">So với mùa trước:</span>
+            <div className="flex items-center space-x-2">
+              <span className={`font-bold ${
+                difference > 0 ? 'text-red-600' : difference < 0 ? 'text-green-600' : 'text-gray-600'
+              }`}>
+                {difference > 0 ? '+' : ''}{formatCurrency(difference)}
+              </span>
+              <span className={`text-sm px-2 py-1 rounded-full ${
+                difference > 0 ? 'bg-red-100 text-red-700' : 
+                difference < 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+              }`}>
+                {difference > 0 ? '+' : ''}{percentageChange.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -767,137 +945,148 @@ function InvestmentModal({
   const selectedCategory = quickCategories.find(cat => cat.value === formData.category)
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-green-50 to-blue-50 border-b border-gray-200 p-4 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
+    <div className="fixed inset-0 bg-white z-[50000]">
+      {/* Header - Fixed (matching FullscreenTreeShowcase) */}
+      <div className="fixed top-0 left-0 right-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center space-x-3 flex-1 min-w-0">
             <button
               onClick={onClose}
-              className="mr-3 p-2 hover:bg-white/60 rounded-lg transition-colors"
+              className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors active:scale-95"
+              title="Đóng"
             >
               <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
-                {investment ? 'Sửa chi phí' : 'Thêm chi phí'}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg font-semibold text-gray-900 truncate">
+                {investment ? 'Chỉnh sửa chi phí' : 'Thêm chi phí mới'}
               </h1>
-              <p className="text-sm text-gray-600">Nhập thông tin chi phí</p>
+              <p className="text-sm text-gray-500 truncate">
+                Nhập thông tin đầu tư
+              </p>
             </div>
           </div>
-          <span className="text-2xl">💰</span>
+          
+          <div className="flex-shrink-0 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg">
+            <span className="text-xl">💰</span>
+            <span className="font-medium hidden sm:inline">Chi phí</span>
+          </div>
         </div>
       </div>
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto">
-        <form onSubmit={handleSubmit} className="p-4 space-y-6 pb-60">
-          {/* Category Selection */}
-          <div>
-            <label className="block text-lg font-semibold text-gray-800 mb-3">Loại chi phí</label>
-            <div className="grid grid-cols-2 gap-3">
-              {quickCategories.map(category => (
-                <button
-                  key={category.value}
-                  type="button"
-                  onClick={() => setFormData({...formData, category: category.value, subcategory: ''})}
-                  className={`text-left p-4 rounded-xl border-2 transition-all ${
-                    formData.category === category.value
-                      ? 'border-blue-500 bg-blue-50 text-blue-900 font-semibold shadow-lg'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="text-2xl mb-1">{category.label.split(' ')[0]}</div>
-                  <div className="text-sm font-medium">{category.label.split(' ').slice(1).join(' ')}</div>
-                </button>
-              ))}
+      {/* Content - Scrollable (matching FullscreenTreeShowcase) */}
+      <div className="pt-[73px] pb-6 h-full overflow-y-auto overscroll-behavior-contain">
+        {/* Content Cards */}
+        <div className="px-4 py-6 space-y-6 max-w-2xl mx-auto">
+          {/* Category Selection Card */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-6 shadow-sm">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-lg font-semibold text-green-800 mb-3">Loại chi phí</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {quickCategories.map(category => (
+                    <button
+                      key={category.value}
+                      type="button"
+                      onClick={() => setFormData({...formData, category: category.value, subcategory: ''})}
+                      className={`text-left p-4 rounded-xl border-2 transition-all ${
+                        formData.category === category.value
+                          ? 'border-green-500 bg-green-100 text-green-900 font-semibold shadow-lg'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">{category.label.split(' ')[0]}</div>
+                      <div className="text-sm font-medium">{category.label.split(' ').slice(1).join(' ')}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Amount Input */}
-          <div>
-            <label className="block text-lg font-semibold text-gray-800 mb-3">Số tiền (VNĐ)</label>
-            
-            {/* Quick amount buttons */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {[50000, 100000, 200000, 500000].map(amount => (
-                <button
-                  key={amount}
-                  type="button"
-                  onClick={() => setFormData({...formData, amount})}
-                  className={`px-4 py-3 text-lg rounded-xl border-2 transition-all font-semibold ${
-                    formData.amount === amount
-                      ? 'border-green-500 bg-green-50 text-green-700 shadow-lg'
-                      : 'border-gray-200 hover:bg-gray-50 text-gray-700'
-                  }`}
-                >
-                  {(amount / 1000)}k
-                </button>
-              ))}
+          {/* Amount Input Card */}
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200 p-6 shadow-sm">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-lg font-semibold text-blue-800 mb-3">Số tiền (VNĐ)</label>
+                
+                {/* Quick amount buttons */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  {[50000, 100000, 200000, 500000].map(amount => (
+                    <button
+                      key={amount}
+                      type="button"
+                      onClick={() => setFormData({...formData, amount})}
+                      className={`px-4 py-3 text-lg rounded-xl border-2 transition-all font-semibold ${
+                        formData.amount === amount
+                          ? 'border-blue-500 bg-blue-100 text-blue-800 shadow-lg'
+                          : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      {(amount / 1000)}k
+                    </button>
+                  ))}
+                </div>
+
+                {/* Amount input */}
+                <input
+                  type="number"
+                  value={formData.amount || ''}
+                  onChange={(e) => setFormData({...formData, amount: parseFloat(e.target.value) || 0})}
+                  className="w-full px-6 py-4 border-2 border-blue-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-3xl font-bold text-center text-blue-600 bg-white/80"
+                  placeholder="Nhập số tiền"
+                  required
+                  min="0"
+                />
+                {formData.amount > 0 && (
+                  <p className="text-center text-blue-700 mt-3 text-lg font-medium">
+                    {formData.amount.toLocaleString('vi-VN')} VNĐ
+                  </p>
+                )}
+              </div>
             </div>
-
-            {/* Amount input */}
-            <input
-              type="number"
-              value={formData.amount || ''}
-              onChange={(e) => setFormData({...formData, amount: parseFloat(e.target.value) || 0})}
-              className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-2xl font-bold text-center"
-              placeholder="Nhập số tiền"
-              required
-              min="0"
-            />
-            {formData.amount > 0 && (
-              <p className="text-center text-gray-600 mt-2 font-medium">
-                {formData.amount.toLocaleString('vi-VN')} VNĐ
-              </p>
-            )}
           </div>
 
-          {/* Date */}
-          <div>
-            <label className="block text-lg font-semibold text-gray-800 mb-3">Ngày</label>
-            <input
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({...formData, date: e.target.value})}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
-              required
-            />
-          </div>
+          {/* Date & Notes Card */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+            <div className="space-y-6">
+              {/* Date */}
+              <div>
+                <label className="block text-lg font-semibold text-gray-800 mb-3">Ngày</label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({...formData, date: e.target.value})}
+                  className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg bg-white/80"
+                  required
+                />
+              </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-lg font-semibold text-gray-800 mb-3">Ghi chú</label>
-            <input
-              type="text"
-              value={formData.notes}
-              onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
-              placeholder="Mô tả chi tiết (tùy chọn)"
-            />
-          </div>
-        </form>
-      </div>
+              {/* Notes */}
+              <div>
+                <label className="block text-lg font-semibold text-gray-800 mb-3">Ghi chú</label>
+                <input
+                  type="text"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg bg-white/80"
+                  placeholder="Mô tả chi tiết (tùy chọn)"
+                />
+              </div>
 
-      {/* Fixed Bottom Action Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-20">
-        <div className="flex space-x-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 px-6 py-4 text-lg font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
-          >
-            Hủy
-          </button>
-          <button
-            type="submit"
-            onClick={handleSubmit}
-            className="flex-1 px-6 py-4 text-lg font-bold text-white bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 rounded-xl transition-all shadow-lg hover:shadow-xl"
-          >
-            {investment ? '💾 Lưu' : '➕ Thêm'}
-          </button>
+              {/* Save Button */}
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold text-lg transition-all active:scale-95 shadow-lg"
+              >
+                <CheckCircleIcon className="w-6 h-6" />
+                <span>{investment ? 'Cập nhật chi phí' : 'Thêm chi phí'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

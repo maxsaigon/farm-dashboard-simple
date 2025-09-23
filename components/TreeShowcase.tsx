@@ -20,53 +20,10 @@ export default function TreeShowcase({ tree, onSaved }: Props) {
   const { showSuccess, showError, ToastContainer } = useToast()
   const [count, setCount] = useState<number>(tree?.manualFruitCount || 0)
   const [saving, setSaving] = useState(false)
-  const [seasonLoading, setSeasonLoading] = useState(false)
-  const [lastSeason, setLastSeason] = useState<{ name?: string; perTreeCount: number } | null>(null)
 
   useEffect(() => {
     setCount(tree?.manualFruitCount || 0)
   }, [tree?.manualFruitCount])
-
-  // Fetch last season summary for the farm
-  useEffect(() => {
-    async function fetchLastSeason() {
-      if (!currentFarm?.id || !tree?.id) return
-      try {
-        setSeasonLoading(true)
-        const seasonsRef = collection(db, 'farms', currentFarm.id, 'seasons')
-        const q = query(seasonsRef, orderBy('endDate', 'desc'), limit(1))
-        const snap = await getDocs(q)
-        if (!snap.empty) {
-          const docSnap = snap.docs[0]
-          const data = docSnap.data() as any
-          // perTreeBreakdown is expected to be a map of treeId -> count or object { count }
-          const perTreeBreakdown = data.perTreeBreakdown || {}
-          const toNum = (v: any) => typeof v === 'number' ? v : (typeof v === 'string' ? (parseInt(v, 10) || 0) : 0)
-          let perTreeCount = 0
-          const entry = perTreeBreakdown[tree.id]
-          if (typeof entry === 'number' || typeof entry === 'string') {
-            perTreeCount = toNum(entry)
-          } else if (entry && typeof entry === 'object') {
-            if ('count' in entry) perTreeCount = toNum((entry as any).count)
-            else if ('total' in entry) perTreeCount = toNum((entry as any).total)
-            else if ('fruitCount' in entry) perTreeCount = toNum((entry as any).fruitCount)
-            else if ('numberOFfrust' in entry) perTreeCount = toNum((entry as any).numberOFfrust)
-            else if ('numberOfFrust' in entry) perTreeCount = toNum((entry as any).numberOfFrust)
-            else if ('frustCount' in entry) perTreeCount = toNum((entry as any).frustCount)
-          }
-          setLastSeason({ name: data.name, perTreeCount })
-        } else {
-          setLastSeason(null)
-        }
-      } catch (e) {
-        console.warn('Failed to fetch seasons', e)
-        setLastSeason(null)
-      } finally {
-        setSeasonLoading(false)
-      }
-    }
-    fetchLastSeason()
-  }, [currentFarm?.id, tree?.id])
 
   if (!tree) {
     return (
@@ -103,66 +60,45 @@ export default function TreeShowcase({ tree, onSaved }: Props) {
       </div>
 
       {/* Fruit count */}
-      <div className="px-4 py-3 space-y-3">
-        {/* Last season summary */}
-        <div className="bg-white rounded-xl border border-amber-200 p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-gray-500">Mùa trước</div>
-              {seasonLoading ? (
-                <div className="text-gray-400 text-sm">Đang tải…</div>
-              ) : lastSeason ? (
-                <div>
-                  <div className="text-lg font-medium text-gray-800">{lastSeason.name || 'Mùa gần nhất'}</div>
-                  <div className="text-2xl font-bold text-amber-600">{lastSeason.perTreeCount.toLocaleString()} trái</div>
-                </div>
-              ) : (
-                <div className="text-gray-400 text-sm">Chưa có dữ liệu mùa</div>
-              )}
-            </div>
-          </div>
-        </div>
+      <div className="px-4 py-3">
 
         <div className="bg-white rounded-xl border border-green-200 p-4 shadow-sm">
-          <div className="flex items-center justify-between">
+          <div className="space-y-4">
             <div>
-              <div className="text-sm text-gray-500">Số lượng trái</div>
-              <div className="text-3xl font-bold text-green-600">{count.toLocaleString()}</div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Số lượng trái hiện tại</label>
+              <input
+                type="number"
+                value={count || ''}
+                onChange={(e) => setCount(parseInt(e.target.value) || 0)}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-2xl font-bold text-center text-green-600"
+                placeholder="Nhập số lượng trái"
+                min="0"
+                disabled={!canSave}
+              />
+              {count > 0 && (
+                <p className="text-center text-gray-600 mt-2 text-sm">
+                  {count.toLocaleString()} trái
+                </p>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                className="h-12 w-12 rounded-full border-2 border-gray-200 text-2xl active:scale-95"
-                onClick={() => setCount(prev => Math.max(0, prev - 1))}
-                aria-label="Giảm 1"
-              >
-                –
-              </button>
-              <button
-                className="h-12 w-12 rounded-full bg-green-600 text-white text-2xl active:scale-95"
-                onClick={() => setCount(prev => prev + 1)}
-                aria-label="Tăng 1"
-              >
-                +
-              </button>
-            </div>
-          </div>
 
-          {!canSave && (
-            <div className="mt-3 flex items-center text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-              <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
-              Đăng nhập và chọn trang trại để lưu thay đổi.
-            </div>
-          )}
+            {!canSave && (
+              <div className="flex items-center text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
+                Đăng nhập và chọn trang trại để lưu thay đổi.
+              </div>
+            )}
 
-          <div className="mt-3 flex justify-end">
-            <button
-              onClick={handleSave}
-              disabled={!canSave || saving}
-              className="px-4 py-2 rounded-lg bg-green-600 text-white disabled:opacity-50 inline-flex items-center gap-2"
-            >
-              {saving ? 'Đang lưu…' : 'Lưu'}
-              {!saving && <CheckCircleIcon className="h-5 w-5 text-white" />}
-            </button>
+            <div className="flex justify-end">
+              <button
+                onClick={handleSave}
+                disabled={!canSave || saving}
+                className="px-6 py-3 rounded-xl bg-green-600 text-white disabled:opacity-50 inline-flex items-center gap-2 font-semibold hover:bg-green-700 transition-colors"
+              >
+                {saving ? 'Đang lưu…' : 'Lưu số lượng'}
+                {!saving && <CheckCircleIcon className="h-5 w-5 text-white" />}
+              </button>
+            </div>
           </div>
         </div>
       </div>
