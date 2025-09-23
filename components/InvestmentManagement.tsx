@@ -719,7 +719,7 @@ function FertilizerCalculatorView({
   )
 }
 
-// Investment Modal Component
+// Simplified Investment Modal Component
 function InvestmentModal({
   investment,
   categories,
@@ -735,192 +735,205 @@ function InvestmentModal({
 }) {
   const [formData, setFormData] = useState({
     amount: investment?.amount || 0,
-    category: investment?.category || categories[0],
+    category: investment?.category || categories[0] || 'Phân bón',
     subcategory: investment?.subcategory || '',
     date: investment?.date ? new Date(investment.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    notes: investment?.notes || '',
-    quantity: investment?.quantity || 0,
-    unit: investment?.unit || '',
-    pricePerUnit: investment?.pricePerUnit || 0,
-    treeCount: investment?.treeCount || 0,
-    isRecurring: investment?.isRecurring || false,
-    recurringPeriod: investment?.recurringPeriod || 'monthly'
+    notes: investment?.notes || ''
   })
+
+  // Auto-calculate amount when quantity and price change
+  const [quantity, setQuantity] = useState(investment?.quantity || '')
+  const [pricePerUnit, setPricePerUnit] = useState(investment?.pricePerUnit || '')
+
+  // Update amount when quantity or price changes
+  const updateAmount = (newQuantity: string, newPrice: string) => {
+    const qty = parseFloat(newQuantity) || 0
+    const price = parseFloat(newPrice) || 0
+    if (qty > 0 && price > 0) {
+      setFormData(prev => ({ ...prev, amount: qty * price }))
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formData.amount || formData.amount <= 0) {
+      alert('Vui lòng nhập số tiền hợp lệ')
+      return
+    }
     onSave({
       ...formData,
       date: new Date(formData.date),
-      amount: formData.pricePerUnit && formData.quantity 
-        ? formData.pricePerUnit * formData.quantity 
-        : formData.amount
+      quantity: parseFloat(quantity.toString()) || 0,
+      pricePerUnit: parseFloat(pricePerUnit.toString()) || 0
     })
   }
 
   if (!isOpen) return null
 
+  // Quick category options with emojis
+  const quickCategories = [
+    { value: 'Phân bón', label: '🌱 Phân bón', subcategories: ['NPK', 'Phân hữu cơ', 'Phân lá', 'Vi lượng'] },
+    { value: 'Thuốc BVTV', label: '🛡️ Thuốc BVTV', subcategories: ['Thuốc trừ sâu', 'Thuốc nấm', 'Thuốc cỏ', 'Thuốc kích thích'] },
+    { value: 'Công cụ', label: '🔧 Công cụ', subcategories: ['Máy phun', 'Dụng cụ cắt tỉa', 'Ống nước', 'Khác'] },
+    { value: 'Lao động', label: '👥 Lao động', subcategories: ['Tỉa cành', 'Bón phân', 'Phun thuốc', 'Thu hoạch'] },
+    { value: 'Khác', label: '📦 Khác', subcategories: ['Điện nước', 'Vận chuyển', 'Sửa chữa', 'Khác'] }
+  ]
+
+  const selectedCategory = quickCategories.find(cat => cat.value === formData.category)
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-6">
-            {investment ? 'Chỉnh sửa khoản đầu tư' : 'Thêm khoản đầu tư mới'}
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-100">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-blue-50">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center">
+            <span className="text-2xl mr-3">💰</span>
+            {investment ? 'Sửa khoản đầu tư' : 'Thêm khoản đầu tư'}
           </h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Danh mục</label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({...formData, category: e.target.value})}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
+          <p className="text-sm text-gray-600 mt-1">Nhập thông tin chi phí nhanh chóng</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Category Selection */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Loại chi phí</label>
+            <div className="grid grid-cols-1 gap-2">
+              {quickCategories.map(category => (
+                <button
+                  key={category.value}
+                  type="button"
+                  onClick={() => setFormData({...formData, category: category.value, subcategory: ''})}
+                  className={`text-left p-3 rounded-xl border-2 transition-all ${
+                    formData.category === category.value
+                      ? 'border-blue-500 bg-blue-50 text-blue-900 font-medium'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
                 >
-                  {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Phân loại</label>
-                <input
-                  type="text"
-                  value={formData.subcategory}
-                  onChange={(e) => setFormData({...formData, subcategory: e.target.value})}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="VD: NPK 16-16-8"
-                />
-              </div>
+                  {category.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Subcategory */}
+          {selectedCategory && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Chi tiết</label>
+              <select
+                value={formData.subcategory}
+                onChange={(e) => setFormData({...formData, subcategory: e.target.value})}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Chọn loại cụ thể...</option>
+                {selectedCategory.subcategories.map(sub => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Quick Amount Input */}
+          <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+            <label className="block text-sm font-semibold text-gray-700">Số tiền</label>
+            
+            {/* Quick amount buttons */}
+            <div className="grid grid-cols-4 gap-2">
+              {[50000, 100000, 200000, 500000].map(amount => (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => setFormData({...formData, amount})}
+                  className="px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                >
+                  {amount.toLocaleString('vi-VN')}đ
+                </button>
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Amount input */}
+            <input
+              type="number"
+              value={formData.amount || ''}
+              onChange={(e) => setFormData({...formData, amount: parseFloat(e.target.value) || 0})}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-semibold"
+              placeholder="Nhập số tiền..."
+              required
+              min="0"
+            />
+
+            {/* Quick calculation helper */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Số lượng</label>
+                <label className="block text-xs text-gray-600 mb-1">Số lượng</label>
                 <input
                   type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({...formData, quantity: parseFloat(e.target.value) || 0})}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  min="0"
+                  value={quantity}
+                  onChange={(e) => {
+                    setQuantity(e.target.value)
+                    updateAmount(e.target.value, pricePerUnit.toString())
+                  }}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  placeholder="10"
                   step="0.1"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Đơn vị</label>
-                <input
-                  type="text"
-                  value={formData.unit}
-                  onChange={(e) => setFormData({...formData, unit: e.target.value})}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="kg, chai, bao..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Giá/đơn vị (VNĐ)</label>
+                <label className="block text-xs text-gray-600 mb-1">Giá/đơn vị</label>
                 <input
                   type="number"
-                  value={formData.pricePerUnit}
-                  onChange={(e) => setFormData({...formData, pricePerUnit: parseFloat(e.target.value) || 0})}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  min="0"
+                  value={pricePerUnit}
+                  onChange={(e) => {
+                    setPricePerUnit(e.target.value)
+                    updateAmount(quantity.toString(), e.target.value)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  placeholder="50000"
                 />
               </div>
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Tổng tiền (VNĐ)
-                  {formData.pricePerUnit && formData.quantity && (
-                    <span className="text-xs text-gray-500 ml-2">
-                      Tự động: {(formData.pricePerUnit * formData.quantity).toLocaleString('vi-VN')}
-                    </span>
-                  )}
-                </label>
-                <input
-                  type="number"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({...formData, amount: parseFloat(e.target.value) || 0})}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  min="0"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Ngày</label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({...formData, date: e.target.value})}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-            </div>
+          {/* Date */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày</label>
+            <input
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({...formData, date: e.target.value})}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Số cây áp dụng</label>
-              <input
-                type="number"
-                value={formData.treeCount}
-                onChange={(e) => setFormData({...formData, treeCount: parseInt(e.target.value) || 0})}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                min="0"
-              />
-            </div>
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Ghi chú (tùy chọn)</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({...formData, notes: e.target.value})}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              rows={2}
+              placeholder="VD: Mua phân NPK cho khu vực A..."
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Ghi chú</label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
-              />
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.isRecurring}
-                  onChange={(e) => setFormData({...formData, isRecurring: e.target.checked})}
-                  className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                />
-                <span className="ml-2 text-sm text-gray-700">Chi phí định kỳ</span>
-              </label>
-              {formData.isRecurring && (
-                <select
-                  value={formData.recurringPeriod}
-                  onChange={(e) => setFormData({...formData, recurringPeriod: e.target.value})}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-                >
-                  <option value="weekly">Hàng tuần</option>
-                  <option value="monthly">Hàng tháng</option>
-                  <option value="quarterly">Hàng quý</option>
-                  <option value="yearly">Hàng năm</option>
-                </select>
-              )}
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4 border-t">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
-              >
-                {investment ? 'Cập nhật' : 'Thêm'}
-              </button>
-            </div>
-          </form>
-        </div>
+          {/* Action Buttons */}
+          <div className="flex space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-3 text-white bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl"
+            >
+              {investment ? '💾 Cập nhật' : '➕ Thêm ngay'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )
