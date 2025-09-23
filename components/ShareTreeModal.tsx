@@ -5,6 +5,8 @@ import { Tree } from '@/lib/types'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { XMarkIcon, ClipboardIcon, CheckIcon, UserPlusIcon, ShareIcon } from '@heroicons/react/24/outline'
 import { useToast } from './Toast'
+import { collection, getDocs, query, where, addDoc } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 
 interface Props {
   tree: Tree | null
@@ -21,32 +23,72 @@ export default function ShareTreeModal({ tree, isOpen, onClose }: Props) {
   const [farmMembers, setFarmMembers] = useState<Array<{id: string, name: string, email: string}>>([])
   const [loading, setLoading] = useState(false)
 
-  // Generate share URL when modal opens
+  // Generate proper tree URL for sharing
   useEffect(() => {
     if (isOpen && tree) {
       const baseUrl = window.location.origin
-      const url = `${baseUrl}/trees/showcase/${tree.id}?farm=${currentFarm?.id || ''}`
-      setShareUrl(url)
+      // Create a clean URL structure for tree viewing
+      const treeUrl = `${baseUrl}/trees/view/${tree.id}?farm=${currentFarm?.id || tree.farmId || ''}&qr=${tree.qrCode || ''}`
+      setShareUrl(treeUrl)
     }
   }, [isOpen, tree, currentFarm?.id])
 
-  // Load farm members (mock for now - would connect to real API)
+  // Load real farm members from Firestore
   useEffect(() => {
-    if (isOpen && currentFarm) {
-      // Mock farm members - in real app would fetch from Firestore
-      setFarmMembers([
-        { id: '1', name: 'Nguyễn Văn A', email: 'nguyenvana@example.com' },
-        { id: '2', name: 'Trần Thị B', email: 'tranthib@example.com' },
-        { id: '3', name: 'Lê Văn C', email: 'levanc@example.com' },
-      ])
+    const loadFarmMembers = async () => {
+      if (!isOpen || !currentFarm?.id) return
+      
+      setLoading(true)
+      try {
+        // Try to get farm members from users collection
+        const usersRef = collection(db, 'users')
+        const q = query(usersRef, where('farmId', '==', currentFarm.id))
+        const snapshot = await getDocs(q)
+        
+        const members = snapshot.docs.map(doc => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            name: data.displayName || data.name || data.email?.split('@')[0] || 'Người dùng',
+            email: data.email || ''
+          }
+        }).filter(member => member.email !== user?.email) // Exclude current user
+        
+        setFarmMembers(members)
+      } catch (error) {
+        console.error('Error loading farm members:', error)
+        // If failed, try alternative structure
+        try {
+          const farmMembersRef = collection(db, 'farms', currentFarm.id, 'members')
+          const snapshot = await getDocs(farmMembersRef)
+          
+          const members = snapshot.docs.map(doc => {
+            const data = doc.data()
+            return {
+              id: doc.id,
+              name: data.displayName || data.name || data.email?.split('@')[0] || 'Người dùng',
+              email: data.email || ''
+            }
+          }).filter(member => member.email !== user?.email)
+          
+          setFarmMembers(members)
+        } catch (fallbackError) {
+          console.error('Error loading farm members (fallback):', fallbackError)
+          setFarmMembers([])
+        }
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [isOpen, currentFarm])
+
+    loadFarmMembers()
+  }, [isOpen, currentFarm?.id, user?.email])
 
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
-      showSuccess('Đã sao chép', 'Liên kết đã được sao chép vào clipboard')
+      showSuccess('Đã sao chép', 'Liên kết cây đã được sao chép vào clipboard')
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
       showError('Lỗi', 'Không thể sao chép liên kết')
@@ -69,35 +111,57 @@ export default function ShareTreeModal({ tree, isOpen, onClose }: Props) {
 
     setLoading(true)
     try {
-      // Mock sharing logic - in real app would send notifications/emails
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Real sharing logic with Firestore
+      const shareData = {
+        treeId: tree?.id,
+        treeName: tree?.name || tree?.variety || 'Cây trồng',
+        qrCode: tree?.qrCode,
+        farmId: currentFarm?.id,
+        sharedBy: user?.uid,
+        sharedByName: user?.displayName || user?.email,
+        sharedAt: new Date(),
+        message: `${user?.displayName || user?.email} đã chia sẻ thông tin cây "${tree?.name || tree?.variety}" với bạn.`
+      }
+
+      // Create notifications for selected members
+      const notificationPromises = selectedMembers.map(async (memberId) => {
+        try {
+          // Add notification to user's notifications subcollection
+          const notificationRef = collection(db, 'users', memberId, 'notifications')
+          await addDoc(notificationRef, {
+            ...shareData,
+            type: 'tree_share',
+            read: false,
+            createdAt: new Date()
+          })
+        } catch (error) {
+          console.error(`Error creating notification for member ${memberId}:`, error)
+        }
+      })
+
+      await Promise.all(notificationPromises)
       
       const memberNames = farmMembers
         .filter(member => selectedMembers.includes(member.id))
         .map(member => member.name)
         .join(', ')
       
-      showSuccess('Đã chia sẻ', `Cây đã được chia sẻ với ${memberNames}`)
+      showSuccess('Đã chia sẻ', `Thông tin cây đã được chia sẻ với ${memberNames}`)
       setSelectedMembers([])
       onClose()
     } catch (error) {
+      console.error('Error sharing tree:', error)
       showError('Lỗi', 'Không thể chia sẻ cây. Vui lòng thử lại')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleWhatsAppShare = () => {
-    const message = `Xem cây ${tree?.name || tree?.variety || 'này'} trên trang trại: ${shareUrl}`
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank')
-  }
-
-  const handleEmailShare = () => {
-    const subject = `Chia sẻ cây ${tree?.name || tree?.variety || 'trồng'}`
-    const body = `Xem thông tin chi tiết về cây này: ${shareUrl}`
-    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    window.location.href = mailtoUrl
+  const handleZaloShare = () => {
+    const message = `🌳 Xem thông tin cây ${tree?.name || tree?.variety || 'trồng'} - ${tree?.qrCode || ''}: ${shareUrl}`
+    // Zalo sharing URL structure
+    const zaloUrl = `https://zalo.me/share/?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(message)}`
+    window.open(zaloUrl, '_blank')
   }
 
   if (!isOpen || !tree) {
@@ -125,11 +189,11 @@ export default function ShareTreeModal({ tree, isOpen, onClose }: Props) {
         </div>
 
         <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {/* Copy Link Section */}
+          {/* Copy Tree Link Section */}
           <div className="bg-gray-50 rounded-2xl p-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
               <ClipboardIcon className="w-5 h-5 mr-2 text-gray-600" />
-              Sao chép liên kết
+              Sao chép liên kết cây
             </h3>
             <div className="flex items-center space-x-2">
               <input
@@ -162,22 +226,13 @@ export default function ShareTreeModal({ tree, isOpen, onClose }: Props) {
               <ShareIcon className="w-5 h-5 mr-2 text-gray-600" />
               Chia sẻ nhanh
             </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={handleWhatsAppShare}
-                className="flex items-center justify-center space-x-3 px-4 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl transition-all font-medium shadow-lg active:scale-95"
-              >
-                <span className="text-2xl">📱</span>
-                <span>WhatsApp</span>
-              </button>
-              <button
-                onClick={handleEmailShare}
-                className="flex items-center justify-center space-x-3 px-4 py-4 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white rounded-xl transition-all font-medium shadow-lg active:scale-95"
-              >
-                <span className="text-2xl">📧</span>
-                <span>Email</span>
-              </button>
-            </div>
+            <button
+              onClick={handleZaloShare}
+              className="w-full flex items-center justify-center space-x-3 px-4 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all font-medium shadow-lg active:scale-95"
+            >
+              <span className="text-2xl">💬</span>
+              <span>Chia sẻ qua Zalo</span>
+            </button>
           </div>
 
           {/* Farm Members Section */}

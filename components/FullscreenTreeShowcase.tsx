@@ -184,7 +184,7 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
                   <div className="text-amber-600 text-sm">Chưa có dữ liệu mùa</div>
                 )}
               </div>
-              <div className="text-4xl opacity-50">🍃</div>
+    
             </div>
           </div>
 
@@ -195,7 +195,7 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
                 <div className="text-sm font-medium text-green-700 mb-1">Số lượng trái hiện tại</div>
                 <div className="text-4xl font-bold text-green-600">{count.toLocaleString()}</div>
               </div>
-              <div className="text-5xl opacity-50">🥭</div>
+              
             </div>
 
             {/* Counter Controls */}
@@ -283,8 +283,8 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
                 <div className="font-medium text-gray-900">{tree.zoneName || tree.zoneCode || 'N/A'}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-500">Mã QR</div>
-                <div className="font-medium text-gray-900 font-mono text-sm">{tree.qrCode || tree.id}</div>
+                <div className="text-sm text-gray-500">Sức Khoẻ</div>
+                <div className="font-medium text-gray-900 font-mono text-sm">{tree.healthNotes || tree.id}</div>
               </div>
             </div>
           </div>
