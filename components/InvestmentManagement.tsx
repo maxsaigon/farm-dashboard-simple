@@ -741,30 +741,15 @@ function InvestmentModal({
     notes: investment?.notes || ''
   })
 
-  // Auto-calculate amount when quantity and price change
-  const [quantity, setQuantity] = useState(investment?.quantity || '')
-  const [pricePerUnit, setPricePerUnit] = useState(investment?.pricePerUnit || '')
-
-  // Update amount when quantity or price changes
-  const updateAmount = (newQuantity: string, newPrice: string) => {
-    const qty = parseFloat(newQuantity) || 0
-    const price = parseFloat(newPrice) || 0
-    if (qty > 0 && price > 0) {
-      setFormData(prev => ({ ...prev, amount: qty * price }))
-    }
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     if (!formData.amount || formData.amount <= 0) {
       alert('Vui lòng nhập số tiền hợp lệ')
       return
     }
     onSave({
       ...formData,
-      date: new Date(formData.date),
-      quantity: parseFloat(quantity.toString()) || 0,
-      pricePerUnit: parseFloat(pricePerUnit.toString()) || 0
+      date: new Date(formData.date)
     })
   }
 
@@ -782,70 +767,73 @@ function InvestmentModal({
   const selectedCategory = quickCategories.find(cat => cat.value === formData.category)
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-100">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-blue-50">
-          <h3 className="text-xl font-bold text-gray-900 flex items-center">
-            <span className="text-2xl mr-3">💰</span>
-            {investment ? 'Sửa khoản đầu tư' : 'Thêm khoản đầu tư'}
-          </h3>
-          <p className="text-sm text-gray-600 mt-1">Nhập thông tin chi phí nhanh chóng</p>
+    <div className="fixed inset-0 bg-white z-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-green-50 to-blue-50 border-b border-gray-200 p-4 pb-safe">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <button
+              onClick={onClose}
+              className="mr-3 p-2 hover:bg-white/60 rounded-lg transition-colors"
+            >
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">
+                {investment ? 'Sửa chi phí' : 'Thêm chi phí'}
+              </h1>
+              <p className="text-sm text-gray-600">Nhập thông tin chi phí</p>
+            </div>
+          </div>
+          <span className="text-2xl">💰</span>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto pb-safe">
+        <form onSubmit={handleSubmit} className="p-4 space-y-6 pb-32">
           {/* Category Selection */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Loại chi phí</label>
-            <div className="grid grid-cols-1 gap-2">
+            <label className="block text-lg font-semibold text-gray-800 mb-3">Loại chi phí</label>
+            <div className="grid grid-cols-2 gap-3">
               {quickCategories.map(category => (
                 <button
                   key={category.value}
                   type="button"
                   onClick={() => setFormData({...formData, category: category.value, subcategory: ''})}
-                  className={`text-left p-3 rounded-xl border-2 transition-all ${
+                  className={`text-left p-4 rounded-xl border-2 transition-all ${
                     formData.category === category.value
-                      ? 'border-blue-500 bg-blue-50 text-blue-900 font-medium'
+                      ? 'border-blue-500 bg-blue-50 text-blue-900 font-semibold shadow-lg'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  {category.label}
+                  <div className="text-2xl mb-1">{category.label.split(' ')[0]}</div>
+                  <div className="text-sm font-medium">{category.label.split(' ').slice(1).join(' ')}</div>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Subcategory */}
-          {selectedCategory && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Chi tiết</label>
-              <select
-                value={formData.subcategory}
-                onChange={(e) => setFormData({...formData, subcategory: e.target.value})}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Chọn loại cụ thể...</option>
-                {selectedCategory.subcategories.map(sub => (
-                  <option key={sub} value={sub}>{sub}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Quick Amount Input */}
-          <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-            <label className="block text-sm font-semibold text-gray-700">Số tiền</label>
+          {/* Amount Input */}
+          <div>
+            <label className="block text-lg font-semibold text-gray-800 mb-3">Số tiền (VNĐ)</label>
             
             {/* Quick amount buttons */}
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-3 mb-4">
               {[50000, 100000, 200000, 500000].map(amount => (
                 <button
                   key={amount}
                   type="button"
                   onClick={() => setFormData({...formData, amount})}
-                  className="px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                  className={`px-4 py-3 text-lg rounded-xl border-2 transition-all font-semibold ${
+                    formData.amount === amount
+                      ? 'border-green-500 bg-green-50 text-green-700 shadow-lg'
+                      : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                  }`}
                 >
-                  {amount.toLocaleString('vi-VN')}đ
+                  {(amount / 1000)}k
                 </button>
               ))}
             </div>
@@ -855,85 +843,62 @@ function InvestmentModal({
               type="number"
               value={formData.amount || ''}
               onChange={(e) => setFormData({...formData, amount: parseFloat(e.target.value) || 0})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-semibold"
-              placeholder="Nhập số tiền..."
+              className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-2xl font-bold text-center"
+              placeholder="Nhập số tiền"
               required
               min="0"
             />
-
-            {/* Quick calculation helper */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Số lượng</label>
-                <input
-                  type="number"
-                  value={quantity}
-                  onChange={(e) => {
-                    setQuantity(e.target.value)
-                    updateAmount(e.target.value, pricePerUnit.toString())
-                  }}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                  placeholder="10"
-                  step="0.1"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Giá/đơn vị</label>
-                <input
-                  type="number"
-                  value={pricePerUnit}
-                  onChange={(e) => {
-                    setPricePerUnit(e.target.value)
-                    updateAmount(quantity.toString(), e.target.value)
-                  }}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                  placeholder="50000"
-                />
-              </div>
-            </div>
+            {formData.amount > 0 && (
+              <p className="text-center text-gray-600 mt-2 font-medium">
+                {formData.amount.toLocaleString('vi-VN')} VNĐ
+              </p>
+            )}
           </div>
 
           {/* Date */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày</label>
+            <label className="block text-lg font-semibold text-gray-800 mb-3">Ngày</label>
             <input
               type="date"
               value={formData.date}
               onChange={(e) => setFormData({...formData, date: e.target.value})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
               required
             />
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Ghi chú (tùy chọn)</label>
-            <textarea
+            <label className="block text-lg font-semibold text-gray-800 mb-3">Ghi chú</label>
+            <input
+              type="text"
               value={formData.notes}
               onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-              rows={2}
-              placeholder="VD: Mua phân NPK cho khu vực A..."
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+              placeholder="Mô tả chi tiết (tùy chọn)"
             />
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium transition-colors"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-3 text-white bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl"
-            >
-              {investment ? '💾 Cập nhật' : '➕ Thêm ngay'}
-            </button>
-          </div>
         </form>
+      </div>
+
+      {/* Fixed Bottom Action Buttons */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-safe">
+        <div className="flex space-x-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 px-6 py-4 text-lg font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            className="flex-1 px-6 py-4 text-lg font-bold text-white bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 rounded-xl transition-all shadow-lg hover:shadow-xl"
+          >
+            {investment ? '💾 Lưu' : '➕ Thêm'}
+          </button>
+        </div>
       </div>
     </div>
   )
