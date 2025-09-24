@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Tree } from '@/lib/types'
 import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PhotoIcon, EyeIcon, CalendarDaysIcon, MapPinIcon, CameraIcon, PlusIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
-import { PhotoWithUrls, getPhotosWithUrls, subscribeToTreePhotos } from '@/lib/photo-service'
+import { PhotoWithUrls, getPhotosWithUrls, subscribeToTreePhotos, getTreePhotos } from '@/lib/photo-service'
 import { getTreeImagesByPattern } from '@/lib/storage'
 import { getModalZClass, modalStack } from '@/lib/modal-z-index'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
@@ -12,6 +12,7 @@ import { useToast } from './Toast'
 import { collection, addDoc, Timestamp } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '@/lib/firebase'
+import { compressImageSmart, getCompressionInfo, needsCompression } from '@/lib/photo-compression'
 
 interface ImageGalleryProps {
   tree: Tree
@@ -44,8 +45,16 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<'all' | 'general' | 'health' | 'fruit_count'>('all')
   const [uploading, setUploading] = useState(false)
+  const [compressing, setCompressing] = useState(false)
   const [showPhotoTypeModal, setShowPhotoTypeModal] = useState(false)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [compressionInfo, setCompressionInfo] = useState<{
+    currentSizeKB: number
+    targetSizeKB: number
+    needsCompression: boolean
+    estimatedReduction: number
+  } | null>(null)
+  const [newPhotoAdded, setNewPhotoAdded] = useState(false)
 
   // Load photos from Firestore
   useEffect(() => {
@@ -169,6 +178,28 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   // Track touch position for swipe gesture
   const [touchStart, setTouchStart] = useState<number | null>(null)
 
+  // Force refresh image gallery after upload
+  const refreshImageGallery = async () => {
+    try {
+      console.log('🔄 Refreshing image gallery...')
+      setLoading(true)
+
+      // Reload photos from Firestore
+      const photosWithUrls = await getPhotosWithUrls(await getTreePhotos(tree.id), effectiveFarmId)
+      setPhotos(photosWithUrls)
+
+      // Reload storage images
+      const images = await getTreeImagesByPattern(tree.id, tree.qrCode, effectiveFarmId)
+      setStorageImages(images)
+
+      console.log('🔄 Gallery refreshed successfully')
+    } catch (error) {
+      console.error('🔄 Error refreshing gallery:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Camera and photo upload functions
   const handleCameraClick = () => {
     if (cameraInputRef.current) {
@@ -185,8 +216,14 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      console.log('📸 File selected:', file.name, file.type)
+      console.log('📸 File selected:', file.name, file.type, (file.size / 1024 / 1024).toFixed(2) + 'MB')
       setPendingFile(file)
+      
+      // Show compression info for general photos by default
+      const info = getCompressionInfo(file, 'general')
+      setCompressionInfo(info)
+      console.log('📸 Compression info:', info)
+      
       setShowPhotoTypeModal(true)
     }
     // Reset input value to allow selecting the same file again
@@ -200,13 +237,40 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     }
 
     try {
-      setUploading(true)
-      console.log('📸 Uploading photo:', {
+      console.log('📸 Starting upload process:', {
         file: pendingFile.name,
         type: photoType,
+        originalSize: (pendingFile.size / 1024 / 1024).toFixed(2) + 'MB',
         treeId: tree.id,
         farmId: currentFarm.id
       })
+
+      // STEP 1: COMPRESSION
+      let fileToUpload = pendingFile
+      
+      if (needsCompression(pendingFile)) {
+        setCompressing(true)
+        console.log('📸 Compressing image...')
+        
+        try {
+          fileToUpload = await compressImageSmart(pendingFile, photoType)
+          console.log('📸 Compression successful:', {
+            originalSize: (pendingFile.size / 1024 / 1024).toFixed(2) + 'MB',
+            compressedSize: (fileToUpload.size / 1024 / 1024).toFixed(2) + 'MB',
+            reduction: (((pendingFile.size - fileToUpload.size) / pendingFile.size) * 100).toFixed(1) + '%'
+          })
+        } catch (compressionError) {
+          console.warn('📸 Compression failed, using original file:', compressionError)
+          fileToUpload = pendingFile // Fallback to original file
+        }
+        
+        setCompressing(false)
+      } else {
+        console.log('📸 File size acceptable, skipping compression')
+      }
+
+      // STEP 2: UPLOAD
+      setUploading(true)
 
       // Get current location if available
       let latitude, longitude
@@ -227,15 +291,15 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
 
       // Generate unique filename
       const timestamp = Date.now()
-      const fileExtension = pendingFile.name.split('.').pop() || 'jpg'
-      const filename = `${timestamp}.${fileExtension}`
+      const fileExtension = 'jpg' // Force JPEG after compression
+      const filename = `compressed_${timestamp}.${fileExtension}`
       
       // Upload to Firebase Storage
       const storagePath = `farms/${currentFarm.id}/trees/${tree.id}/photos/${timestamp}/${filename}`
       const storageRef = ref(storage, storagePath)
       
       console.log('📸 Uploading to storage path:', storagePath)
-      const uploadResult = await uploadBytes(storageRef, pendingFile)
+      const uploadResult = await uploadBytes(storageRef, fileToUpload)
       const downloadURL = await getDownloadURL(uploadResult.ref)
       
       // Save photo metadata to Firestore
@@ -261,15 +325,31 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       
       console.log('📸 Photo saved to Firestore:', photoData)
 
-      showSuccess('Thành công', 'Ảnh đã được thêm vào cây')
+      // Force refresh the image gallery
+      await refreshImageGallery()
+
+      // Show new photo indicator
+      setNewPhotoAdded(true)
+      setTimeout(() => setNewPhotoAdded(false), 5000) // Hide after 5 seconds
+
+      const photoTypeNames = {
+        general: 'chung',
+        health: 'sức khỏe', 
+        fruit_count: 'đếm trái'
+      }
+
+      showSuccess(
+        'Ảnh đã được thêm!', 
+        `Ảnh ${photoTypeNames[photoType]} mới đã xuất hiện trong thư viện. Xem ngay bên dưới!`
+      )
       setShowPhotoTypeModal(false)
       setPendingFile(null)
-
-      // The photo list will auto-update via the subscription
+      setCompressionInfo(null)
     } catch (error) {
       console.error('📸 Upload error:', error)
       showError('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại')
     } finally {
+      setCompressing(false)
       setUploading(false)
     }
   }
@@ -341,9 +421,21 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900 tracking-tight">Hình Ảnh Cây</h3>
+                <h3 className="text-xl font-bold text-gray-900 tracking-tight">
+                  Hình Ảnh Cây
+                  {newPhotoAdded && (
+                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 animate-pulse">
+                      ✨ Mới
+                    </span>
+                  )}
+                </h3>
                 <p className="text-sm text-gray-600 font-medium">
                   {totalImages > 0 ? `${totalImages} ảnh được tìm thấy` : 'Chưa có ảnh nào'}
+                  {newPhotoAdded && (
+                    <span className="text-green-600 font-semibold ml-2">
+                      🎉 Ảnh mới đã được thêm!
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -352,16 +444,18 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handleCameraClick}
-                  disabled={uploading}
+                  disabled={uploading || compressing}
                   className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-xl active:scale-95"
                   title="Chụp ảnh"
                 >
                   <CameraIcon className="h-5 w-5" />
-                  <span className="hidden sm:inline">{uploading ? 'Đang tải...' : 'Chụp ảnh'}</span>
+                  <span className="hidden sm:inline">
+                    {compressing ? 'Đang nén...' : uploading ? 'Đang tải...' : 'Chụp ảnh'}
+                  </span>
                 </button>
                 <button
                   onClick={handleGalleryClick}
-                  disabled={uploading}
+                  disabled={uploading || compressing}
                   className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-xl active:scale-95"
                   title="Chọn từ thư viện"
                 >
@@ -665,6 +759,31 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
 
             {/* Photo Type Options */}
             <div className="p-6 space-y-4">
+              {/* Compression Info */}
+              {compressionInfo && (
+                <div className={`p-4 rounded-lg border ${
+                  compressionInfo.needsCompression 
+                    ? 'bg-orange-50 border-orange-200' 
+                    : 'bg-green-50 border-green-200'
+                }`}>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className="text-lg">{compressionInfo.needsCompression ? '📐' : '✅'}</span>
+                    <div className="font-medium text-gray-900">
+                      {compressionInfo.needsCompression ? 'Sẽ nén ảnh' : 'Kích thước phù hợp'}
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <div>Kích thước hiện tại: <span className="font-medium">{compressionInfo.currentSizeKB}KB</span></div>
+                    {compressionInfo.needsCompression && (
+                      <>
+                        <div>Kích thước sau nén: <span className="font-medium">~{compressionInfo.targetSizeKB}KB</span></div>
+                        <div>Giảm khoảng: <span className="font-medium text-orange-600">{compressionInfo.estimatedReduction}%</span></div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="grid gap-3">
                 <button
                   onClick={() => handlePhotoUpload('general')}
@@ -709,14 +828,31 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                 </button>
               </div>
 
-              {/* Upload Progress */}
-              {uploading && (
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              {/* Progress States */}
+              {(compressing || uploading) && (
+                <div className={`rounded-lg p-4 border ${
+                  compressing 
+                    ? 'bg-orange-50 border-orange-200' 
+                    : 'bg-blue-50 border-blue-200'
+                }`}>
                   <div className="flex items-center space-x-3">
-                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
+                    <div className={`animate-spin rounded-full h-6 w-6 border-2 border-t-transparent ${
+                      compressing ? 'border-orange-600' : 'border-blue-600'
+                    }`}></div>
                     <div>
-                      <div className="font-medium text-blue-900">Đang tải ảnh lên...</div>
-                      <div className="text-sm text-blue-700">Vui lòng chờ trong giây lát</div>
+                      <div className={`font-medium ${
+                        compressing ? 'text-orange-900' : 'text-blue-900'
+                      }`}>
+                        {compressing ? 'Đang nén ảnh...' : 'Đang tải ảnh lên...'}
+                      </div>
+                      <div className={`text-sm ${
+                        compressing ? 'text-orange-700' : 'text-blue-700'
+                      }`}>
+                        {compressing 
+                          ? 'Giảm kích thước file để tải nhanh hơn' 
+                          : 'Vui lòng chờ trong giây lát'
+                        }
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -727,11 +863,14 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                 onClick={() => {
                   setShowPhotoTypeModal(false)
                   setPendingFile(null)
+                  setCompressionInfo(null)
+                  setCompressing(false)
+                  setUploading(false)
                 }}
-                disabled={uploading}
+                disabled={uploading || compressing}
                 className="w-full px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 rounded-xl font-medium transition-colors"
               >
-                Hủy
+                {(uploading || compressing) ? 'Đang xử lý...' : 'Hủy'}
               </button>
             </div>
           </div>
