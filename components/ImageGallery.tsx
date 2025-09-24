@@ -1,12 +1,15 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Tree } from '@/lib/types'
-import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PhotoIcon, EyeIcon, CalendarDaysIcon, MapPinIcon } from '@heroicons/react/24/outline'
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PhotoIcon, EyeIcon, CalendarDaysIcon, MapPinIcon, CameraIcon, PlusIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
 import { PhotoWithUrls, getPhotosWithUrls, subscribeToTreePhotos } from '@/lib/photo-service'
 import { getTreeImagesByPattern } from '@/lib/storage'
 import { getModalZClass, modalStack } from '@/lib/modal-z-index'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { uploadTreePhoto } from '@/lib/photo-service'
+import { useToast } from './Toast'
 
 interface ImageGalleryProps {
   tree: Tree
@@ -22,6 +25,11 @@ interface StorageImage {
 type DisplayImage = PhotoWithUrls | StorageImage
 
 export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
+  const { user, currentFarm } = useSimpleAuth()
+  const { showSuccess, showError } = useToast()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  
   // Use correct farmId - prioritize tree.farmId, then fallback to known working farmId  
   const effectiveFarmId = tree.farmId && tree.farmId !== 'default' ? tree.farmId : 'F210C3FC-F191-4926-9C15-58D6550A716A'
   const [photos, setPhotos] = useState<PhotoWithUrls[]>([])
@@ -33,6 +41,9 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   const [loading, setLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<'all' | 'general' | 'health' | 'fruit_count'>('all')
+  const [uploading, setUploading] = useState(false)
+  const [showPhotoTypeModal, setShowPhotoTypeModal] = useState(false)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
 
   // Load photos from Firestore
   useEffect(() => {
@@ -156,6 +167,87 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   // Track touch position for swipe gesture
   const [touchStart, setTouchStart] = useState<number | null>(null)
 
+  // Camera and photo upload functions
+  const handleCameraClick = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click()
+    }
+  }
+
+  const handleGalleryClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
+  }
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      console.log('📸 File selected:', file.name, file.type)
+      setPendingFile(file)
+      setShowPhotoTypeModal(true)
+    }
+    // Reset input value to allow selecting the same file again
+    event.target.value = ''
+  }
+
+  const handlePhotoUpload = async (photoType: 'general' | 'health' | 'fruit_count') => {
+    if (!pendingFile || !user || !currentFarm) {
+      showError('Lỗi', 'Thiếu thông tin cần thiết để tải ảnh')
+      return
+    }
+
+    try {
+      setUploading(true)
+      console.log('📸 Uploading photo:', {
+        file: pendingFile.name,
+        type: photoType,
+        treeId: tree.id,
+        farmId: currentFarm.id
+      })
+
+      // Get current location if available
+      let latitude, longitude
+      if (navigator.geolocation) {
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              timeout: 5000,
+              enableHighAccuracy: false
+            })
+          })
+          latitude = position.coords.latitude
+          longitude = position.coords.longitude
+        } catch (error) {
+          console.log('📍 Location not available:', error)
+        }
+      }
+
+      // Upload photo using photo service
+      await uploadTreePhoto({
+        file: pendingFile,
+        treeId: tree.id,
+        farmId: currentFarm.id,
+        userId: user.uid,
+        photoType,
+        latitude,
+        longitude,
+        userNotes: `Ảnh ${photoType} cho cây ${tree.name || tree.qrCode}`
+      })
+
+      showSuccess('Thành công', 'Ảnh đã được thêm vào cây')
+      setShowPhotoTypeModal(false)
+      setPendingFile(null)
+
+      // The photo list will auto-update via the subscription
+    } catch (error) {
+      console.error('📸 Upload error:', error)
+      showError('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const formatDate = (date?: Date) => {
     if (!date) return 'N/A'
     return new Intl.DateTimeFormat('vi-VN', {
@@ -229,15 +321,47 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                 </p>
               </div>
             </div>
-            {totalImages > 0 && (
-              <div className="hidden sm:flex items-center space-x-2 bg-white bg-opacity-70 rounded-full px-4 py-2 backdrop-blur-sm">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-gray-700">Đã tải xong</span>
+            {/* Camera Controls */}
+            {user && currentFarm && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleCameraClick}
+                  disabled={uploading}
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-xl active:scale-95"
+                  title="Chụp ảnh"
+                >
+                  <CameraIcon className="h-5 w-5" />
+                  <span className="hidden sm:inline">{uploading ? 'Đang tải...' : 'Chụp ảnh'}</span>
+                </button>
+                <button
+                  onClick={handleGalleryClick}
+                  disabled={uploading}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-xl active:scale-95"
+                  title="Chọn từ thư viện"
+                >
+                  <PlusIcon className="h-5 w-5" />
+                  <span className="hidden sm:inline">Thêm ảnh</span>
+                </button>
               </div>
             )}
           </div>
 
-          
+          {/* Hidden file inputs */}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
         </div>
 
         {/* Enhanced Image Grid */}
@@ -492,6 +616,98 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Photo Type Selection Modal */}
+      {showPhotoTypeModal && pendingFile && (
+        <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center ${getModalZClass('PHOTO_TYPE_MODAL')} z-[60000]`}>
+          <div className="bg-white rounded-2xl max-w-md w-full m-4 shadow-2xl border border-gray-100 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 border-b border-gray-100">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                  <CameraIcon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Chọn loại ảnh</h3>
+                  <p className="text-sm text-gray-600">Phân loại ảnh cho cây {tree.name || tree.qrCode}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Photo Type Options */}
+            <div className="p-6 space-y-4">
+              <div className="grid gap-3">
+                <button
+                  onClick={() => handlePhotoUpload('general')}
+                  disabled={uploading}
+                  className="flex items-center space-x-4 p-4 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-2xl">📸</span>
+                  </div>
+                  <div className="text-left">
+                    <div className="font-semibold text-gray-900">Ảnh chung</div>
+                    <div className="text-sm text-gray-600">Ảnh tổng quát về cây</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handlePhotoUpload('health')}
+                  disabled={uploading}
+                  className="flex items-center space-x-4 p-4 border-2 border-gray-200 rounded-xl hover:border-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <span className="text-2xl">🏥</span>
+                  </div>
+                  <div className="text-left">
+                    <div className="font-semibold text-gray-900">Ảnh sức khỏe</div>
+                    <div className="text-sm text-gray-600">Ảnh bệnh tật, sâu bệnh</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handlePhotoUpload('fruit_count')}
+                  disabled={uploading}
+                  className="flex items-center space-x-4 p-4 border-2 border-gray-200 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <span className="text-2xl">🍎</span>
+                  </div>
+                  <div className="text-left">
+                    <div className="font-semibold text-gray-900">Ảnh đếm trái</div>
+                    <div className="text-sm text-gray-600">Ảnh để đếm số lượng trái</div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Upload Progress */}
+              {uploading && (
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
+                    <div>
+                      <div className="font-medium text-blue-900">Đang tải ảnh lên...</div>
+                      <div className="text-sm text-blue-700">Vui lòng chờ trong giây lát</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Cancel Button */}
+              <button
+                onClick={() => {
+                  setShowPhotoTypeModal(false)
+                  setPendingFile(null)
+                }}
+                disabled={uploading}
+                className="w-full px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 rounded-xl font-medium transition-colors"
+              >
+                Hủy
+              </button>
+            </div>
           </div>
         </div>
       )}
