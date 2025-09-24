@@ -2,17 +2,18 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { Tree } from '@/lib/types'
-import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PhotoIcon, EyeIcon, CalendarDaysIcon, MapPinIcon, CameraIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PhotoIcon, EyeIcon, CalendarDaysIcon, MapPinIcon, CameraIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
 import { PhotoWithUrls, getPhotosWithUrls, subscribeToTreePhotos, getTreePhotos } from '@/lib/photo-service'
 import { getTreeImagesByPattern } from '@/lib/storage'
 import { getModalZClass, modalStack } from '@/lib/modal-z-index'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { useToast } from './Toast'
-import { collection, addDoc, Timestamp } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { collection, addDoc, Timestamp, deleteDoc, doc } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '@/lib/firebase'
 import { compressImageSmart, getCompressionInfo, needsCompression } from '@/lib/photo-compression'
+import { FarmService } from '@/lib/farm-service'
 
 interface ImageGalleryProps {
   tree: Tree
@@ -55,6 +56,10 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     estimatedReduction: number
   } | null>(null)
   const [newPhotoAdded, setNewPhotoAdded] = useState(false)
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [photoToDelete, setPhotoToDelete] = useState<PhotoWithUrls | null>(null)
+  const [canManagePhotos, setCanManagePhotos] = useState(false)
 
   // Load photos from Firestore
   useEffect(() => {
@@ -88,6 +93,28 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   useEffect(() => {
     setLoading(false)
   }, [photos, storageImages])
+
+  // Check user permissions for photo management
+  useEffect(() => {
+    const checkPermissions = async () => {
+      if (!user || !currentFarm) {
+        setCanManagePhotos(false)
+        return
+      }
+
+      try {
+        // Check if user has management permissions (owner or manager)
+        const hasAccess = await FarmService.checkFarmAccess(user.uid, currentFarm.id, ['write', 'delete'])
+        setCanManagePhotos(hasAccess)
+        console.log('📸 Photo management permissions:', hasAccess)
+      } catch (error) {
+        console.error('📸 Error checking permissions:', error)
+        setCanManagePhotos(false)
+      }
+    }
+
+    checkPermissions()
+  }, [user, currentFarm])
 
   // Get filtered images based on active tab
   const getFilteredImages = (): DisplayImage[] => {
@@ -197,6 +224,57 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       console.error('🔄 Error refreshing gallery:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Photo deletion functions
+  const handleDeletePhotoClick = (photo: PhotoWithUrls) => {
+    if (!canManagePhotos) {
+      showError('Không có quyền', 'Bạn không có quyền xóa ảnh')
+      return
+    }
+    
+    setPhotoToDelete(photo)
+    setShowDeleteConfirm(true)
+  }
+
+  const handleDeletePhoto = async () => {
+    if (!photoToDelete || !canManagePhotos) {
+      showError('Lỗi', 'Không thể xóa ảnh')
+      return
+    }
+
+    try {
+      setDeletingPhotoId(photoToDelete.id)
+      console.log('🗑️ Deleting photo:', photoToDelete.id)
+
+      // Delete from Firestore
+      await deleteDoc(doc(db, 'photos', photoToDelete.id))
+      console.log('🗑️ Photo deleted from Firestore')
+
+      // Try to delete from Storage (best effort)
+      if (photoToDelete.originalPath || photoToDelete.localPath) {
+        try {
+          const storagePath = photoToDelete.originalPath || photoToDelete.localPath
+          const storageRef = ref(storage, storagePath)
+          await deleteObject(storageRef)
+          console.log('🗑️ Photo deleted from Storage:', storagePath)
+        } catch (storageError) {
+          console.warn('🗑️ Could not delete from Storage (file may not exist):', storageError)
+        }
+      }
+
+      // Refresh gallery
+      await refreshImageGallery()
+
+      showSuccess('Đã xóa', 'Ảnh đã được xóa khỏi thư viện')
+      setShowDeleteConfirm(false)
+      setPhotoToDelete(null)
+    } catch (error) {
+      console.error('🗑️ Delete error:', error)
+      showError('Lỗi', 'Không thể xóa ảnh. Vui lòng thử lại')
+    } finally {
+      setDeletingPhotoId(null)
     }
   }
 
@@ -566,6 +644,25 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                         <EyeIcon className="h-6 w-6 text-white drop-shadow-lg" />
                       </div>
                     </div>
+
+                    {/* Delete button for managers (only for Firestore photos) */}
+                    {canManagePhotos && 'photoType' in image && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeletePhotoClick(image as PhotoWithUrls)
+                        }}
+                        disabled={deletingPhotoId === (image as PhotoWithUrls).id}
+                        className="absolute top-3 right-3 bg-red-600/90 hover:bg-red-700 disabled:bg-red-400 text-white rounded-full p-2 backdrop-blur-sm border border-white/20 transition-colors shadow-lg"
+                        title="Xóa ảnh"
+                      >
+                        {deletingPhotoId === (image as PhotoWithUrls).id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        ) : (
+                          <TrashIcon className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   {/* Enhanced Photo type badge */}
@@ -872,6 +969,102 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
               >
                 {(uploading || compressing) ? 'Đang xử lý...' : 'Hủy'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && photoToDelete && (
+        <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center ${getModalZClass('MANAGEMENT_MODAL')} z-[60000]`}>
+          <div className="bg-white rounded-2xl max-w-md w-full m-4 shadow-2xl border border-gray-100 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-50 to-orange-50 p-6 border-b border-gray-100">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center">
+                  <TrashIcon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Xóa ảnh</h3>
+                  <p className="text-sm text-gray-600">Bạn có chắc chắn muốn xóa ảnh này?</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              {/* Photo preview */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                    {photoToDelete.imageUrl && (
+                      <img
+                        src={photoToDelete.thumbnailUrl || photoToDelete.imageUrl}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-900">
+                      Ảnh {photoToDelete.photoType === 'health' ? 'sức khỏe' :
+                           photoToDelete.photoType === 'fruit_count' ? 'đếm trái' : 'chung'}
+                    </div>
+                    {photoToDelete.timestamp && (
+                      <div className="text-sm text-gray-600">
+                        {formatDate(photoToDelete.timestamp)}
+                      </div>
+                    )}
+                    {photoToDelete.userNotes && (
+                      <div className="text-sm text-gray-500 truncate">
+                        {photoToDelete.userNotes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <span className="text-yellow-600 text-lg">⚠️</span>
+                  <div className="text-sm text-yellow-800">
+                    <div className="font-medium mb-1">Hành động này không thể hoàn tác</div>
+                    <div>Ảnh sẽ bị xóa vĩnh viễn khỏi hệ thống và không thể khôi phục.</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex space-x-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false)
+                    setPhotoToDelete(null)
+                  }}
+                  disabled={deletingPhotoId !== null}
+                  className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 rounded-xl font-medium transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleDeletePhoto}
+                  disabled={deletingPhotoId !== null}
+                  className="flex-1 px-4 py-3 text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-xl font-semibold transition-colors flex items-center justify-center space-x-2"
+                >
+                  {deletingPhotoId === photoToDelete.id ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                      <span>Đang xóa...</span>
+                    </>
+                  ) : (
+                    <>
+                      <TrashIcon className="h-5 w-5" />
+                      <span>Xóa ảnh</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
