@@ -86,27 +86,52 @@ export default function TreeNoteSystem({ treeId, farmId, className = '' }: TreeN
 
   // Load notes in real-time
   useEffect(() => {
-    if (!farmId || !treeId) return
+    if (!farmId || !treeId) {
+      console.log('❌ Missing farmId or treeId:', { farmId, treeId })
+      return
+    }
+
+    console.log('🔥 Setting up real-time listener for notes:', {
+      farmId,
+      treeId,
+      path: `farms/${farmId}/trees/${treeId}/notes`
+    })
 
     const notesRef = collection(db, 'farms', farmId, 'trees', treeId, 'notes')
     const q = query(notesRef, orderBy('timestamp', 'desc'))
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('🔥 Notes snapshot received:', {
+        empty: snapshot.empty,
+        size: snapshot.size,
+        docs: snapshot.docs.length
+      })
+
       const notesData = snapshot.docs.map(doc => {
         const data = doc.data()
+        console.log('🔥 Note document:', { id: doc.id, data })
         return {
           id: doc.id,
           ...data,
           timestamp: data.timestamp?.toDate() || new Date()
         } as TreeNote
       })
+      
+      console.log('🔥 Processed notes data:', notesData)
       setNotes(notesData)
     }, (error) => {
-      console.error('Error loading notes:', error)
+      console.error('❌ Error loading notes:', error)
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        code: (error as any)?.code
+      })
       showError('Lỗi', 'Không thể tải ghi chú')
     })
 
-    return () => unsubscribe()
+    return () => {
+      console.log('🔥 Cleaning up notes listener')
+      unsubscribe()
+    }
   }, [farmId, treeId])
 
   // Auto-resize textarea
@@ -118,12 +143,26 @@ export default function TreeNoteSystem({ treeId, farmId, className = '' }: TreeN
   }, [newNote])
 
   const handleAddNote = async () => {
-    if (!user || !newNote.trim()) return
+    if (!user || !newNote.trim()) {
+      console.log('❌ Cannot add note:', { user: !!user, noteContent: newNote.trim() })
+      return
+    }
+
+    console.log('🔥 Adding note to database:', {
+      farmId,
+      treeId,
+      userId: user.uid,
+      noteType,
+      noteContent: newNote.trim(),
+      path: `farms/${farmId}/trees/${treeId}/notes`
+    })
 
     setLoading(true)
     try {
       const notesRef = collection(db, 'farms', farmId, 'trees', treeId, 'notes')
-      await addDoc(notesRef, {
+      console.log('🔥 Collection reference created:', notesRef.path)
+
+      const noteData = {
         content: newNote.trim(),
         author: {
           uid: user.uid,
@@ -134,14 +173,23 @@ export default function TreeNoteSystem({ treeId, farmId, className = '' }: TreeN
         type: noteType,
         mentions: extractMentions(newNote),
         isEdited: false
-      })
+      }
+      console.log('🔥 Note data to save:', noteData)
+
+      const docRef = await addDoc(notesRef, noteData)
+      console.log('✅ Note saved successfully with ID:', docRef.id)
 
       setNewNote('')
       setIsAddingNote(false)
       showSuccess('Đã thêm', 'Ghi chú đã được thêm thành công')
     } catch (error) {
-      console.error('Error adding note:', error)
-      showError('Lỗi', 'Không thể thêm ghi chú')
+      console.error('❌ Error adding note:', error)
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        code: (error as any)?.code,
+        stack: error instanceof Error ? error.stack : 'No stack trace'
+      })
+      showError('Lỗi', `Không thể thêm ghi chú: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`)
     } finally {
       setLoading(false)
     }
