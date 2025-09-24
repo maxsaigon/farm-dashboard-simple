@@ -223,7 +223,7 @@ export default function SimplifiedZoneManagement() {
   // Filter zones based on search
   const filteredZones = zones.filter(zone =>
     zone.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    zone.code.toLowerCase().includes(searchTerm.toLowerCase())
+    (zone.code && zone.code.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
   // Calculate simple stats
