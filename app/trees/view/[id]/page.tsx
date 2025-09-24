@@ -1,15 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Tree } from '@/lib/types'
-import TreeShowcase from '@/components/TreeShowcase'
+import FullscreenTreeShowcase from '@/components/FullscreenTreeShowcase'
 
 export default function TreeViewPage() {
   const params = useParams()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const treeId = params?.id as string
   const farmId = searchParams?.get('farm')
 
@@ -72,5 +73,25 @@ export default function TreeViewPage() {
     )
   }
 
-  return <TreeShowcase tree={tree} />
+  const handleClose = () => {
+    // Navigate back to trees page with farm parameter
+    if (farmId) {
+      router.push(`/trees?farm=${farmId}`)
+    } else {
+      router.push('/trees')
+    }
+  }
+
+  const handleSaved = (updatedTree: Tree) => {
+    setTree(updatedTree)
+  }
+
+  return (
+    <FullscreenTreeShowcase 
+      tree={tree} 
+      isOpen={true}
+      onClose={handleClose}
+      onSaved={handleSaved}
+    />
+  )
 }
