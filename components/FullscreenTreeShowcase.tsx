@@ -8,6 +8,7 @@ import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { updateTree } from '@/lib/firestore'
 import { useToast } from './Toast'
 import ShareTreeModal from './ShareTreeModal'
+import TreeNoteSystem from './TreeNoteSystem'
 import { db } from '@/lib/firebase'
 import { collection, getDocs, orderBy, limit, query, where } from 'firebase/firestore'
 
@@ -564,6 +565,14 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
 
         {/* Content Cards */}
         <div className="px-4 py-6 space-y-6 max-w-2xl mx-auto">
+          {/* Collaborative Notes System */}
+          {currentFarm?.id && (
+            <TreeNoteSystem 
+              treeId={tree.id} 
+              farmId={currentFarm.id}
+            />
+          )}
+
           {/* Durian Season Status Card */}
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-6 shadow-sm">
             <div className="flex items-center justify-between">
