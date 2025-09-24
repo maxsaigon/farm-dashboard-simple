@@ -8,8 +8,10 @@ import { PhotoWithUrls, getPhotosWithUrls, subscribeToTreePhotos } from '@/lib/p
 import { getTreeImagesByPattern } from '@/lib/storage'
 import { getModalZClass, modalStack } from '@/lib/modal-z-index'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
-import { uploadTreePhoto } from '@/lib/photo-service'
 import { useToast } from './Toast'
+import { collection, addDoc, Timestamp } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { db, storage } from '@/lib/firebase'
 
 interface ImageGalleryProps {
   tree: Tree
@@ -223,17 +225,41 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
         }
       }
 
-      // Upload photo using photo service
-      await uploadTreePhoto({
-        file: pendingFile,
+      // Generate unique filename
+      const timestamp = Date.now()
+      const fileExtension = pendingFile.name.split('.').pop() || 'jpg'
+      const filename = `${timestamp}.${fileExtension}`
+      
+      // Upload to Firebase Storage
+      const storagePath = `farms/${currentFarm.id}/trees/${tree.id}/photos/${timestamp}/${filename}`
+      const storageRef = ref(storage, storagePath)
+      
+      console.log('📸 Uploading to storage path:', storagePath)
+      const uploadResult = await uploadBytes(storageRef, pendingFile)
+      const downloadURL = await getDownloadURL(uploadResult.ref)
+      
+      // Save photo metadata to Firestore
+      const photoData = {
         treeId: tree.id,
         farmId: currentFarm.id,
-        userId: user.uid,
-        photoType,
-        latitude,
-        longitude,
-        userNotes: `Ảnh ${photoType} cho cây ${tree.name || tree.qrCode}`
-      })
+        filename: filename,
+        photoType: photoType,
+        userNotes: `Ảnh ${photoType} cho cây ${tree.name || tree.qrCode}`,
+        latitude: latitude || null,
+        longitude: longitude || null,
+        timestamp: Timestamp.now(),
+        uploadDate: Timestamp.now(),
+        localPath: storagePath,
+        originalPath: storagePath,
+        uploadedToServer: true,
+        needsAIAnalysis: photoType === 'fruit_count',
+        farmName: currentFarm.name || 'Unknown Farm'
+      }
+      
+      const photosRef = collection(db, 'photos')
+      await addDoc(photosRef, photoData)
+      
+      console.log('📸 Photo saved to Firestore:', photoData)
 
       showSuccess('Thành công', 'Ảnh đã được thêm vào cây')
       setShowPhotoTypeModal(false)
@@ -622,7 +648,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
 
       {/* Photo Type Selection Modal */}
       {showPhotoTypeModal && pendingFile && (
-        <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center ${getModalZClass('PHOTO_TYPE_MODAL')} z-[60000]`}>
+        <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center ${getModalZClass('MANAGEMENT_MODAL')} z-[60000]`}>
           <div className="bg-white rounded-2xl max-w-md w-full m-4 shadow-2xl border border-gray-100 overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 border-b border-gray-100">
