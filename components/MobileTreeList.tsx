@@ -85,7 +85,7 @@ export default function MobileTreeList() {
       }
 
       // Zone filter
-      if (filters.zone && tree.zoneCode !== filters.zone) {
+      if (filters.zone && (tree.zoneName || tree.zoneCode) !== filters.zone) {
         return false
       }
 
@@ -144,7 +144,7 @@ export default function MobileTreeList() {
     }).length
   }
 
-  const zones = Array.from(new Set(trees.map(tree => tree.zoneCode).filter(Boolean)))
+  const zones = Array.from(new Set(trees.map(tree => tree.zoneName || tree.zoneCode).filter(Boolean)))
   const healthStatuses = ['Good', 'Fair', 'Poor', 'Disease', 'Excellent'] 
   const treeStatuses = ['Young Tree', 'Mature', 'Old Tree', 'Dead']
 

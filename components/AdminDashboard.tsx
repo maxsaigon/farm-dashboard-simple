@@ -250,7 +250,7 @@ export function AdminDashboard() {
                     <tr key={tree.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{tree.name || tree.qrCode || tree.id.slice(0, 8)}</div>
-                        <div className="text-sm text-gray-500">Zone: {tree.zoneCode}</div>
+                        <div className="text-sm text-gray-500">Zone: {tree.zoneName || tree.zoneCode}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{tree.farmName}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{tree.variety}</td>

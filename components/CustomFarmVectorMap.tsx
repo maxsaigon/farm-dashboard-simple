@@ -295,8 +295,8 @@ export default function CustomFarmVectorMap({
             name: zone.name,
             color: zone.color || '#3B82F6',
             area: zone.area || 0,
-            treeCount: testTrees.filter(tree => 
-              tree.zoneCode === zone.code || tree.zoneName === zone.name
+            treeCount: testTrees.filter(tree =>
+              (tree.zoneName || tree.zoneCode) === zone.code || (tree.zoneName || tree.zoneCode) === zone.name
             ).length
           },
           geometry: {

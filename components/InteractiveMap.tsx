@@ -828,74 +828,87 @@ export default function InteractiveMap() {
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowTreeDetails(false)} />
           <div className="bg-white rounded-t-xl sm:rounded-xl shadow-xl w-full max-w-md relative max-h-[80vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">{selectedTree.name}</h3>
+              {/* Header with health status */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  {getHealthIcon(selectedTree.healthStatus)}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">{selectedTree.name}</h3>
+                    <p className="text-sm text-gray-500">{selectedTree.variety || 'Chưa xác định'}</p>
+                  </div>
+                </div>
                 <button
                   onClick={() => setShowTreeDetails(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full"
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
                   <XMarkIcon className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div className={`flex items-center space-x-2 ${getHealthStatusColor(selectedTree.healthStatus)}`}>
+              {/* Health Status Badge */}
+              <div className="mb-6">
+                <div className={`inline-flex items-center px-3 py-2 rounded-full text-sm font-medium ${getHealthStatusColor(selectedTree.healthStatus)}`}>
                   {getHealthIcon(selectedTree.healthStatus)}
-                  <span className="font-medium">{selectedTree.healthStatus}</span>
+                  <span className="ml-2">{selectedTree.healthStatus}</span>
                   {selectedTree.needsAttention && (
-                    <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
-                      Cần chú ý
+                    <span className="ml-2 bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
+                      ⚠️ Cần chú ý
                     </span>
                   )}
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div className="text-gray-500">Loại cây</div>
-                    <div className="font-medium">{selectedTree.variety || 'Chưa xác định'}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500">Trạng thái</div>
-                    <div className="font-medium">{selectedTree.treeStatus}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500">Số ảnh</div>
-                    <div className="font-medium">{selectedTree.photoCount}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500">Ảnh cuối</div>
-                    <div className="font-medium">
-                      {selectedTree.lastPhotoDate 
-                        ? selectedTree.lastPhotoDate.toLocaleDateString('vi-VN')
-                        : 'Chưa có'
-                      }
+              {/* Tree Information Cards */}
+              <div className="space-y-4 mb-6">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-3">📊 Thông tin cơ bản</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-blue-600 font-medium">Trạng thái cây</div>
+                      <div className="text-blue-800">{selectedTree.treeStatus}</div>
+                    </div>
+                    <div>
+                      <div className="text-blue-600 font-medium">Số ảnh</div>
+                      <div className="text-blue-800">{selectedTree.photoCount} ảnh</div>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <div className="text-xs font-medium text-gray-700 mb-1">Tọa độ GPS</div>
-                  <div className="text-sm font-mono text-gray-600">
-                    {selectedTree.latitude.toFixed(6)}, {selectedTree.longitude.toFixed(6)}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+                  <h4 className="text-sm font-semibold text-green-800 mb-3">📍 Vị trí & GPS</h4>
+                  <div className="space-y-2">
+                    <div className="text-sm text-green-700">
+                      <span className="font-medium">Tọa độ:</span>
+                      <div className="font-mono text-xs mt-1">
+                        {selectedTree.latitude.toFixed(6)}, {selectedTree.longitude.toFixed(6)}
+                      </div>
+                    </div>
+                    {selectedTree.lastPhotoDate && (
+                      <div className="text-sm text-green-700">
+                        <span className="font-medium">Ảnh cuối:</span>
+                        <div className="mt-1">{selectedTree.lastPhotoDate.toLocaleDateString('vi-VN')}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
+              </div>
 
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => window.location.href = `/trees/${selectedTree.id}`}
-                    className="flex-1 btn-secondary-mobile flex items-center justify-center space-x-2"
-                  >
-                    <PencilIcon className="h-4 w-4" />
-                    <span>Chi tiết</span>
-                  </button>
-                  <button
-                    onClick={() => window.location.href = `/camera?treeId=${selectedTree.id}`}
-                    className="flex-1 btn-primary-mobile flex items-center justify-center space-x-2"
-                  >
-                    <CameraIcon className="h-4 w-4" />
-                    <span>Chụp ảnh</span>
-                  </button>
-                </div>
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => window.location.href = `/trees/${selectedTree.id}`}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-3 rounded-xl font-medium transition-all active:scale-95 shadow-lg flex items-center justify-center space-x-2"
+                >
+                  <EyeIcon className="h-5 w-5" />
+                  <span>Xem chi tiết</span>
+                </button>
+                <button
+                  onClick={() => window.location.href = `/camera?treeId=${selectedTree.id}`}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-3 rounded-xl font-medium transition-all active:scale-95 shadow-lg flex items-center justify-center space-x-2"
+                >
+                  <CameraIcon className="h-5 w-5" />
+                  <span>Chụp ảnh</span>
+                </button>
               </div>
             </div>
           </div>
