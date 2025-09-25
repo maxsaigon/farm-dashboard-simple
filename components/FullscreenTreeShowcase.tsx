@@ -333,6 +333,7 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
   const [saving, setSaving] = useState(false)
   const [seasonLoading, setSeasonLoading] = useState(false)
   const [lastSeason, setLastSeason] = useState<{ name?: string; perTreeCount: number } | null>(null)
+  const [needsAttention, setNeedsAttention] = useState<boolean>(tree?.needsAttention || false)
 
   // Initialize fruit count when tree changes, considering durian season status
   useEffect(() => {
@@ -417,6 +418,13 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
     }
   }, [currentFarm?.id, tree?.id, isOpen])
 
+  // Initialize needsAttention when tree changes
+  useEffect(() => {
+    if (tree) {
+      setNeedsAttention(tree.needsAttention || false)
+    }
+  }, [tree])
+
   const handleSave = async () => {
     console.log('🔥 DEBUG: handleSave clicked!')
     console.log('🔥 DEBUG: Current state:', {
@@ -500,6 +508,23 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
     } finally {
       setSaving(false)
       console.log('🔥 DEBUG: Save operation completed, saving set to false')
+    }
+  }
+
+  const toggleNeedsAttention = async () => {
+    if (!user || !currentFarm || !tree) {
+      showError('Lỗi', 'Không thể cập nhật')
+      return
+    }
+
+    const newValue = !needsAttention
+
+    try {
+      await updateTree(currentFarm.id, tree.id, user.uid, { needsAttention: newValue })
+      setNeedsAttention(newValue)
+      showSuccess('Đã cập nhật', 'Trạng thái cần chú ý đã được thay đổi')
+    } catch (e) {
+      showError('Lỗi', `Không thể cập nhật: ${e instanceof Error ? e.message : 'Lỗi không xác định'}`)
     }
   }
 
@@ -679,6 +704,24 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
               <div>
                 <div className="text-sm text-gray-500">Trại thái</div>
                 <div className="font-medium text-gray-900 font-mono text-sm">{tree.treeStatus || 'N/A'}</div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-gray-500">Cần chú ý</div>
+                  <div className="font-medium text-gray-900">{needsAttention ? 'Có' : 'Không'}</div>
+                </div>
+                <button
+                  onClick={toggleNeedsAttention}
+                  disabled={!canSave}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    needsAttention ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'
+                  }`}
+                >
+                  {needsAttention ? 'Bỏ đánh dấu' : 'Đánh dấu'}
+                </button>
               </div>
             </div>
           </div>
