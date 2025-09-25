@@ -365,7 +365,7 @@ const UnifiedMap = memo(({
   const mapRef = useRef<L.Map | null>(null)
   const [showUserPath, setShowUserPath] = useState(externalShowUserPath)
   const [proximityRadius, setProximityRadius] = useState(externalProximityRadius)
-  const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] = useState(externalBackgroundTrackingEnabled)
+  const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] = useState(false)
   const [filters, setFilters] = useState({
     showTrees: true,
     showZones: true
@@ -402,13 +402,16 @@ const UnifiedMap = memo(({
     return calculateMapBounds(trees, zones)
   }, [trees, zones, center, zoom])
 
-  // Optimized positioning (2-second updates instead of 500ms)
-  const { userPosition, trackingHistory } = useOptimizedPositioning(enableRealTime, 2000)
-  const proximityData = useProximityDetection(trees, zones, userPosition, proximityRadius)
+  // GPS state management
+  const [gpsEnabled, setGpsEnabled] = useState(false)
 
-  // Handle background tracking toggle
+  // Optimized positioning (only when GPS is enabled)
+  const { userPosition, trackingHistory } = useOptimizedPositioning(gpsEnabled, 2000)
+  const proximityData = useProximityDetection(trees, zones, gpsEnabled ? userPosition : null, proximityRadius)
+
+  // Handle background tracking toggle (only when GPS is enabled)
   useEffect(() => {
-    if (backgroundTrackingEnabled && farmId) {
+    if (backgroundTrackingEnabled && gpsEnabled && farmId) {
       startTracking({
         farmId,
         options: {
@@ -429,10 +432,10 @@ const UnifiedMap = memo(({
         console.error('Failed to start background tracking:', error)
         setBackgroundTrackingEnabled(false)
       })
-    } else if (!backgroundTrackingEnabled) {
+    } else if (!backgroundTrackingEnabled || !gpsEnabled) {
       stopTracking()
     }
-  }, [backgroundTrackingEnabled, farmId, startTracking, stopTracking])
+  }, [backgroundTrackingEnabled, gpsEnabled, farmId, startTracking, stopTracking])
 
   // Handle real-time updates
   useEffect(() => {
@@ -642,60 +645,8 @@ const UnifiedMap = memo(({
   const userPathCoordinates = trackingHistory.map(point => [point.lat, point.lng] as [number, number])
 
 
-  // Mobile gesture handlers
-  const gestureHandlers = useCallback(() => ({
-    onSwipe: (direction: 'left' | 'right' | 'up' | 'down', distance: number) => {
-      if (mapRef.current) {
-        const currentCenter = mapRef.current.getCenter()
-        const currentZoom = mapRef.current.getZoom()
-        const moveDistance = distance * 0.001 // Convert pixels to lat/lng roughly
-
-        let newLat = currentCenter.lat
-        let newLng = currentCenter.lng
-
-        switch (direction) {
-          case 'left':
-            newLng -= moveDistance
-            break
-          case 'right':
-            newLng += moveDistance
-            break
-          case 'up':
-            newLat += moveDistance
-            break
-          case 'down':
-            newLat -= moveDistance
-            break
-        }
-
-        mapRef.current.setView([newLat, newLng], currentZoom)
-        triggerHapticFeedback('light')
-      }
-    },
-    onLongPress: (point: { x: number, y: number }) => {
-      // Long press for additional actions (could show context menu)
-      triggerHapticFeedback('medium')
-    },
-    onDoubleTap: (point: { x: number, y: number }) => {
-      // Zoom in on double tap
-      if (mapRef.current) {
-        const currentZoom = mapRef.current.getZoom()
-        mapRef.current.zoomIn(Math.min(currentZoom + 2, 18))
-        triggerHapticFeedback('light')
-      }
-    },
-    onTap: (point: { x: number, y: number }) => {
-      // Could be used for additional interactions
-      triggerHapticFeedback('light')
-    }
-  }), [])
-
-  // Initialize mobile gestures
-  useMobileGestures(gestureHandlers(), {
-    enabled: true,
-    longPressDelay: 500,
-    swipeThreshold: 30
-  })
+  // Disable custom gestures to prevent conflicts with Leaflet
+  // Let Leaflet handle all map interactions natively
 
   return (
     <div className={`relative w-full h-full overflow-hidden ${className}`} style={{ zIndex: 1 }}>
@@ -763,8 +714,8 @@ const UnifiedMap = memo(({
           ))
         }
 
-        {/* User Position and Tracking */}
-        {userPosition && (
+        {/* User Position and Tracking (only when GPS is enabled) */}
+        {gpsEnabled && userPosition && (
           <>
             {/* User tracking path */}
             {showUserPath && userPathCoordinates.length > 1 && (
@@ -836,16 +787,68 @@ const UnifiedMap = memo(({
       </MapContainer>
 
 
-      {/* Current Zone Indicator */}
-      {proximityData.currentZone && (
+      {/* Map Controls */}
+      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 space-y-2">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setGpsEnabled(!gpsEnabled)}
+            className={`p-2 rounded-md transition-colors ${
+              gpsEnabled
+                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            title={gpsEnabled ? 'Tắt GPS' : 'Bật GPS'}
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+            </svg>
+          </button>
+          <span className="text-xs text-gray-600">
+            {gpsEnabled ? 'GPS ON' : 'GPS OFF'}
+          </span>
+        </div>
+
+        {/* Show user path toggle (only when GPS is enabled) */}
+        {gpsEnabled && (
+          <label className="flex items-center space-x-2 text-sm">
+            <input
+              type="checkbox"
+              checked={showUserPath}
+              onChange={(e) => setShowUserPath(e.target.checked)}
+              className="rounded"
+            />
+            <span>Hiển thị đường đi</span>
+          </label>
+        )}
+
+        {/* Proximity radius slider (only when GPS is enabled) */}
+        {gpsEnabled && (
+          <div className="space-y-1">
+            <label className="text-xs text-gray-600">
+              Bán kính phát hiện: {proximityRadius}m
+            </label>
+            <input
+              type="range"
+              min="10"
+              max="100"
+              value={proximityRadius}
+              onChange={(e) => setProximityRadius(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Current Zone Indicator (only when GPS is enabled) */}
+      {gpsEnabled && proximityData.currentZone && (
         <div className="absolute top-4 right-4 bg-green-600 text-white rounded-lg shadow-lg p-3">
           <div className="font-bold">📍 Vùng hiện tại</div>
           <div className="text-sm">{proximityData.currentZone.name}</div>
         </div>
       )}
 
-      {/* Nearby Items Panel */}
-      {(proximityData.trees.length > 0 || proximityData.zones.length > 0) && (
+      {/* Nearby Items Panel (only when GPS is enabled) */}
+      {gpsEnabled && (proximityData.trees.length > 0 || proximityData.zones.length > 0) && (
         <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm">
           <h3 className="font-bold text-green-600 mb-3">🔍 Vật thể gần đây</h3>
 
@@ -884,8 +887,8 @@ const UnifiedMap = memo(({
         </div>
       )}
 
-      {/* Position Info Panel */}
-      {userPosition && (
+      {/* Position Info Panel (only when GPS is enabled) */}
+      {gpsEnabled && userPosition && (
         <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 text-sm">
           <div className="font-bold text-red-600">📍 Vị trí</div>
           <div className="font-mono text-xs space-y-1">
