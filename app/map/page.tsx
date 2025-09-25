@@ -413,7 +413,7 @@ function MapPageContent() {
          <div className="space-y-4">
            {/* Top Row: Title and Real-time Status */}
            <div className="flex items-center justify-between">
-            <div class="flex items-center space-x-3 px-4">
+            <div className="flex items-center space-x-3 px-4">
               {/* Trees Toggle - Always show total tree count */}
              <button
                onClick={() => setShowTrees(!showTrees)}
