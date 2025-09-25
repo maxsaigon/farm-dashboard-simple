@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
-import { 
+import {
   BeakerIcon,
   MapPinIcon,
   CameraIcon,
@@ -18,10 +18,12 @@ import {
   ArrowDownTrayIcon,
   HeartIcon,
   SunIcon,
-  PhotoIcon
+  PhotoIcon,
+  XMarkIcon,
+  CheckCircleIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline'
 import {
-  CheckCircleIcon,
   ExclamationCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/solid'
@@ -40,6 +42,7 @@ interface Tree {
   notes?: string
   qrCode?: string
   zoneCode?: string
+  zoneName?: string
   manualFruitCount?: number
   lastCountDate?: Date
   treeHeight?: number
@@ -135,7 +138,7 @@ export default function TreeManagement() {
       filtered = filtered.filter(tree =>
         tree.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         tree.variety?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tree.zoneCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (tree.zoneName || tree.zoneCode)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         tree.notes?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
@@ -148,7 +151,7 @@ export default function TreeManagement() {
       filtered = filtered.filter(tree => tree.treeStatus === filters.treeStatus)
     }
     if (filters.zoneCode) {
-      filtered = filtered.filter(tree => tree.zoneCode === filters.zoneCode)
+      filtered = filtered.filter(tree => (tree.zoneName || tree.zoneCode) === filters.zoneCode)
     }
     if (filters.needsAttention !== undefined) {
       filtered = filtered.filter(tree => tree.needsAttention === filters.needsAttention)
@@ -175,7 +178,7 @@ export default function TreeManagement() {
           comparison = (a.plantingDate?.getTime() || 0) - (b.plantingDate?.getTime() || 0)
           break
         case 'location':
-          comparison = a.zoneCode?.localeCompare(b.zoneCode || '') || 0
+          comparison = (a.zoneName || a.zoneCode || '').localeCompare(b.zoneName || b.zoneCode || '') || 0
           break
       }
       
@@ -254,7 +257,7 @@ export default function TreeManagement() {
     const csvData = filteredTrees.map(tree => ({
       'Tên cây': tree.name,
       'Giống': tree.variety,
-      'Khu vực': tree.zoneCode,
+      'Khu vực': tree.zoneName || tree.zoneCode,
       'Trạng thái': tree.treeStatus,
       'Sức khỏe': tree.healthStatus,
       'Ngày trồng': tree.plantingDate?.toLocaleDateString('vi-VN'),
@@ -538,7 +541,7 @@ function TreeCard({
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">{tree.name}</h3>
-          <p className="text-sm text-gray-600">{tree.variety} • {tree.zoneCode}</p>
+          <p className="text-sm text-gray-600">{tree.variety} • {tree.zoneName || tree.zoneCode}</p>
         </div>
         <div className="flex items-center space-x-1">
           {getTreeStatusIcon(tree.treeStatus)}
@@ -661,7 +664,7 @@ function TreeListItem({
             <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
               <span>{tree.variety}</span>
               <span>•</span>
-              <span>{tree.zoneCode}</span>
+              <span>{tree.zoneName || tree.zoneCode}</span>
               <span>•</span>
               <span>{tree.manualFruitCount || 0} trái</span>
               <span>•</span>
@@ -719,55 +722,116 @@ function AddTreeModal({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: (
   )
 }
 
-function TreeDetailModal({ tree, isOpen, onClose, onSave, onAction }: { 
-  tree: Tree, 
-  isOpen: boolean, 
-  onClose: () => void, 
+function TreeDetailModal({ tree, isOpen, onClose, onSave, onAction }: {
+  tree: Tree,
+  isOpen: boolean,
+  onClose: () => void,
   onSave: () => void,
-  onAction: (action: string, treeId: string) => void 
+  onAction: (action: string, treeId: string) => void
 }) {
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Chi tiết cây: {tree.name}</h3>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Giống cây</label>
-              <p className="text-sm text-gray-900">{tree.variety}</p>
+      <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">🌳</span>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Khu vực</label>
-              <p className="text-sm text-gray-900">{tree.zoneCode}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
-              <p className="text-sm text-gray-900">{tree.treeStatus}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Sức khỏe</label>
-              <p className="text-sm text-gray-900">{tree.healthStatus}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Chiều cao (m)</label>
-              <p className="text-sm text-gray-900">{tree.treeHeight}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Đường kính thân (cm)</label>
-              <p className="text-sm text-gray-900">{tree.trunkDiameter}</p>
+              <h3 className="text-xl font-bold text-gray-900">{tree.name}</h3>
+              <p className="text-sm text-gray-600">{tree.variety || 'Chưa xác định giống'}</p>
             </div>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <XMarkIcon className="h-6 w-6 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Health Status */}
+        <div className="mb-6">
+          <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${getHealthStatusColor(tree.healthStatus)}`}>
+            {getHealthIcon(tree.healthStatus)}
+            <span className="ml-2">{tree.healthStatus}</span>
+            {tree.needsAttention && (
+              <span className="ml-3 bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
+                ⚠️ Cần chú ý
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Information Cards */}
+        <div className="space-y-4 mb-6">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-200">
+            <h4 className="text-lg font-semibold text-blue-800 mb-4">📊 Thông tin cơ bản</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white/60 rounded-lg p-3">
+                <div className="text-sm text-blue-600 font-medium">Giống cây</div>
+                <div className="text-blue-800 font-semibold">{tree.variety || 'Chưa xác định'}</div>
+              </div>
+              <div className="bg-white/60 rounded-lg p-3">
+                <div className="text-sm text-blue-600 font-medium">Khu vực</div>
+                <div className="text-blue-800 font-semibold">{tree.zoneName || tree.zoneCode || 'Chưa phân khu'}</div>
+              </div>
+              <div className="bg-white/60 rounded-lg p-3">
+                <div className="text-sm text-blue-600 font-medium">Trạng thái cây</div>
+                <div className="text-blue-800 font-semibold">{tree.treeStatus}</div>
+              </div>
+              <div className="bg-white/60 rounded-lg p-3">
+                <div className="text-sm text-blue-600 font-medium">Sức khỏe</div>
+                <div className="text-blue-800 font-semibold">{tree.healthStatus}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-5 border border-green-200">
+            <h4 className="text-lg font-semibold text-green-800 mb-4">📏 Kích thước & sản lượng</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white/60 rounded-lg p-3">
+                <div className="text-sm text-green-600 font-medium">Chiều cao</div>
+                <div className="text-green-800 font-semibold">{tree.treeHeight ? `${tree.treeHeight} m` : 'Chưa đo'}</div>
+              </div>
+              <div className="bg-white/60 rounded-lg p-3">
+                <div className="text-sm text-green-600 font-medium">Đường kính thân</div>
+                <div className="text-green-800 font-semibold">{tree.trunkDiameter ? `${tree.trunkDiameter} cm` : 'Chưa đo'}</div>
+              </div>
+              <div className="bg-white/60 rounded-lg p-3">
+                <div className="text-sm text-green-600 font-medium">Số trái (thủ công)</div>
+                <div className="text-green-800 font-semibold">{tree.manualFruitCount || 0} trái</div>
+              </div>
+              <div className="bg-white/60 rounded-lg p-3">
+                <div className="text-sm text-green-600 font-medium">Số trái (AI)</div>
+                <div className="text-green-800 font-semibold">{tree.aiFruitCount || 0} trái</div>
+              </div>
+            </div>
+          </div>
+
           {tree.notes && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Ghi chú</label>
-              <p className="text-sm text-gray-900">{tree.notes}</p>
+            <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl p-5 border border-yellow-200">
+              <h4 className="text-lg font-semibold text-yellow-800 mb-3">📝 Ghi chú</h4>
+              <p className="text-yellow-800 leading-relaxed">{tree.notes}</p>
             </div>
           )}
         </div>
-        <div className="flex justify-end space-x-3 mt-6">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
+
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={onClose}
+            className="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium transition-colors"
+          >
             Đóng
+          </button>
+          <button
+            onClick={() => window.location.href = `/trees/${tree.id}`}
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition-all active:scale-95 shadow-lg"
+          >
+            Xem chi tiết đầy đủ
           </button>
         </div>
       </div>
@@ -797,5 +861,15 @@ function getHealthStatusColor(status: string) {
     case 'Poor': return 'bg-orange-100 text-orange-800'
     case 'Disease': return 'bg-red-100 text-red-800'
     default: return 'bg-gray-100 text-gray-800'
+  }
+}
+
+function getHealthIcon(status: string) {
+  switch (status) {
+    case 'Good': return <CheckCircleIcon className="h-5 w-5" />
+    case 'Fair': return <ClockIcon className="h-5 w-5" />
+    case 'Poor': return <ExclamationTriangleIcon className="h-5 w-5" />
+    case 'Disease': return <ExclamationTriangleIcon className="h-5 w-5" />
+    default: return <CheckCircleIcon className="h-5 w-5" />
   }
 }

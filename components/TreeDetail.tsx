@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { updateTree, deleteTree } from '@/lib/firestore'
 import { Tree } from '@/lib/types'
-import { 
+import {
   PencilIcon,
   TrashIcon,
   MapPinIcon,
@@ -73,27 +73,32 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     }
   }, [tree, isMobile])
 
+  // Memoize form data initialization to prevent unnecessary re-renders
+  const initialFormData = useMemo(() => {
+    if (!tree) return {}
+    return {
+      name: tree.name || '',
+      variety: tree.variety || '',
+      zoneCode: tree.zoneCode || '',
+      plantingDate: tree.plantingDate,
+      healthStatus: tree.healthStatus || 'Good',
+      treeHeight: tree.treeHeight || 0,
+      trunkDiameter: tree.trunkDiameter || 0,
+      manualFruitCount: tree.manualFruitCount || 0,
+      notes: tree.notes || '',
+      healthNotes: tree.healthNotes || '',
+      diseaseNotes: tree.diseaseNotes || '',
+      needsAttention: tree.needsAttention || false
+    }
+  }, [tree])
+
   useEffect(() => {
     if (tree) {
-      setFormData({
-        name: tree.name || '',
-        variety: tree.variety || '',
-        zoneCode: tree.zoneCode || '',
-        plantingDate: tree.plantingDate,
-        healthStatus: tree.healthStatus || 'Good',
-        treeHeight: tree.treeHeight || 0,
-        trunkDiameter: tree.trunkDiameter || 0,
-        manualFruitCount: tree.manualFruitCount || 0,
-        notes: tree.notes || '',
-        healthNotes: tree.healthNotes || '',
-        diseaseNotes: tree.diseaseNotes || '',
-        needsAttention: tree.needsAttention || false
-      })
-      
+      setFormData(initialFormData)
       // Set custom fields from tree data
       setCustomFields(tree.customFields as TreeCustomFields)
     }
-  }, [tree])
+  }, [tree, initialFormData])
 
   if (!tree) {
     return (
@@ -109,7 +114,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     )
   }
 
-  const validateFormData = (data: Partial<Tree>) => {
+  const validateFormData = useCallback((data: Partial<Tree>) => {
     if (!data.name || data.name.trim() === '') {
       return { isValid: false, message: 'Vui lòng nhập tên cây' }
     }
@@ -117,9 +122,9 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       return { isValid: false, message: 'Vui lòng chọn giống cây' }
     }
     return { isValid: true, message: '' }
-  }
+  }, [])
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     // Authentication check
     if (!user) {
       showError('Vui lòng đăng nhập', 'Bạn cần đăng nhập để lưu thông tin cây.')
@@ -174,9 +179,9 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, currentFarm, tree, formData, showSuccess, showError, onTreeUpdate])
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     // Authentication check
     if (!user) {
       showError('Vui lòng đăng nhập', 'Bạn cần đăng nhập để xóa cây.')
@@ -208,9 +213,9 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, currentFarm, tree, showError, onTreeDelete, onClose])
 
-  const handleCustomFieldsSave = async (treeId: string, fields: CustomFieldValue[]) => {
+  const handleCustomFieldsSave = useCallback(async (treeId: string, fields: CustomFieldValue[]) => {
     // Authentication check
     if (!user) {
       showError('Vui lòng đăng nhập', 'Bạn cần đăng nhập để lưu thông tin bổ sung.')
@@ -261,9 +266,9 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       console.error('Error saving custom fields:', error)
       throw error // Let CustomFieldsSection handle the error display
     }
-  }
+  }, [user, currentFarm, showError, onTreeUpdate, tree])
 
-  const getHealthIcon = (status?: string) => {
+  const getHealthIcon = useCallback((status?: string) => {
     switch (status) {
       case 'Excellent': 
       case 'Good': 
@@ -273,9 +278,9 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       default: 
         return <ClockIcon className="h-6 w-6 text-yellow-500" />
     }
-  }
+  }, [])
 
-  const getHealthStatusColor = (status?: string) => {
+  const getHealthStatusColor = useCallback((status?: string) => {
     switch (status) {
       case 'Excellent': return 'bg-green-100 text-green-800 border-green-200'
       case 'Good': return 'bg-blue-100 text-blue-800 border-blue-200'
@@ -283,9 +288,9 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       case 'Poor': return 'bg-red-100 text-red-800 border-red-200'
       default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
-  }
+  }, [])
 
-  const getHealthStatusText = (status?: string) => {
+  const getHealthStatusText = useCallback((status?: string) => {
     switch (status) {
       case 'Excellent': return 'Xuất sắc'
       case 'Good': return 'Tốt'
@@ -293,7 +298,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       case 'Poor': return 'Cần chăm sóc'
       default: return 'Chưa đánh giá'
     }
-  }
+  }, [])
 
 
   // Simplified return - just return the tree detail component
@@ -468,7 +473,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
                       placeholder="Ví dụ: A01, B05..."
                     />
                   ) : (
-                    <p className="text-gray-900 text-lg font-medium">{tree.zoneCode || 'Chưa phân khu'}</p>
+                    <p className="text-gray-900 text-lg font-medium">{tree.zoneName || tree.zoneCode || 'Chưa phân khu'}</p>
                   )}
                 </div>
               )}

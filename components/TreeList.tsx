@@ -101,8 +101,9 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
   const zones = useMemo(() => {
     const zoneSet = new Set<string>()
     trees.forEach(tree => {
-      if (tree.zoneCode) {
-        zoneSet.add(tree.zoneCode)
+      const zoneValue = tree.zoneName || tree.zoneCode
+      if (zoneValue) {
+        zoneSet.add(zoneValue)
       }
     })
     return Array.from(zoneSet).sort()
@@ -115,7 +116,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
       const matchesSearch = !searchTerm || 
         tree.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         tree.qrCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tree.zoneCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (tree.zoneName || tree.zoneCode)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         tree.variety?.toLowerCase().includes(searchTerm.toLowerCase())
 
       // Status filter
@@ -128,7 +129,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
       const matchesVariety = filterVariety === 'all' || tree.variety === filterVariety
 
       // Zone filter
-      const matchesZone = filterZone === 'all' || tree.zoneCode === filterZone
+      const matchesZone = filterZone === 'all' || (tree.zoneName || tree.zoneCode) === filterZone
 
       // Fruit count filter
       const totalFruitCount = (tree.manualFruitCount || 0) + (tree.aiFruitCount || 0)
@@ -443,7 +444,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-1">
                         <h3 className="text-sm font-semibold text-gray-900 truncate">
-                          {tree.name || `Cây ${tree.qrCode || tree.id.slice(0, 8)}`}
+                          {tree.name || `Cây ${tree.variety || tree.id.slice(0, 8)}`}
                         </h3>
                         {tree.variety && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -453,12 +454,12 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
                       </div>
 
                       <div className="flex items-center space-x-4 text-xs text-gray-600">
-                        {tree.zoneCode && (
-                          <span className="flex items-center">
-                            <MapPinIcon className="h-3 w-3 mr-1" />
-                            Khu {tree.zoneCode}
-                          </span>
-                        )}
+                       {(tree.zoneName || tree.zoneCode) && (
+                         <span className="flex items-center">
+                           <MapPinIcon className="h-3 w-3 mr-1" />
+                           Khu {tree.zoneName || tree.zoneCode}
+                         </span>
+                       )}
                         <span>Trồng: {formatDate(tree.plantingDate)}</span>
                         <span>
                           Trái: {((tree.manualFruitCount || 0) + (tree.aiFruitCount || 0)).toLocaleString()}
@@ -467,38 +468,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-3">
-                    {/* Health Status */}
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getHealthStatusColor(tree.healthStatus)}`}>
-                      {tree.healthStatus || 'Chưa đánh giá'}
-                    </span>
-
-                    {/* Actions */}
-                    {showActions && (
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onTreeSelect?.(tree)
-                          }}
-                          className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-                          title="Xem chi tiết"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            // TODO: Handle edit action
-                          }}
-                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                          title="Chỉnh sửa"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  
                 </div>
 
                 {/* Additional info when selected */}

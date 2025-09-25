@@ -676,6 +676,10 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
                 <div className="text-sm text-gray-500">Vị trí GPS</div>
                 <div className="font-medium text-gray-900 font-mono text-sm">{tree.gpsAccuracy || 'N/A'}</div>
               </div>
+              <div>
+                <div className="text-sm text-gray-500">Trại thái</div>
+                <div className="font-medium text-gray-900 font-mono text-sm">{tree.treeStatus || 'N/A'}</div>
+              </div>
             </div>
           </div>
         </div>

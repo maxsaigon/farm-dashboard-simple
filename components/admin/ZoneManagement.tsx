@@ -85,7 +85,7 @@ export default function ZoneManagement() {
 
     // Calculate trees per zone
     const zoneTreeCounts = zones.map(zone => {
-      const zoneTreeCount = trees.filter(tree => tree.zoneId === zone.id || tree.zoneCode === zone.name).length
+      const zoneTreeCount = trees.filter(tree => tree.zoneId === zone.id || (tree.zoneName || tree.zoneCode) === zone.name).length
       return {
         zone,
         count: zoneTreeCount
@@ -107,7 +107,7 @@ export default function ZoneManagement() {
   }
 
   const getZoneTreeCount = (zone: Zone) => {
-    return trees.filter(tree => tree.zoneId === zone.id || tree.zoneCode === zone.name).length
+    return trees.filter(tree => tree.zoneId === zone.id || (tree.zoneName || tree.zoneCode) === zone.name).length
   }
 
   const filteredAndSortedZones = zones.filter(zone => {

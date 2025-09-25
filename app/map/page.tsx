@@ -123,14 +123,14 @@ function MapPageContent() {
           console.log('🎯 Focusing on zone from URL:', targetZone.name, 'ID:', targetZone.id)
           
           // Debug: Show how trees relate to this zone
-          const relatedTrees = treesData.filter(tree => 
-            tree.zoneCode === targetZone.id || 
-            tree.zoneCode === targetZone.name ||
+          const relatedTrees = treesData.filter(tree =>
+            (tree.zoneName || tree.zoneCode) === targetZone.id ||
+            (tree.zoneName || tree.zoneCode) === targetZone.name ||
             (tree as any).zoneId === targetZone.id ||
             (tree as any).zoneId === targetZone.name
           )
           console.log('🌳 Trees in focused zone:', relatedTrees.length)
-          console.log('🌳 Sample tree zoneCodes:', treesData.slice(0, 5).map(t => ({ id: t.id, zoneCode: t.zoneCode, zoneId: (t as any).zoneId })))
+          console.log('🌳 Sample tree zones:', treesData.slice(0, 5).map(t => ({ id: t.id, zoneName: t.zoneName, zoneCode: t.zoneCode, zoneId: (t as any).zoneId })))
           
           setFocusedZone(targetZone)
           setSelectedZone(targetZone)
@@ -325,18 +325,19 @@ function MapPageContent() {
     
     // First try: exact matching by zone codes
     let filteredTrees = trees.filter(tree => {
+      const zoneValue = tree.zoneName || tree.zoneCode
       const matches = [
-        tree.zoneCode === zone.id,
-        tree.zoneCode === zone.name,
+        zoneValue === zone.id,
+        zoneValue === zone.name,
         (tree as any).zoneId === zone.id,
         (tree as any).zoneId === zone.name,
         // Try case-insensitive matching
-        tree.zoneCode?.toLowerCase() === zone.id?.toLowerCase(),
-        tree.zoneCode?.toLowerCase() === zone.name?.toLowerCase()
+        zoneValue?.toLowerCase() === zone.id?.toLowerCase(),
+        zoneValue?.toLowerCase() === zone.name?.toLowerCase()
       ].some(Boolean)
       
       if (matches) {
-        console.log(`✅ Tree ${tree.id} matched by zoneCode: ${tree.zoneCode}`)
+        console.log(`✅ Tree ${tree.id} matched by zone: ${zoneValue}`)
       }
       return matches
     })
@@ -366,11 +367,11 @@ function MapPageContent() {
     
     console.log(`🌳 Final filtered trees for zone ${zone.name}: ${filteredTrees.length} out of ${trees.length}`)
     
-    // Debug: If still no trees, show what zoneCode values we have
+    // Debug: If still no trees, show what zone values we have
     if (filteredTrees.length === 0) {
-      const zoneCodes = trees.map(t => t.zoneCode).filter(Boolean)
-      const uniqueZoneCodes = Array.from(new Set(zoneCodes))
-      console.log('🔍 Available zoneCode values in trees:', uniqueZoneCodes)
+      const zoneValues = trees.map(t => t.zoneName || t.zoneCode).filter(Boolean)
+      const uniqueZoneValues = Array.from(new Set(zoneValues))
+      console.log('🔍 Available zone values in trees:', uniqueZoneValues)
       console.log('🔍 Looking for zone:', { id: zone.id, name: zone.name })
     }
     

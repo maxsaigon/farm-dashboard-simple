@@ -102,7 +102,7 @@ export default function TreeManagement() {
   const filteredAndSortedTrees = trees.filter(tree => {
     const matchesSearch = tree.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          tree.variety?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tree.zoneCode?.toLowerCase().includes(searchTerm.toLowerCase())
+                         (tree.zoneName || tree.zoneCode)?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesFarm = filterFarm === 'all' || tree.farmId === filterFarm
     const matchesHealth = filterHealth === 'all' || tree.healthStatus === filterHealth
     const matchesStatus = filterStatus === 'all' || 
@@ -362,7 +362,7 @@ export default function TreeManagement() {
                   </div>
                   <div>
                     <span className="text-gray-500">Zone:</span>
-                    <span className="ml-1 font-medium">{tree.zoneCode || 'N/A'}</span>
+                    <span className="ml-1 font-medium">{tree.zoneName || tree.zoneCode || 'N/A'}</span>
                   </div>
                   <div>
                     <span className="text-gray-500">Fruits:</span>
@@ -499,8 +499,8 @@ export default function TreeManagement() {
                       <p className="text-sm text-gray-900">{selectedTree.aiFruitCount || 0}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Zone Code</label>
-                      <p className="text-sm text-gray-900">{selectedTree.zoneCode || 'N/A'}</p>
+                      <label className="block text-sm font-medium text-gray-700">Zone Name</label>
+                      <p className="text-sm text-gray-900">{selectedTree.zoneName || selectedTree.zoneCode || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">QR Code</label>

@@ -84,10 +84,10 @@ export function TreeCard({
             </div>
 
             <div className="flex items-center space-x-4 text-xs text-gray-600">
-              {tree.zoneCode && (
-                <span className="flex items-center">
+             {(tree.zoneName || tree.zoneCode) && (
+               <span className="flex items-center">
                   <MapPinIcon className="h-3 w-3 mr-1" />
-                  Khu {tree.zoneCode}
+                  Khu {tree.zoneName || tree.zoneCode}
                 </span>
               )}
               <span>Trồng: {formatDate(tree.plantingDate)}</span>
@@ -98,38 +98,7 @@ export function TreeCard({
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
-          {/* Health Status */}
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getHealthStatusColor(tree.healthStatus)}`}>
-            {tree.healthStatus || 'Chưa đánh giá'}
-          </span>
-
-          {/* Actions */}
-          {showActions && (
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onSelect?.(tree)
-                }}
-                className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-                title="Xem chi tiết"
-              >
-                <EyeIcon className="h-4 w-4" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onEdit?.(tree)
-                }}
-                className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                title="Chỉnh sửa"
-              >
-                <PencilIcon className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-        </div>
+        
       </div>
 
       {/* Additional info when selected */}
