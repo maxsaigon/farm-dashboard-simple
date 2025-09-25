@@ -11,7 +11,7 @@ export interface Tree {
   gpsAccuracy?: number
   plantingDate?: Date
   variety?: string
-  treeStatus?: 'Young Tree' | 'Mature' | 'Old'
+  treeStatus?: 'Young Tree' | 'Mature' | 'Old' | 'Cây Non' | 'Cây Trưởng Thành' | 'Cây Già'
   healthStatus?: 'Excellent' | 'Good' | 'Fair' | 'Poor'
   notes?: string
   qrCode?: string

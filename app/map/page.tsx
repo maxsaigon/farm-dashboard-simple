@@ -21,8 +21,8 @@ interface Zone {
   name: string
   code?: string
   description?: string
-  color: string
-  boundaries: Array<{ latitude: number; longitude: number }> // FIXED: Use correct field names from Firebase
+  color?: string
+  boundaries: Array<{ latitude: number; longitude: number }>
   treeCount: number
   area: number
   isActive: boolean
@@ -47,7 +47,7 @@ function polygonAreaHectares(coords: Array<{ latitude: number; longitude: number
   return areaMeters2 / 10000
 }
 
-const MapWrapperNoSSR = dynamic(() => import('@/components/MapWrapper'), {
+const UnifiedMapNoSSR = dynamic(() => import('@/components/UnifiedMap'), {
   ssr: false,
   loading: () => (
     <div className="h-full flex items-center justify-center">
@@ -74,6 +74,10 @@ function MapPageContent() {
   const [showTrees, setShowTrees] = useState(true)
   const [focusedZone, setFocusedZone] = useState<Zone | null>(null)
   const [showFullscreenTree, setShowFullscreenTree] = useState(false)
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
+  const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] = useState(false)
+  const [proximityRadius, setProximityRadius] = useState(30)
+  const [showUserPath, setShowUserPath] = useState(false)
 
   // Debug farm ID for testing
   const debugFarmId = "F210C3FC-F191-4926-9C15-58D6550A716A"
@@ -402,64 +406,190 @@ function MapPageContent() {
         <div className="flex flex-col space-y-4">
           
 
-          {/* Title and Stats */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
-            <div className="flex-1">
-              
-              
-              
+         {/* Enhanced Controls Header */}
+         <div className="space-y-4">
+           {/* Top Row: Title and Real-time Status */}
+           <div className="flex items-center justify-between">
+             <h1 className="text-xl font-bold text-gray-900">Bản đồ nông trại</h1>
+             <div className="flex items-center space-x-3">
+               {/* Real-time Status */}
+               <div className="flex items-center space-x-2 text-sm">
+                 <div className={`w-2 h-2 rounded-full ${
+                   true ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+                 }`}></div>
+                 <span className={`font-medium ${
+                   true ? 'text-green-700' : 'text-red-700'
+                 }`}>
+                   {true ? 'LIVE' : 'OFFLINE'}
+                 </span>
+               </div>
 
-              <div className="mt-3 w-full flex items-center justify-center">
-                <div className="flex items-center space-x-3">
-                  {/* Compact toggle buttons showing counts */}
-                  <button
-                    onClick={() => setShowTrees(!showTrees)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-semibold transition-colors min-touch ${
-                      showTrees ? 'bg-green-600 text-white' : 'bg-white text-green-700 border border-green-200'
-                    }`}
-                    style={{ WebkitTapHighlightColor: 'transparent' }}
-                  >
-                    <span className="text-lg">🌳</span>
-                    <span>{loading ? 'Đang tải...' : `${trees.length} Cây`}</span>
-                  </button>
+               {/* Settings Button */}
+               <button
+                 onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                 className={`p-2 rounded-lg transition-colors ${
+                   showAdvancedSettings
+                     ? 'bg-blue-100 text-blue-700'
+                     : 'text-gray-600 hover:bg-gray-100'
+                 }`}
+                 title="Cài đặt nâng cao"
+               >
+                 ⚙️
+               </button>
+             </div>
+           </div>
 
-                  <button
-                    onClick={() => setShowZones(!showZones)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-semibold transition-colors min-touch ${
-                      showZones ? 'bg-blue-600 text-white' : 'bg-white text-blue-700 border border-blue-200'
-                    }`}
-                    style={{ WebkitTapHighlightColor: 'transparent' }}
-                  >
-                    <span className="text-lg">📍</span>
-                    <span>{loading ? 'Đang tải...' : `${zones.length} Khu vực`}</span>
-                  </button>
+           {/* Main Controls Row */}
+           <div className="flex flex-wrap items-center justify-center gap-3">
+             {/* Trees Toggle */}
+             <button
+               onClick={() => setShowTrees(!showTrees)}
+               className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors min-touch ${
+                 showTrees
+                   ? 'bg-green-600 text-white shadow-lg'
+                   : 'bg-white text-green-700 border border-green-200 hover:bg-green-50'
+               }`}
+               style={{ WebkitTapHighlightColor: 'transparent' }}
+             >
+               <span className="text-lg">🌳</span>
+               <span>{loading ? 'Đang tải...' : `${trees.length} Cây`}</span>
+             </button>
 
-                  {/* Focused zone pill (if any) */}
-                  {focusedZone && (
-                    <div className="flex items-center space-x-2 bg-blue-100 text-blue-800 px-3 py-2 rounded-full text-sm font-semibold">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: focusedZone.color }}
-                      />
-                      <span className="max-w-xs truncate">{focusedZone.name}</span>
-                      <button
-                        onClick={() => {
-                          setFocusedZone(null)
-                          setSelectedZone(null)
-                          window.history.pushState({}, '', '/map')
-                        }}
-                        className="ml-1 px-2 py-1 rounded-full bg-white hover:bg-gray-100 text-sm"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            
-          </div>
+             {/* Zones Toggle */}
+             <button
+               onClick={() => setShowZones(!showZones)}
+               className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors min-touch ${
+                 showZones
+                   ? 'bg-blue-600 text-white shadow-lg'
+                   : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-50'
+               }`}
+               style={{ WebkitTapHighlightColor: 'transparent' }}
+             >
+               <span className="text-lg">📍</span>
+               <span>{loading ? 'Đang tải...' : `${zones.length} Khu vực`}</span>
+             </button>
+
+             {/* GPS Background Toggle */}
+             <button
+               onClick={() => setBackgroundTrackingEnabled(!backgroundTrackingEnabled)}
+               className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors min-touch ${
+                 backgroundTrackingEnabled
+                   ? 'bg-purple-600 text-white shadow-lg'
+                   : 'bg-white text-purple-700 border border-purple-200 hover:bg-purple-50'
+               }`}
+               style={{ WebkitTapHighlightColor: 'transparent' }}
+             >
+               <span className="text-lg">📍</span>
+               <span>GPS {backgroundTrackingEnabled ? 'ON' : 'OFF'}</span>
+             </button>
+
+             {/* Focused zone pill (if any) */}
+             {focusedZone && (
+               <div className="flex items-center space-x-2 bg-blue-100 text-blue-800 px-3 py-2 rounded-full text-sm font-semibold">
+                 <div
+                   className="w-3 h-3 rounded-full"
+                   style={{ backgroundColor: focusedZone.color }}
+                 />
+                 <span className="max-w-xs truncate">{focusedZone.name}</span>
+                 <button
+                   onClick={() => {
+                     setFocusedZone(null)
+                     setSelectedZone(null)
+                     window.history.pushState({}, '', '/map')
+                   }}
+                   className="ml-1 px-2 py-1 rounded-full bg-white hover:bg-gray-100 text-sm"
+                 >
+                   ✕
+                 </button>
+               </div>
+             )}
+           </div>
+
+           {/* Advanced Settings Panel */}
+           {showAdvancedSettings && (
+             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 {/* Left Column */}
+                 <div className="space-y-3">
+                   <h3 className="font-semibold text-gray-800">Hiển thị</h3>
+
+                   <label className="flex items-center space-x-3 cursor-pointer">
+                     <input
+                       type="checkbox"
+                       checked={showUserPath}
+                       onChange={(e) => setShowUserPath(e.target.checked)}
+                       className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                     />
+                     <span className="text-sm text-gray-700">Đường đi GPS</span>
+                   </label>
+
+                   <label className="flex items-center space-x-3 cursor-pointer">
+                     <input
+                       type="checkbox"
+                       checked={backgroundTrackingEnabled}
+                       onChange={(e) => setBackgroundTrackingEnabled(e.target.checked)}
+                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                     />
+                     <span className="text-sm text-gray-700">Theo dõi nền</span>
+                   </label>
+                 </div>
+
+                 {/* Right Column */}
+                 <div className="space-y-3">
+                   <h3 className="font-semibold text-gray-800">Phát hiện</h3>
+
+                   <div className="space-y-2">
+                     <div className="flex items-center justify-between">
+                       <span className="text-sm text-gray-700">Bán kính</span>
+                       <span className="text-sm font-medium text-gray-900">{proximityRadius}m</span>
+                     </div>
+                     <input
+                       type="range"
+                       min="10"
+                       max="100"
+                       step="5"
+                       value={proximityRadius}
+                       onChange={(e) => setProximityRadius(Number(e.target.value))}
+                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                     />
+                     <div className="flex justify-between text-xs text-gray-500">
+                       <span>10m</span>
+                       <span>100m</span>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+
+               {/* Quick Actions */}
+               <div className="flex space-x-2 pt-4 mt-4 border-t border-gray-200">
+                 <button
+                   onClick={() => {
+                     // Navigate to user location (would need to pass map ref or use callback)
+                     console.log('Navigate to user location')
+                   }}
+                   className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                 >
+                   📍 Vị trí tôi
+                 </button>
+                 <button
+                   onClick={() => {
+                     // Fit all markers (would need to pass map ref or use callback)
+                     console.log('Fit all markers')
+                   }}
+                   className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                 >
+                   🔍 Phù hợp tất cả
+                 </button>
+                 <button
+                   onClick={() => setShowAdvancedSettings(false)}
+                   className="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+                 >
+                   Đóng
+                 </button>
+               </div>
+             </div>
+           )}
+         </div>
           
           {/* Large Action Buttons for Farmers - Enhanced */}
           
@@ -516,24 +646,20 @@ function MapPageContent() {
             </div>
           ) : (
             <>
-              <MapWrapperNoSSR
+              <UnifiedMapNoSSR
                 trees={showTrees ? (focusedZone ? getTreesForZone(trees, focusedZone) : trees) : []}
                 zones={showZones ? (focusedZone ? [focusedZone] : zones) : []}
                 selectedTree={selectedTree}
                 selectedZone={selectedZone}
                 onTreeSelect={handleTreeSelect}
                 onZoneSelect={handleZoneSelect}
-                onFullscreenFocus={() => {
-                  console.log('🎯 Fullscreen focus triggered - enabling trees and zones display')
-                  setShowTrees(true)
-                  setShowZones(true)
-                  
-                  // If we're in zone focus mode, ensure the focused zone stays selected
-                  if (focusedZone) {
-                    console.log('🎯 Maintaining zone focus in fullscreen:', focusedZone.name)
-                    setSelectedZone(focusedZone)
-                  }
+                onZoneCreated={(zoneData: { boundaries: Array<{ latitude: number; longitude: number }> }) => {
+                  console.log('🎯 New zone created:', zoneData)
+                  // TODO: Handle zone creation - save to Firebase and refresh zones
                 }}
+                enableDrawing={true} // Enable drawing tools for zone creation
+                enableRealTime={true}
+                farmId={displayFarm.id}
                 className="w-full h-full"
               />
               {/* Debug info removed for cleaner mobile UI */}

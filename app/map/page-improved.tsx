@@ -25,8 +25,9 @@ import AuthGuard from '@/components/AuthGuard'
 interface Zone {
   id: string
   name: string
+  code?: string
   description?: string
-  color: string
+  color?: string
   boundaries: Array<{ latitude: number; longitude: number }>
   treeCount: number
   area: number
