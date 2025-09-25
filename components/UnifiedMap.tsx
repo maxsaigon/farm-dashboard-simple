@@ -593,7 +593,7 @@ const UnifiedMap = memo(({
       color = baseColor
       size = 20
     } else if (tree.needsAttention) {
-      color = '#f59e0b' // amber for attention needed (overrides base color)
+      color = '#8b5cf6' // purple for attention needed (overrides base color)
       size = 18
     }
 
@@ -615,7 +615,7 @@ const UnifiedMap = memo(({
           width: ${size}px;
           height: ${size}px;
           border-radius: 50%;
-          border: 3px solid white;
+          border: 1px solid white;
           box-shadow: 0 2px 6px rgba(0,0,0,0.3);
           display: flex;
           align-items: center;
