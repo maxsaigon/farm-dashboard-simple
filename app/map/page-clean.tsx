@@ -12,11 +12,10 @@ import { EyeIcon, MapPinIcon, RectangleGroupIcon } from '@heroicons/react/24/out
 interface Zone {
   id: string
   name: string
+  code?: string
   description?: string
-  color: string
+  color?: string
   boundaries: Array<{ latitude: number; longitude: number }>
-  soilType?: string
-  drainageLevel?: 'poor' | 'fair' | 'good' | 'excellent'
   treeCount: number
   area: number
   isActive: boolean
@@ -336,12 +335,12 @@ export default function MapPage() {
                 
                 <div className="space-y-3">
                   <div>
-                    <span className="text-sm text-gray-500">Loại đất:</span>
-                    <span className="ml-2 capitalize">{selectedZone.soilType}</span>
+                    <span className="text-sm text-gray-500">ID:</span>
+                    <span className="ml-2 font-mono text-xs">{selectedZone.id}</span>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-500">Thoát nước:</span>
-                    <span className="ml-2 capitalize">{selectedZone.drainageLevel}</span>
+                    <span className="text-sm text-gray-500">Màu:</span>
+                    <span className="ml-2">{selectedZone.color || '#3b82f6'}</span>
                   </div>
                   <div>
                     <span className="text-sm text-gray-500">Trạng thái:</span>
