@@ -670,7 +670,11 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
               </div>
               <div>
                 <div className="text-sm text-gray-500">Sức Khoẻ</div>
-                <div className="font-medium text-gray-900 font-mono text-sm">{tree.healthNotes || tree.id}</div>
+                <div className="font-medium text-gray-900 font-mono text-sm">{tree.healthNotes || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500">Vị trí GPS</div>
+                <div className="font-medium text-gray-900 font-mono text-sm">{tree.gpsAccuracy || 'N/A'}</div>
               </div>
             </div>
           </div>

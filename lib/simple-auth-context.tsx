@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword,
@@ -139,6 +139,78 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   const [currentFarm, setCurrentFarmState] = useState<SimpleFarm | null>(null)
   const [farmAccess, setFarmAccess] = useState<FarmAccess[]>([])
 
+  // Cache for auth data to prevent repeated Firestore queries
+  const authCache = useRef({
+    userProfile: null as SimpleUser | null,
+    farmAccess: null as FarmAccess[] | null,
+    farms: null as SimpleFarm[] | null,
+    lastFetch: 0
+  })
+
+  // Cache expiry time (5 minutes)
+  const CACHE_EXPIRY = 5 * 60 * 1000
+
+  // Auth state persistence key
+  const AUTH_STATE_KEY = 'farmDashboard_authState'
+
+  // Save auth state to localStorage
+  const saveAuthState = () => {
+    if (user && farms.length > 0) {
+      const state = {
+        user: {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          emailVerified: user.emailVerified,
+          createdAt: user.createdAt,
+          preferredLanguage: user.preferredLanguage,
+          timezone: user.timezone
+        },
+        farms: farms.map(f => ({
+          id: f.id,
+          name: f.name,
+          ownerName: f.ownerName,
+          totalArea: f.totalArea,
+          createdDate: f.createdDate,
+          isActive: f.isActive
+        })),
+        currentFarmId: currentFarm?.id,
+        farmAccess: farmAccess.map(a => ({
+          farmId: a.farmId,
+          userId: a.userId,
+          role: a.role,
+          grantedAt: a.grantedAt,
+          isActive: a.isActive
+        })),
+        timestamp: Date.now()
+      }
+      localStorage.setItem(AUTH_STATE_KEY, JSON.stringify(state))
+    }
+  }
+
+  // Restore auth state from localStorage
+  const restoreAuthState = () => {
+    try {
+      const stored = localStorage.getItem(AUTH_STATE_KEY)
+      if (stored) {
+        const state = JSON.parse(stored)
+        // Only restore if less than 1 hour old
+        if (Date.now() - state.timestamp < 60 * 60 * 1000) {
+          console.log('🔄 Restoring auth state from localStorage')
+          return {
+            user: state.user,
+            farms: state.farms,
+            currentFarmId: state.currentFarmId,
+            farmAccess: state.farmAccess
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to restore auth state:', error)
+    }
+    return null
+  }
+
   // Initialize auth state listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -147,51 +219,23 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         
         if (firebaseUser) {
           console.log('🔐 User signed in:', firebaseUser.email)
-          
-          // Load or create user profile
-          const userProfile = await loadOrCreateUserProfile(firebaseUser)
-          setUser(userProfile)
-          
-          // Load user's farm access
-          const access = await loadUserFarmAccess(firebaseUser.uid)
-          setFarmAccess(access)
-          
-          // Load farms user has access to
-          const userFarms = await loadUserFarms(access)
-          
-          // If user has no farm access, create a default farm for them
-          if (userFarms.length === 0 && access.length === 0) {
-            console.log('🏗️ Creating default farm for new user:', firebaseUser.email)
-            try {
-              const defaultFarm = await createDefaultFarmForUser(firebaseUser, userProfile)
-              if (defaultFarm) {
-                // Reload farm access after creating default farm
-                const newAccess = await loadUserFarmAccess(firebaseUser.uid)
-                setFarmAccess(newAccess)
-                const newFarms = await loadUserFarms(newAccess)
-                setFarms(newFarms)
-                
-                // Auto-select the new default farm
-                if (newFarms.length > 0) {
-                  setCurrentFarmState(newFarms[0])
-                }
-              }
-            } catch (error) {
-              console.error('❌ Failed to create default farm:', error)
-              // Continue without farm - user can create one later
-              setFarms([])
+
+          // Try to restore from localStorage for faster loading
+          const restoredState = restoreAuthState()
+          if (restoredState) {
+            setUser(restoredState.user)
+            setFarms(restoredState.farms)
+            setFarmAccess(restoredState.farmAccess)
+            if (restoredState.currentFarmId) {
+              const currentFarm = restoredState.farms.find((f: any) => f.id === restoredState.currentFarmId)
+              if (currentFarm) setCurrentFarmState(currentFarm)
             }
+            // Load fresh data in background
+            loadFreshAuthData(firebaseUser)
           } else {
-            setFarms(userFarms)
-            
-            // Auto-select farm if user has only one
-            if (userFarms.length === 1 && !currentFarm) {
-              setCurrentFarmState(userFarms[0])
-            }
+            // Load fresh data
+            await loadFreshAuthData(firebaseUser)
           }
-          
-          // Update last login
-          await updateLastLogin(firebaseUser.uid)
           
         } else {
           console.log('🔐 User signed out')
@@ -199,6 +243,13 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
           setFarms([])
           setCurrentFarmState(null)
           setFarmAccess([])
+          // Clear auth cache
+          authCache.current = {
+            userProfile: null,
+            farmAccess: null,
+            farms: null,
+            lastFetch: 0
+          }
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -248,7 +299,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     })
 
     return unsubscribe
-  }, [currentFarm])
+  }, [])
 
   // Helper function to create default farm for new users
   const createDefaultFarmForUser = async (firebaseUser: FirebaseUser, userProfile: SimpleUser): Promise<SimpleFarm | null> => {
@@ -466,6 +517,90 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     }
   }
 
+  // Cached versions to prevent repeated Firestore queries
+  const loadUserFarmAccessCached = async (userId: string): Promise<FarmAccess[]> => {
+    const now = Date.now()
+    if (authCache.current.farmAccess && (now - authCache.current.lastFetch) < CACHE_EXPIRY) {
+      console.log('🔄 Using cached farm access data')
+      return authCache.current.farmAccess
+    }
+
+    console.log('📥 Fetching fresh farm access data')
+    const access = await loadUserFarmAccess(userId)
+    authCache.current.farmAccess = access
+    authCache.current.lastFetch = now
+    return access
+  }
+
+  const loadUserFarmsCached = async (access: FarmAccess[]): Promise<SimpleFarm[]> => {
+    const now = Date.now()
+    if (authCache.current.farms && (now - authCache.current.lastFetch) < CACHE_EXPIRY) {
+      console.log('🔄 Using cached farms data')
+      return authCache.current.farms
+    }
+
+    console.log('📥 Fetching fresh farms data')
+    const farms = await loadUserFarms(access)
+    authCache.current.farms = farms
+    authCache.current.lastFetch = now
+    return farms
+  }
+
+  // Load fresh auth data (used for background refresh and initial load)
+  const loadFreshAuthData = async (firebaseUser: FirebaseUser) => {
+    try {
+      // Load or create user profile
+      const userProfile = await loadOrCreateUserProfile(firebaseUser)
+      setUser(userProfile)
+
+      // Load user's farm access (with caching)
+      const access = await loadUserFarmAccessCached(firebaseUser.uid)
+      setFarmAccess(access)
+
+      // Load farms user has access to (with caching)
+      const userFarms = await loadUserFarmsCached(access)
+
+      // If user has no farm access, create a default farm for them
+      if (userFarms.length === 0 && access.length === 0) {
+        console.log('🏗️ Creating default farm for new user:', firebaseUser.email)
+        try {
+          const defaultFarm = await createDefaultFarmForUser(firebaseUser, userProfile)
+          if (defaultFarm) {
+            // Reload farm access after creating default farm
+            const newAccess = await loadUserFarmAccess(firebaseUser.uid)
+            setFarmAccess(newAccess)
+            const newFarms = await loadUserFarms(newAccess)
+            setFarms(newFarms)
+
+            // Auto-select the new default farm
+            if (newFarms.length > 0) {
+              setCurrentFarmState(newFarms[0])
+            }
+          }
+        } catch (error) {
+          console.error('❌ Failed to create default farm:', error)
+          // Continue without farm - user can create one later
+          setFarms([])
+        }
+      } else {
+        setFarms(userFarms)
+
+        // Auto-select farm if user has only one
+        if (userFarms.length === 1 && !currentFarm) {
+          setCurrentFarmState(userFarms[0])
+        }
+      }
+
+      // Update last login
+      await updateLastLogin(firebaseUser.uid)
+
+      // Save state to localStorage
+      setTimeout(saveAuthState, 1000) // Save after a short delay to ensure state is set
+    } catch (error) {
+      console.error('Error loading fresh auth data:', error)
+    }
+  }
+
   // Auth actions
   const signIn = async (email: string, password: string): Promise<void> => {
     await signInWithEmailAndPassword(auth, email, password)
@@ -551,10 +686,13 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
 
   const refreshUserData = async (): Promise<void> => {
     if (firebaseUser) {
-      const access = await loadUserFarmAccess(firebaseUser.uid)
+      // Invalidate cache to force fresh data
+      authCache.current.lastFetch = 0
+
+      const access = await loadUserFarmAccessCached(firebaseUser.uid)
       setFarmAccess(access)
-      
-      const userFarms = await loadUserFarms(access)
+
+      const userFarms = await loadUserFarmsCached(access)
       setFarms(userFarms)
     }
   }
