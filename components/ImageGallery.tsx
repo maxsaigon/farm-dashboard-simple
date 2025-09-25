@@ -28,13 +28,16 @@ interface StorageImage {
 
 type DisplayImage = PhotoWithUrls | StorageImage
 
+// Simple cache for storage images to avoid repeated slow Firebase calls
+const storageImagesCache = new Map<string, { general: string[], health: string[], fruitCount: string[] }>()
+
 export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   const { user, currentFarm } = useSimpleAuth()
   const { showSuccess, showError } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
-  
-  // Use correct farmId - prioritize tree.farmId, then fallback to known working farmId  
+
+  // Use correct farmId - prioritize tree.farmId, then fallback to known working farmId
   const effectiveFarmId = tree.farmId && tree.farmId !== 'default' ? tree.farmId : 'F210C3FC-F191-4926-9C15-58D6550A716A'
   const [photos, setPhotos] = useState<PhotoWithUrls[]>([])
   const [storageImages, setStorageImages] = useState<{ general: string[], health: string[], fruitCount: string[] }>({
@@ -43,6 +46,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     fruitCount: []
   })
   const [loading, setLoading] = useState(true)
+  const [storageImagesLoading, setStorageImagesLoading] = useState(false)
   const [selectedImage, setSelectedImage] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<'all' | 'general' | 'health' | 'fruit_count'>('all')
   const [uploading, setUploading] = useState(false)
@@ -68,31 +72,43 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     const unsubscribe = subscribeToTreePhotos(tree.id, async (firestorePhotos) => {
       const photosWithUrls = await getPhotosWithUrls(firestorePhotos, effectiveFarmId)
       setPhotos(photosWithUrls)
+      // Set loading to false as soon as Firestore photos are loaded
+      setLoading(false)
     })
 
     return unsubscribe
   }, [tree.id, effectiveFarmId])
 
-  // Load images from Storage
+  // Load images from Storage (background loading with caching)
   useEffect(() => {
     async function loadStorageImages() {
       if (!tree.id) return
 
+      // Create cache key
+      const cacheKey = `${tree.id}-${tree.qrCode || ''}-${effectiveFarmId}`
+
+      // Check cache first
+      const cachedImages = storageImagesCache.get(cacheKey)
+      if (cachedImages) {
+        setStorageImages(cachedImages)
+        return
+      }
+
+      setStorageImagesLoading(true)
       try {
         const images = await getTreeImagesByPattern(tree.id, tree.qrCode, effectiveFarmId)
+        // Cache the result
+        storageImagesCache.set(cacheKey, images)
         setStorageImages(images)
       } catch (error) {
         console.error('Error loading storage images:', error)
+      } finally {
+        setStorageImagesLoading(false)
       }
     }
 
     loadStorageImages()
   }, [tree.id, tree.qrCode, effectiveFarmId])
-
-  // Set loading state
-  useEffect(() => {
-    setLoading(false)
-  }, [photos, storageImages])
 
   // Check user permissions for photo management
   useEffect(() => {
@@ -215,9 +231,15 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       const photosWithUrls = await getPhotosWithUrls(await getTreePhotos(tree.id), effectiveFarmId)
       setPhotos(photosWithUrls)
 
-      // Reload storage images
+      // Clear cache and reload storage images
+      const cacheKey = `${tree.id}-${tree.qrCode || ''}-${effectiveFarmId}`
+      storageImagesCache.delete(cacheKey)
+
+      setStorageImagesLoading(true)
       const images = await getTreeImagesByPattern(tree.id, tree.qrCode, effectiveFarmId)
+      storageImagesCache.set(cacheKey, images)
       setStorageImages(images)
+      setStorageImagesLoading(false)
 
       console.log('🔄 Gallery refreshed successfully')
     } catch (error) {
@@ -509,6 +531,12 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                 </h3>
                 <p className="text-sm text-gray-600 font-medium">
                   {totalImages > 0 ? `${totalImages} ảnh được tìm thấy` : 'Chưa có ảnh nào'}
+                  {storageImagesLoading && (
+                    <span className="text-blue-600 font-medium ml-2 flex items-center">
+                      <div className="animate-spin rounded-full h-3 w-3 border border-blue-600 border-t-transparent mr-1"></div>
+                      Đang tải thêm ảnh...
+                    </span>
+                  )}
                   {newPhotoAdded && (
                     <span className="text-green-600 font-semibold ml-2">
                       🎉 Ảnh mới đã được thêm!
