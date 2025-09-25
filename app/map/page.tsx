@@ -382,6 +382,9 @@ function MapPageContent() {
     return filteredTrees
   }
 
+  // Calculate trees in focused zone for smart display
+  const treesInFocusedZone = focusedZone ? getTreesForZone(trees, focusedZone).length : 0
+
   if (error) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -439,9 +442,9 @@ function MapPageContent() {
              </div>
            </div>
 
-           {/* Main Controls Row */}
+           {/* Smart Controls Row */}
            <div className="flex flex-wrap items-center justify-center gap-3">
-             {/* Trees Toggle */}
+             {/* Trees Toggle - Always show total tree count */}
              <button
                onClick={() => setShowTrees(!showTrees)}
                className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors min-touch ${
@@ -452,51 +455,53 @@ function MapPageContent() {
                style={{ WebkitTapHighlightColor: 'transparent' }}
              >
                <span className="text-lg">🌳</span>
-               <span>{loading ? 'Đang tải...' : `${trees.length} Cây`}</span>
+               <span>{loading ? '...' : `${trees.length} Cây`}</span>
              </button>
 
-             {/* Zones Toggle */}
-             <button
-               onClick={() => setShowZones(!showZones)}
-               className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors min-touch ${
-                 showZones
-                   ? 'bg-blue-600 text-white shadow-lg'
-                   : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-50'
-               }`}
-               style={{ WebkitTapHighlightColor: 'transparent' }}
-             >
-               <span className="text-lg">📍</span>
-               <span>{loading ? 'Đang tải...' : `${zones.length} Khu vực`}</span>
-             </button>
-
-             {/* GPS Background Toggle */}
-             <button
-               onClick={() => setBackgroundTrackingEnabled(!backgroundTrackingEnabled)}
-               className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors min-touch ${
-                 backgroundTrackingEnabled
-                   ? 'bg-purple-600 text-white shadow-lg'
-                   : 'bg-white text-purple-700 border border-purple-200 hover:bg-purple-50'
-               }`}
-               style={{ WebkitTapHighlightColor: 'transparent' }}
-             >
-               <span className="text-lg">📍</span>
-               <span>GPS {backgroundTrackingEnabled ? 'ON' : 'OFF'}</span>
-             </button>
-
-             {/* Focused zone pill (if any) */}
-             {focusedZone && (
-               <div className="flex items-center space-x-2 bg-blue-100 text-blue-800 px-3 py-2 rounded-full text-sm font-semibold">
+             {/* Zones Toggle - Smart display based on focus */}
+             {focusedZone ? (
+               // When focused on a zone, show trees in that zone
+               <div className="flex items-center space-x-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-semibold">
                  <div
                    className="w-3 h-3 rounded-full"
                    style={{ backgroundColor: focusedZone.color }}
                  />
-                 <span className="max-w-xs truncate">{focusedZone.name}</span>
+                 <span className="text-lg">📍</span>
+                 <span>{treesInFocusedZone} Cây trong {focusedZone.name}</span>
                  <button
                    onClick={() => {
                      setFocusedZone(null)
                      setSelectedZone(null)
                      window.history.pushState({}, '', '/map')
                    }}
+                   className="ml-2 px-2 py-1 rounded-full bg-white hover:bg-gray-100 text-sm"
+                 >
+                   ✕
+                 </button>
+               </div>
+             ) : (
+               // When not focused, show total zones
+               <button
+                 onClick={() => setShowZones(!showZones)}
+                 className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors min-touch ${
+                   showZones
+                     ? 'bg-blue-600 text-white shadow-lg'
+                     : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-50'
+                 }`}
+                 style={{ WebkitTapHighlightColor: 'transparent' }}
+               >
+                 <span className="text-lg">📍</span>
+                 <span>{loading ? '...' : `${zones.length} Khu vực`}</span>
+               </button>
+             )}
+
+             {/* GPS Background Toggle - Only show when enabled */}
+             {backgroundTrackingEnabled && (
+               <div className="flex items-center space-x-2 bg-purple-100 text-purple-800 px-3 py-2 rounded-full text-sm font-semibold">
+                 <span className="text-lg">📍</span>
+                 <span>GPS ON</span>
+                 <button
+                   onClick={() => setBackgroundTrackingEnabled(false)}
                    className="ml-1 px-2 py-1 rounded-full bg-white hover:bg-gray-100 text-sm"
                  >
                    ✕
@@ -522,16 +527,29 @@ function MapPageContent() {
                      />
                      <span className="text-sm text-gray-700">Đường đi GPS</span>
                    </label>
+                 </div>
 
-                   <label className="flex items-center space-x-3 cursor-pointer">
-                     <input
-                       type="checkbox"
-                       checked={backgroundTrackingEnabled}
-                       onChange={(e) => setBackgroundTrackingEnabled(e.target.checked)}
-                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                     />
-                     <span className="text-sm text-gray-700">Theo dõi nền</span>
-                   </label>
+                 <div className="space-y-3">
+                   <h3 className="font-semibold text-gray-800">GPS</h3>
+
+                   {!backgroundTrackingEnabled ? (
+                     <button
+                       onClick={() => setBackgroundTrackingEnabled(true)}
+                       className="w-full bg-purple-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                     >
+                       📍 Bật GPS theo dõi
+                     </button>
+                   ) : (
+                     <div className="flex items-center justify-between">
+                       <span className="text-sm text-gray-700">GPS đang bật</span>
+                       <button
+                         onClick={() => setBackgroundTrackingEnabled(false)}
+                         className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                       >
+                         Tắt
+                       </button>
+                     </div>
+                   )}
                  </div>
 
                  {/* Right Column */}
