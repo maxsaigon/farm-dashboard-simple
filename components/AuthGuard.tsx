@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSimpleAuth } from '../lib/simple-auth-context'
 import { Permission } from '@/lib/simple-auth-context'
@@ -12,8 +12,8 @@ interface AuthGuardProps {
   requireFarmAccess?: boolean
 }
 
-export default function AuthGuard({ 
-  children, 
+const AuthGuard = memo(function AuthGuard({
+  children,
   requiredPermission,
   fallbackPath = '/no-access',
   requireFarmAccess = true
@@ -83,4 +83,8 @@ export default function AuthGuard({
 
   // All checks passed - render the protected content
   return <>{children}</>
-}
+})
+
+AuthGuard.displayName = 'AuthGuard'
+
+export default AuthGuard
