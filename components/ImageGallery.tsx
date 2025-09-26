@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Tree } from '@/lib/types'
 import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PhotoIcon, EyeIcon, CalendarDaysIcon, MapPinIcon, CameraIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
@@ -10,7 +10,7 @@ import { getModalZClass, modalStack } from '@/lib/modal-z-index'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { useToast } from './Toast'
 import { collection, addDoc, Timestamp, deleteDoc, doc } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { ref, uploadBytes, deleteObject } from 'firebase/storage'
 import { db, storage } from '@/lib/firebase'
 import { compressImageSmart, getCompressionInfo, needsCompression } from '@/lib/photo-compression'
 import { FarmService } from '@/lib/farm-service'
@@ -48,7 +48,6 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   const [loading, setLoading] = useState(true)
   const [storageImagesLoading, setStorageImagesLoading] = useState(false)
   const [selectedImage, setSelectedImage] = useState<number | null>(null)
-  const [activeTab, setActiveTab] = useState<'all' | 'general' | 'health' | 'fruit_count'>('all')
   const [uploading, setUploading] = useState(false)
   const [compressing, setCompressing] = useState(false)
   const [showPhotoTypeModal, setShowPhotoTypeModal] = useState(false)
@@ -122,7 +121,6 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
         // Check if user has management permissions (owner or manager)
         const hasAccess = await FarmService.checkFarmAccess(user.uid, currentFarm.id, ['write', 'delete'])
         setCanManagePhotos(hasAccess)
-        console.log('📸 Photo management permissions:', hasAccess)
       } catch (error) {
         console.error('📸 Error checking permissions:', error)
         setCanManagePhotos(false)
@@ -132,51 +130,33 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     checkPermissions()
   }, [user, currentFarm])
 
-  // Get filtered images based on active tab
+  // Get all images (no filtering needed since tabs are removed)
   const getFilteredImages = (): DisplayImage[] => {
     const firestoreImages = photos.filter(photo => photo.imageUrl)
-    
-    switch (activeTab) {
-      case 'general':
-        return [
-          ...firestoreImages.filter(p => p.photoType === 'general'),
-          ...storageImages.general.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url }))
-        ]
-      case 'health':
-        return [
-          ...firestoreImages.filter(p => p.photoType === 'health'),
-          ...storageImages.health.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url }))
-        ]
-      case 'fruit_count':
-        return [
-          ...firestoreImages.filter(p => p.photoType === 'fruit_count'),
-          ...storageImages.fruitCount.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url }))
-        ]
-      default:
-        return [
-          ...firestoreImages,
-          ...storageImages.general.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
-          ...storageImages.health.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
-          ...storageImages.fruitCount.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url }))
-        ]
-    }
+
+    return [
+      ...firestoreImages,
+      ...storageImages.general.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
+      ...storageImages.health.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
+      ...storageImages.fruitCount.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url }))
+    ]
   }
 
   const filteredImages = getFilteredImages()
   const totalImages = filteredImages.length
 
   // Modal navigation
-  const nextImage = () => {
+  const nextImage = useCallback(() => {
     if (selectedImage !== null) {
       setSelectedImage((selectedImage + 1) % totalImages)
     }
-  }
+  }, [selectedImage, totalImages])
 
-  const prevImage = () => {
+  const prevImage = useCallback(() => {
     if (selectedImage !== null) {
       setSelectedImage((selectedImage - 1 + totalImages) % totalImages)
     }
-  }
+  }, [selectedImage, totalImages])
 
   // Close modal on escape key and handle body scroll
   useEffect(() => {
@@ -190,13 +170,13 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       // Use modal stack manager to handle body scroll
       modalStack.pushModal('image-gallery')
       document.addEventListener('keydown', handleKeyDown)
-      
+
       return () => {
         modalStack.popModal('image-gallery')
         document.removeEventListener('keydown', handleKeyDown)
       }
     }
-  }, [selectedImage, totalImages])
+  }, [selectedImage, totalImages, nextImage, prevImage])
 
   // Handle touch gestures for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -224,7 +204,6 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   // Force refresh image gallery after upload
   const refreshImageGallery = async () => {
     try {
-      console.log('🔄 Refreshing image gallery...')
       setLoading(true)
 
       // Reload photos from Firestore
@@ -241,9 +220,8 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       setStorageImages(images)
       setStorageImagesLoading(false)
 
-      console.log('🔄 Gallery refreshed successfully')
     } catch (error) {
-      console.error('🔄 Error refreshing gallery:', error)
+      console.error('Error refreshing gallery:', error)
     } finally {
       setLoading(false)
     }
@@ -268,11 +246,9 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
 
     try {
       setDeletingPhotoId(photoToDelete.id)
-      console.log('🗑️ Deleting photo:', photoToDelete.id)
 
       // Delete from Firestore
       await deleteDoc(doc(db, 'photos', photoToDelete.id))
-      console.log('🗑️ Photo deleted from Firestore')
 
       // Try to delete from Storage (best effort)
       if (photoToDelete.originalPath || photoToDelete.localPath) {
@@ -280,9 +256,8 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
           const storagePath = photoToDelete.originalPath || photoToDelete.localPath
           const storageRef = ref(storage, storagePath)
           await deleteObject(storageRef)
-          console.log('🗑️ Photo deleted from Storage:', storagePath)
         } catch (storageError) {
-          console.warn('🗑️ Could not delete from Storage (file may not exist):', storageError)
+          console.warn('Could not delete from Storage (file may not exist):', storageError)
         }
       }
 
@@ -316,14 +291,12 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      console.log('📸 File selected:', file.name, file.type, (file.size / 1024 / 1024).toFixed(2) + 'MB')
       setPendingFile(file)
-      
+
       // Show compression info for general photos by default
       const info = getCompressionInfo(file, 'general')
       setCompressionInfo(info)
-      console.log('📸 Compression info:', info)
-      
+
       setShowPhotoTypeModal(true)
     }
     // Reset input value to allow selecting the same file again
@@ -337,36 +310,20 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     }
 
     try {
-      console.log('📸 Starting upload process:', {
-        file: pendingFile.name,
-        type: photoType,
-        originalSize: (pendingFile.size / 1024 / 1024).toFixed(2) + 'MB',
-        treeId: tree.id,
-        farmId: currentFarm.id
-      })
-
       // STEP 1: COMPRESSION
       let fileToUpload = pendingFile
       
       if (needsCompression(pendingFile)) {
         setCompressing(true)
-        console.log('📸 Compressing image...')
-        
+
         try {
           fileToUpload = await compressImageSmart(pendingFile, photoType)
-          console.log('📸 Compression successful:', {
-            originalSize: (pendingFile.size / 1024 / 1024).toFixed(2) + 'MB',
-            compressedSize: (fileToUpload.size / 1024 / 1024).toFixed(2) + 'MB',
-            reduction: (((pendingFile.size - fileToUpload.size) / pendingFile.size) * 100).toFixed(1) + '%'
-          })
         } catch (compressionError) {
-          console.warn('📸 Compression failed, using original file:', compressionError)
+          console.warn('Compression failed, using original file:', compressionError)
           fileToUpload = pendingFile // Fallback to original file
         }
-        
+
         setCompressing(false)
-      } else {
-        console.log('📸 File size acceptable, skipping compression')
       }
 
       // STEP 2: UPLOAD
@@ -384,8 +341,8 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
           })
           latitude = position.coords.latitude
           longitude = position.coords.longitude
-        } catch (error) {
-          console.log('📍 Location not available:', error)
+        } catch {
+          // Location not available, continue without GPS data
         }
       }
 
@@ -397,11 +354,9 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       // Upload to Firebase Storage
       const storagePath = `farms/${currentFarm.id}/trees/${tree.id}/photos/${timestamp}/${filename}`
       const storageRef = ref(storage, storagePath)
-      
-      console.log('📸 Uploading to storage path:', storagePath)
-      const uploadResult = await uploadBytes(storageRef, fileToUpload)
-      const downloadURL = await getDownloadURL(uploadResult.ref)
-      
+
+      await uploadBytes(storageRef, fileToUpload)
+
       // Save photo metadata to Firestore
       const photoData = {
         treeId: tree.id,
@@ -422,8 +377,6 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       
       const photosRef = collection(db, 'photos')
       await addDoc(photosRef, photoData)
-      
-      console.log('📸 Photo saved to Firestore:', photoData)
 
       // Force refresh the image gallery
       await refreshImageGallery()
@@ -463,19 +416,6 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       hour: '2-digit',
       minute: '2-digit'
     }).format(date)
-  }
-
-  const getTabCount = (tab: typeof activeTab) => {
-    switch (tab) {
-      case 'general':
-        return photos.filter(p => p.photoType === 'general').length + storageImages.general.length
-      case 'health':
-        return photos.filter(p => p.photoType === 'health').length + storageImages.health.length
-      case 'fruit_count':
-        return photos.filter(p => p.photoType === 'fruit_count').length + storageImages.fruitCount.length
-      default:
-        return totalImages
-    }
   }
 
   if (loading) {
@@ -604,12 +544,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Chưa có hình ảnh</h3>
               <p className="text-gray-600 max-w-md mx-auto leading-relaxed">
-                Chưa có hình ảnh nào cho cây này trong danh mục{' '}
-                <span className="font-semibold text-blue-600">
-                  "{activeTab === 'all' ? 'tất cả' :
-                    activeTab === 'general' ? 'chung' :
-                    activeTab === 'health' ? 'sức khỏe' : 'đếm trái'}"
-                </span>
+                Chưa có hình ảnh nào cho cây này
               </p>
               <div className="mt-6">
                 <div className="inline-flex items-center space-x-2 text-sm text-gray-500 bg-blue-50 px-4 py-2 rounded-full">
@@ -639,11 +574,12 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                         </div>
                         
                         {/* Actual Image */}
-                        <img
+                        <Image
                           src={image.thumbnailUrl || image.imageUrl}
                           alt={`Tree ${tree.name || tree.qrCode} photo ${index + 1}`}
                           className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
-                          loading="lazy"
+                          fill
+                          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                           onLoad={(e) => {
                             // Hide placeholder when image loads
                             const placeholder = e.currentTarget.previousElementSibling;
@@ -653,6 +589,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                             e.currentTarget.style.opacity = '1';
                           }}
                           style={{ opacity: '0' }}
+                          unoptimized
                         />
                       </>
                     ) : (
@@ -780,15 +717,18 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
               {filteredImages[selectedImage].imageUrl && (
                 <>
                   {/* Image with enhanced styling */}
-                  <img
+                  <Image
                     src={filteredImages[selectedImage].imageUrl}
                     alt={`Tree photo ${selectedImage + 1}`}
                     className="max-w-full max-h-full object-contain select-none rounded-xl shadow-2xl"
-                    style={{ 
+                    width={800}
+                    height={600}
+                    style={{
                       touchAction: 'pan-x pan-y pinch-zoom',
-                      userSelect: 'none' 
+                      userSelect: 'none'
                     }}
                     draggable={false}
+                    unoptimized
                   />
                   
                   {/* Subtle glow effect around image */}
@@ -1026,10 +966,13 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                 <div className="flex items-center space-x-3">
                   <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                     {photoToDelete.imageUrl && (
-                      <img
+                      <Image
                         src={photoToDelete.thumbnailUrl || photoToDelete.imageUrl}
                         alt="Preview"
                         className="w-full h-full object-cover"
+                        width={64}
+                        height={64}
+                        unoptimized
                       />
                     )}
                   </div>
