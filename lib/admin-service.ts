@@ -16,14 +16,14 @@ import { Farm, Tree, ManualEntry, Photo } from './types'
 import { EnhancedUser, EnhancedFarm } from './types-enhanced'
 import { Zone } from './gps-tracking-service'
 
-// Admin user configuration
+// Admin user configuration - Use environment variables for security
 export const ADMIN_CONFIG = {
-  uid: 'O6aFgoNhDigSIXk6zdYSDrFWhWG2',
-  email: 'minhdai.bmt@gmail.com',
-  displayName: 'Admin User',
+  uid: process.env.NEXT_PUBLIC_ADMIN_UID || 'O6aFgoNhDigSIXk6zdYSDrFWhWG2',
+  email: process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@farm.com',
+  displayName: 'Super Admin',
   permissions: [
     'read',
-    'write', 
+    'write',
     'delete',
     'manage_users',
     'manage_zones',

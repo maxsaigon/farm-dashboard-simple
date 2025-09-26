@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useSimpleAuth, SimpleUser } from '@/lib/simple-auth-context'
 import { simpleAuthService } from '@/lib/simple-auth-service'
-import { 
-  UsersIcon, 
-  PlusIcon, 
+import {
+  UsersIcon,
+  PlusIcon,
   EyeIcon,
   PencilIcon,
   TrashIcon,
@@ -19,6 +19,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { validateUserInput, rateLimiter, canPerformAdminOperation } from '@/lib/validation-utils'
 
 interface UserStats {
   totalUsers: number
@@ -36,6 +37,9 @@ export default function SimpleUserManagement() {
   const [selectedUser, setSelectedUser] = useState<SimpleUser | null>(null)
   const [newUserEmail, setNewUserEmail] = useState('')
   const [newUserName, setNewUserName] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const usersPerPage = 20 // Limit to 20 users per page for performance
   const [stats, setStats] = useState<UserStats>({
     totalUsers: 0,
     verifiedUsers: 0,
@@ -45,17 +49,17 @@ export default function SimpleUserManagement() {
 
   useEffect(() => {
     if (currentUser && isAdmin()) {
-      loadUsers()
+      loadUsers(currentPage)
     }
-  }, [currentUser, isAdmin])
+  }, [currentUser, isAdmin, currentPage])
 
-  const loadUsers = async () => {
+  const loadUsers = async (page: number = 1) => {
     setLoading(true)
     try {
       const usersRef = collection(db, 'users')
       const usersSnapshot = await getDocs(usersRef)
-      
-      const usersData = usersSnapshot.docs.map(doc => {
+
+      const allUsersData = usersSnapshot.docs.map(doc => {
         const data = doc.data()
         return {
           ...data,
@@ -64,23 +68,36 @@ export default function SimpleUserManagement() {
           lastLoginAt: data.lastLoginAt?.toDate ? data.lastLoginAt.toDate() : data.lastLoginAt
         }
       }) as SimpleUser[]
-      
-      setUsers(usersData)
-      
-      // Calculate stats
+
+      // Calculate stats from all users
       const now = new Date()
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-      
-      const verifiedUsers = usersData.filter(u => u.emailVerified).length
-      const recentUsers = usersData.filter(u => u.createdAt > thirtyDaysAgo).length
-      const adminUsers = usersData.filter(u => u.email && ['admin@farm.com'].includes(u.email)).length
+
+      const verifiedUsers = allUsersData.filter(u => u.emailVerified).length
+      const recentUsers = allUsersData.filter(u => u.createdAt > thirtyDaysAgo).length
+      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@farm.com'
+      const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID || 'O6aFgoNhDigSIXk6zdYSDrFWhWG2'
+      const adminUsers = allUsersData.filter(u =>
+        (u.email && u.email === adminEmail) || (u.uid && u.uid === adminUid)
+      ).length
 
       setStats({
-        totalUsers: usersData.length,
+        totalUsers: allUsersData.length,
         verifiedUsers,
         recentUsers,
         adminUsers
       })
+
+      // Calculate pagination
+      const totalPages = Math.ceil(allUsersData.length / usersPerPage)
+      setTotalPages(totalPages)
+
+      // Get users for current page
+      const startIndex = (page - 1) * usersPerPage
+      const endIndex = startIndex + usersPerPage
+      const pageUsers = allUsersData.slice(startIndex, endIndex)
+
+      setUsers(pageUsers)
     } catch (error) {
       console.error('Error loading users:', error)
     } finally {
@@ -106,10 +123,28 @@ export default function SimpleUserManagement() {
       return
     }
 
+    // Rate limiting for delete operations
+    if (!rateLimiter.isAllowed(`delete_user_${currentUser?.uid}`, 2, 300000)) { // 2 per 5 minutes
+      alert('Quá nhiều yêu cầu xóa. Vui lòng thử lại sau.')
+      return
+    }
+
+    // Check admin permission
+    if (!canPerformAdminOperation(currentUser?.uid || '', 'user_delete')) {
+      alert('Không có quyền xóa người dùng.')
+      return
+    }
+
+    // Prevent self-deletion
+    if (user.uid === currentUser?.uid) {
+      alert('Không thể tự xóa tài khoản của chính mình.')
+      return
+    }
+
     try {
       const userRef = doc(db, 'users', user.uid)
       await deleteDoc(userRef)
-      
+
       console.log(`✅ Deleted user ${user.email}`)
       await loadUsers() // Reload users
     } catch (error) {
@@ -124,11 +159,34 @@ export default function SimpleUserManagement() {
       return
     }
 
+    // Rate limiting
+    if (!rateLimiter.isAllowed(`invite_${currentUser?.uid}`, 3, 60000)) {
+      alert('Quá nhiều yêu cầu. Vui lòng thử lại sau.')
+      return
+    }
+
+    // Validate input
+    const validation = validateUserInput({
+      email: newUserEmail,
+      displayName: newUserName
+    })
+
+    if (!validation.isValid) {
+      alert(`Lỗi xác thực: ${validation.errors.join(', ')}`)
+      return
+    }
+
+    // Check admin permission
+    if (!canPerformAdminOperation(currentUser?.uid || '', 'user_management')) {
+      alert('Không có quyền thực hiện thao tác này.')
+      return
+    }
+
     try {
       // In a real app, you would send an email invitation here
-      console.log(`📧 Sending invitation to ${newUserEmail}`)
-      alert(`Đã gửi lời mời đến ${newUserEmail}`)
-      
+      console.log(`📧 Sending invitation to ${validation.sanitized.email}`)
+      alert(`Đã gửi lời mời đến ${validation.sanitized.email}`)
+
       setShowAddModal(false)
       setNewUserEmail('')
       setNewUserName('')
@@ -257,7 +315,7 @@ export default function SimpleUserManagement() {
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">
-            Danh sách người dùng ({filteredUsers.length})
+            Danh sách người dùng ({filteredUsers.length} / {stats.totalUsers})
           </h3>
         </div>
 
@@ -325,7 +383,8 @@ export default function SimpleUserManagement() {
                             ⏳ Chưa xác thực
                           </span>
                         )}
-                        {user.email && ['admin@farm.com'].includes(user.email) && (
+                        {((user.email && user.email === (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@farm.com')) ||
+                          (user.uid && user.uid === (process.env.NEXT_PUBLIC_ADMIN_UID || 'O6aFgoNhDigSIXk6zdYSDrFWhWG2'))) && (
                           <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
                             👑 Admin
                           </span>
@@ -375,6 +434,73 @@ export default function SimpleUserManagement() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="flex-1 flex justify-between sm:hidden">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              Trước
+            </button>
+            <button
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              Sau
+            </button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Hiển thị <span className="font-medium">{(currentPage - 1) * usersPerPage + 1}</span> đến{' '}
+                <span className="font-medium">{Math.min(currentPage * usersPerPage, stats.totalUsers)}</span> trong tổng số{' '}
+                <span className="font-medium">{stats.totalUsers}</span> người dùng
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <span className="sr-only">Trước</span>
+                  ‹
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        pageNum === currentPage
+                          ? 'z-10 bg-green-50 border-green-500 text-green-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <span className="sr-only">Sau</span>
+                  ›
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add User Modal */}
       {showAddModal && (

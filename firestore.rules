@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions for role checking
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return isAuthenticated() && request.auth.uid == 'O6aFgoNhDigSIXk6zdYSDrFWhWG2';
+    }
+
+    function hasFarmAccess(farmId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/farmAccess/$(request.auth.uid + '_' + farmId)) &&
+        get(/databases/$(database)/documents/farmAccess/$(request.auth.uid + '_' + farmId)).data.isActive == true;
+    }
+
+    function hasManagerAccess(farmId) {
+      return hasFarmAccess(farmId) &&
+        ['owner', 'manager'].hasAny([get(/databases/$(database)/documents/farmAccess/$(request.auth.uid + '_' + farmId)).data.role]);
+    }
+
+    function hasOwnerAccess(farmId) {
+      return hasFarmAccess(farmId) &&
+        get(/databases/$(database)/documents/farmAccess/$(request.auth.uid + '_' + farmId)).data.role == 'owner';
+    }
+
+    // Users collection - users can read/write their own profile
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isOwner());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isOwner());
+      allow create: if isAuthenticated();
+    }
+
+    // Farms collection - access based on farmAccess
+    match /farms/{farmId} {
+      allow read: if hasFarmAccess(farmId) || isOwner();
+      allow write: if hasManagerAccess(farmId) || isOwner();
+      allow create: if isAuthenticated();
+      allow delete: if hasOwnerAccess(farmId) || isOwner();
+
+      // Subcollections inherit farm permissions
+      match /{document=**} {
+        allow read: if hasFarmAccess(farmId) || isOwner();
+        allow write: if hasManagerAccess(farmId) || isOwner();
+        allow create: if hasManagerAccess(farmId) || isOwner();
+        allow delete: if hasOwnerAccess(farmId) || isOwner();
+      }
+    }
+
+    // Farm access control
+    match /farmAccess/{accessId} {
+      allow read: if isAuthenticated() &&
+        (request.auth.uid == resource.data.userId ||
+         hasOwnerAccess(resource.data.farmId) ||
+         isOwner());
+      allow write: if hasOwnerAccess(resource.data.farmId) || isOwner();
+      allow create: if hasOwnerAccess(resource.data.farmId) || isOwner();
+    }
+
+    // Admin-only collections (super admin only)
+    match /adminConfig/{document=**} {
+      allow read, write: if isOwner();
+    }
+
+    // Farm invitations
+    match /farmInvitations/{invitationId} {
+      allow read: if isAuthenticated() &&
+        (request.auth.uid == resource.data.invitedBy ||
+         hasOwnerAccess(resource.data.farmId) ||
+         isOwner());
+      allow write: if hasOwnerAccess(resource.data.farmId) || isOwner();
+      allow create: if hasOwnerAccess(resource.data.farmId) || isOwner();
+    }
+
+    // User farm access (legacy collection)
+    match /userFarmAccess/{accessId} {
+      allow read: if isAuthenticated() &&
+        (request.auth.uid == resource.data.userId ||
+         hasOwnerAccess(resource.data.farmId) ||
+         isOwner());
+      allow write: if hasOwnerAccess(resource.data.farmId) || isOwner();
+    }
+
+    // Zones collection
+    match /zones/{zoneId} {
+      allow read: if hasFarmAccess(resource.data.farmId) || isOwner();
+      allow write: if hasManagerAccess(resource.data.farmId) || isOwner();
+      allow create: if hasManagerAccess(resource.data.farmId) || isOwner();
+      allow delete: if hasOwnerAccess(resource.data.farmId) || isOwner();
+    }
+
+    // Global collections with restricted access
+    match /audit/{document=**} {
+      allow read, write: if isOwner();
+    }
+
+    match /system/{document=**} {
+      allow read, write: if isOwner();
+    }
+  }
+}

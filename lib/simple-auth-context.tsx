@@ -635,11 +635,14 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   }
 
   const isAdmin = (): boolean => {
-    // Super admin check - only specific emails or system admins
-    const superAdminEmails = [
-      'minhdai.bmt@gmail.com'  // Only super admin
-    ]
-    return Boolean(user?.email && superAdminEmails.includes(user.email))
+    // Super admin check - use environment variables for security
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@farm.com'
+    const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID || 'O6aFgoNhDigSIXk6zdYSDrFWhWG2'
+
+    return Boolean(
+      (user?.email && user.email === adminEmail) ||
+      (user?.uid && user.uid === adminUid)
+    )
   }
 
   const isFarmAdmin = (): boolean => {

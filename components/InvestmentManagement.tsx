@@ -25,6 +25,7 @@ import { db } from '@/lib/firebase'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { compressImageSmart } from '@/lib/photo-compression'
 import { uploadFiles } from '@/lib/storage'
+import { getModalZClass, MODAL_Z_INDEX } from '@/lib/modal-z-index'
 
 // Helper function to get season info from date
 function getSeasonFromDate(date: Date): { year: number, phase: string } {
@@ -652,7 +653,7 @@ function PhotoModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[9999]"
+      className={`fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 ${getModalZClass('PHOTO_VIEWER')}`}
       onClick={onClose}
     >
       <div
@@ -1111,7 +1112,7 @@ function InvestmentModal({
   const selectedCategory = quickCategories.find(cat => cat.value === formData.category)
 
   return (
-    <div className="fixed inset-0 bg-white z-[50000]">
+    <div className={`fixed inset-0 bg-white ${getModalZClass('MANAGEMENT_MODAL')}`}>
       {/* Header - Fixed (matching FullscreenTreeShowcase) */}
       <div className="fixed top-0 left-0 right-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200">
         <div className="flex items-center justify-between px-4 py-3">
