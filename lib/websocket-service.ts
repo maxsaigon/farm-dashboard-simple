@@ -62,7 +62,7 @@ class WebSocketService {
 
       this.setupEventHandlers()
     } catch (error) {
-      console.error('Failed to initialize WebSocket:', error)
+      // Failed to initialize WebSocket
     }
   }
 
@@ -71,22 +71,18 @@ class WebSocketService {
 
     // Connection events
     this.socket.on('connect', () => {
-      console.log('🔗 WebSocket connected:', this.socket?.id)
       this.reconnectAttempts = 0
       this.emit('connection-status', { connected: true, id: this.socket?.id })
     })
 
     this.socket.on('disconnect', (reason) => {
-      console.log('🔌 WebSocket disconnected:', reason)
       this.emit('connection-status', { connected: false, reason })
     })
 
     this.socket.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error)
       this.reconnectAttempts++
 
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        console.error('Max reconnection attempts reached, falling back to polling mode')
         this.emit('connection-status', { connected: false, error: 'max_retries_exceeded' })
       }
     })
@@ -109,7 +105,6 @@ class WebSocketService {
   joinFarm(farmId: string, userId?: string) {
     if (this.socket && this.socket.connected) {
       this.socket.emit('join-farm', { farmId, userId })
-      console.log(`📡 Joined farm room: ${farmId}`)
     }
   }
 
@@ -117,7 +112,6 @@ class WebSocketService {
   leaveFarm(farmId: string) {
     if (this.socket && this.socket.connected) {
       this.socket.emit('leave-farm', { farmId })
-      console.log(`📡 Left farm room: ${farmId}`)
     }
   }
 
@@ -164,7 +158,7 @@ class WebSocketService {
         try {
           callback(data)
         } catch (error) {
-          console.error(`Error in ${event} listener:`, error)
+          // Error in event listener
         }
       })
     }

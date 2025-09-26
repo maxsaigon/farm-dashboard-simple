@@ -170,11 +170,9 @@ export class GPSTrackingService {
       this.currentSession = session
       this.notifySessionListeners(session)
 
-      console.log('GPS tracking started for session:', session.id)
       return session
 
     } catch (error) {
-      console.error('Failed to start GPS tracking:', error)
       throw error
     }
   }
@@ -211,8 +209,6 @@ export class GPSTrackingService {
       // Upload any remaining buffered locations
       await this.uploadLocationBuffer()
 
-      console.log('GPS tracking stopped for session:', this.currentSession.id)
-      
       const completedSession = updatedSession
       this.currentSession = null
       this.notifySessionListeners(completedSession)
@@ -220,7 +216,6 @@ export class GPSTrackingService {
       return completedSession
 
     } catch (error) {
-      console.error('Failed to stop GPS tracking:', error)
       throw error
     }
   }
@@ -241,7 +236,6 @@ export class GPSTrackingService {
 
       // Check accuracy threshold
       if (coordinate.accuracy > this.config.minAccuracy) {
-        console.log('Location accuracy too low:', coordinate.accuracy)
         return
       }
 
@@ -249,9 +243,8 @@ export class GPSTrackingService {
       if (this.locationBuffer.length > 0) {
         const lastLocation = this.locationBuffer[this.locationBuffer.length - 1]
         const distance = this.calculateDistance(lastLocation, coordinate)
-        
+
         if (distance < this.config.minDistance) {
-          console.log('Distance too small to log:', distance)
           return
         }
 
@@ -311,10 +304,8 @@ export class GPSTrackingService {
       // Buffer for batch upload
       await this.bufferLocationUpdate(locationUpdate)
 
-      console.log('Location updated:', coordinate)
-
     } catch (error) {
-      console.error('Error handling location update:', error)
+      // Error handling location update
     }
   }
 
@@ -334,7 +325,7 @@ export class GPSTrackingService {
         break
     }
 
-    console.error('Location error:', errorMessage, error)
+    // Location error
   }
 
   // Zone boundary detection
@@ -415,10 +406,8 @@ export class GPSTrackingService {
         this.notifyGeofenceListeners(event)
       }
 
-      console.log('Zone transition:', fromZoneId, '->', toZoneId)
-
     } catch (error) {
-      console.error('Error handling zone transition:', error)
+      // Error handling zone transition
     }
   }
 
@@ -450,7 +439,6 @@ export class GPSTrackingService {
 
       return nearbyTrees
     } catch (error) {
-      console.error('Error finding nearby trees:', error)
       return []
     }
   }
@@ -486,10 +474,8 @@ export class GPSTrackingService {
           perimeter: doc.data().metadata?.perimeter || 0
         }
       } as Zone))
-
-      console.log('Loaded zones:', this.zones.length)
     } catch (error) {
-      console.error('Error loading zones:', error)
+      // Error loading zones
     }
   }
 
@@ -522,9 +508,7 @@ export class GPSTrackingService {
       )
 
       await Promise.all(uploadPromises)
-      console.log('Uploaded location batch:', batch.length)
     } catch (error) {
-      console.error('Error uploading location buffer:', error)
       // Re-add failed updates to buffer for retry
       this.locationUpdateBuffer.unshift(...this.locationUpdateBuffer.splice(-this.config.batchUploadSize))
     }
@@ -540,7 +524,7 @@ export class GPSTrackingService {
         return Math.round(battery.level * 100)
       }
     } catch (error) {
-      console.log('Battery API not available')
+      // Battery API not available
     }
     return undefined
   }
@@ -553,7 +537,7 @@ export class GPSTrackingService {
         return (navigator as any).connection.effectiveType || 'unknown'
       }
     } catch (error) {
-      console.log('Connection API not available')
+      // Connection API not available
     }
     return 'unknown'
   }
@@ -561,9 +545,8 @@ export class GPSTrackingService {
   // Offline sync setup
   private setupOfflineSync(): void {
     if (!this.isClient) return
-    
+
     window.addEventListener('online', () => {
-      console.log('Back online - syncing buffered data')
       this.uploadLocationBuffer()
     })
   }
@@ -589,7 +572,7 @@ export class GPSTrackingService {
       try {
         callback(location)
       } catch (error) {
-        console.error('Location listener error:', error)
+        // Location listener error
       }
     })
   }
@@ -599,7 +582,7 @@ export class GPSTrackingService {
       try {
         callback(event)
       } catch (error) {
-        console.error('Geofence listener error:', error)
+        // Geofence listener error
       }
     })
   }
@@ -609,7 +592,7 @@ export class GPSTrackingService {
       try {
         callback(session)
       } catch (error) {
-        console.error('Session listener error:', error)
+        // Session listener error
       }
     })
   }

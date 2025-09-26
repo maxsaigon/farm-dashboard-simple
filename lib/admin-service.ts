@@ -54,7 +54,6 @@ export class AdminService {
       try {
         return (dateValue as Timestamp).toDate()
       } catch (error) {
-        console.warn('Error converting Firestore timestamp:', error)
         return null
       }
     }
@@ -77,16 +76,13 @@ export class AdminService {
       const nanoseconds = timestampObj.nanoseconds || 0
       return new Date(seconds * 1000 + nanoseconds / 1000000)
     }
-    
-    console.warn('Unknown date format:', dateValue)
+
     return null
   }
   
   // Setup admin user with full permissions
   static async setupAdminUser(): Promise<{ success: boolean, mainFarmId?: string, error?: string }> {
     try {
-      console.log('Setting up admin user...')
-      
       // 1. Create/update admin user document
       await setDoc(doc(db, 'users', ADMIN_CONFIG.uid), {
         uid: ADMIN_CONFIG.uid,
@@ -96,21 +92,19 @@ export class AdminService {
         isAdmin: true,
         role: 'admin'
       }, { merge: true })
-      
+
       // 2. Find existing farms or create main farm
       const mainFarmId = await this.findOrCreateMainFarm()
-      
+
       // 3. Grant admin access to all existing farms
       await this.grantAdminAccessToAllFarms()
-      
+
       // 4. Ensure admin has access to main farm
       await this.ensureMainFarmAccess(mainFarmId)
-      
-      console.log('✅ Admin setup completed')
+
       return { success: true, mainFarmId }
-      
+
     } catch (error) {
-      console.error('❌ Admin setup failed:', error)
       return { success: false, error: (error as Error).message }
     }
   }
@@ -119,14 +113,13 @@ export class AdminService {
   private static async findOrCreateMainFarm(): Promise<string> {
     // Check if there's already a main farm
     const farmsSnapshot = await getDocs(collection(db, 'farms'))
-    
+
     if (!farmsSnapshot.empty) {
       // Use the first existing farm as main farm
       const firstFarm = farmsSnapshot.docs[0]
-      console.log(`Using existing farm as main: ${firstFarm.data().name}`)
       return firstFarm.id
     }
-    
+
     // Create a new main farm
     const mainFarmId = await FarmService.createFarm(
       {
@@ -138,20 +131,19 @@ export class AdminService {
       },
       ADMIN_CONFIG.uid
     )
-    
-    console.log(`✅ Created main farm: ${mainFarmId}`)
+
     return mainFarmId
   }
   
   // Grant admin access to all existing farms
   private static async grantAdminAccessToAllFarms(): Promise<void> {
     const farmsSnapshot = await getDocs(collection(db, 'farms'))
-    
+
     for (const farmDoc of farmsSnapshot.docs) {
       try {
         // Check if admin already has access
         const existingAccess = await FarmService.getUserFarmAccess(ADMIN_CONFIG.uid, farmDoc.id)
-        
+
         if (!existingAccess) {
           await FarmService.grantFarmAccess(
             ADMIN_CONFIG.uid,
@@ -159,12 +151,9 @@ export class AdminService {
             'owner',
             ADMIN_CONFIG.permissions
           )
-          console.log(`✅ Granted admin access to farm: ${farmDoc.data().name}`)
-        } else {
-          console.log(`✅ Admin already has access to farm: ${farmDoc.data().name}`)
         }
       } catch (error) {
-        console.warn(`Could not grant access to farm ${farmDoc.id}:`, error)
+        // Could not grant access to farm
       }
     }
   }
@@ -172,7 +161,7 @@ export class AdminService {
   // Ensure admin has access to main farm
   private static async ensureMainFarmAccess(mainFarmId: string): Promise<void> {
     const access = await FarmService.getUserFarmAccess(ADMIN_CONFIG.uid, mainFarmId)
-    
+
     if (!access) {
       await FarmService.grantFarmAccess(
         ADMIN_CONFIG.uid,
@@ -180,9 +169,6 @@ export class AdminService {
         'owner',
         ADMIN_CONFIG.permissions
       )
-      console.log('✅ Granted admin access to main farm')
-    } else {
-      console.log('✅ Admin already has access to main farm')
     }
   }
   
@@ -208,7 +194,6 @@ export class AdminService {
       return adminFarms.length > 0 ? adminFarms[0].id : null
       
     } catch (error) {
-      console.error('Error getting main farm ID:', error)
       return null
     }
   }
@@ -216,18 +201,17 @@ export class AdminService {
   // Auto-setup admin on first login
   static async autoSetupIfNeeded(userId: string): Promise<void> {
     if (!this.isAdmin(userId)) return
-    
+
     try {
       // Check if admin is already set up
       const userDoc = await getDoc(doc(db, 'users', userId))
       const userFarms = await FarmService.getUserFarms(userId)
-      
+
       if (!userDoc.exists() || userFarms.length === 0) {
-        console.log('Auto-setting up admin user...')
         await this.setupAdminUser()
       }
     } catch (error) {
-      console.error('Auto-setup failed:', error)
+      // Auto-setup failed
     }
   }
   
@@ -291,7 +275,7 @@ export class AdminService {
           } as Tree)
         })
       } catch (error) {
-        console.warn(`Could not fetch trees from farm ${farm.id}:`, error)
+        // Could not fetch trees from farm
       }
     }
     
@@ -322,7 +306,7 @@ export class AdminService {
           } as ManualEntry)
         })
       } catch (error) {
-        console.warn(`Could not fetch manual entries from farm ${farm.id}:`, error)
+        // Could not fetch manual entries from farm
       }
     }
     
@@ -355,7 +339,7 @@ export class AdminService {
           } as Photo)
         })
       } catch (error) {
-        console.warn(`Could not fetch photos from farm ${farm.id}:`, error)
+        // Could not fetch photos from farm
       }
     }
     
@@ -386,7 +370,6 @@ export class AdminService {
         permissions: ADMIN_CONFIG.permissions
       }
     } catch (error) {
-      console.error('Error getting admin info:', error)
       return { isAdmin: true }
     }
   }
@@ -425,7 +408,6 @@ export class AdminService {
       
       return users
     } catch (error) {
-      console.error('Error fetching users:', error)
       return []
     }
   }
@@ -439,7 +421,6 @@ export class AdminService {
         updatedAt: Timestamp.now()
       })
     } catch (error) {
-      console.error('Error creating user:', error)
       throw error
     }
   }
@@ -452,7 +433,6 @@ export class AdminService {
         updatedAt: Timestamp.now()
       })
     } catch (error) {
-      console.error('Error updating user:', error)
       throw error
     }
   }
@@ -467,7 +447,7 @@ export class AdminService {
       }
 
       const permissions = rolePermissions[role] || ['read']
-      
+
       // Update user document
       const userRef = doc(db, 'users', userId)
       await updateDoc(userRef, {
@@ -489,9 +469,7 @@ export class AdminService {
         updatedAt: Timestamp.now()
       }, { merge: true })
 
-      console.log(`Successfully assigned user ${userId} to farm ${farmId} with role ${role}`)
     } catch (error) {
-      console.error('Error assigning user to farm:', error)
       throw error
     }
   }
@@ -522,9 +500,7 @@ export class AdminService {
         await deleteDoc(accessRef)
       }
 
-      console.log(`Successfully removed user ${userId} from farm ${currentFarmId}`)
     } catch (error) {
-      console.error('Error removing user from farm:', error)
       throw error
     }
   }
@@ -533,14 +509,12 @@ export class AdminService {
     try {
       // First remove user from any assigned farm
       await this.removeUserFromFarm(userId)
-      
+
       // Delete user document
       const userRef = doc(db, 'users', userId)
       await deleteDoc(userRef)
 
-      console.log(`Successfully deleted user ${userId}`)
     } catch (error) {
-      console.error('Error deleting user:', error)
       throw error
     }
   }
@@ -574,7 +548,6 @@ export class AdminService {
       
       return zones
     } catch (error) {
-      console.error('Error fetching zones:', error)
       return []
     }
   }
@@ -588,7 +561,6 @@ export class AdminService {
         updatedAt: Timestamp.now()
       })
     } catch (error) {
-      console.error('Error creating zone:', error)
       throw error
     }
   }
@@ -601,7 +573,6 @@ export class AdminService {
         updatedAt: Timestamp.now()
       })
     } catch (error) {
-      console.error('Error updating zone:', error)
       throw error
     }
   }
@@ -611,7 +582,6 @@ export class AdminService {
       const zoneRef = doc(db, 'zones', zoneId)
       await deleteDoc(zoneRef)
     } catch (error) {
-      console.error('Error deleting zone:', error)
       throw error
     }
   }
@@ -630,10 +600,9 @@ export class AdminService {
         ...farm,
         createdDate: Timestamp.fromDate(farm.createdDate)
       })
-      
+
       return farmRef.id
     } catch (error) {
-      console.error('Error creating farm:', error)
       throw error
     }
   }
@@ -646,7 +615,6 @@ export class AdminService {
         updatedAt: Timestamp.now()
       })
     } catch (error) {
-      console.error('Error updating farm:', error)
       throw error
     }
   }
@@ -656,7 +624,6 @@ export class AdminService {
       const farmRef = doc(db, 'farms', farmId)
       await deleteDoc(farmRef)
     } catch (error) {
-      console.error('Error deleting farm:', error)
       throw error
     }
   }

@@ -80,91 +80,48 @@ export default function SimplifiedZoneManagement() {
 
       try {
         setLoading(true)
-        console.log('🔥 Loading zones for farm:', currentFarm.id)
-        console.log('🔥 Current user:', user?.uid)
 
         // Try farm-specific collection first
         let zonesRef = collection(db, 'farms', currentFarm.id, 'zones')
-        console.log('🔥 Querying farm zones collection:', zonesRef.path)
-        
+
         let zonesSnapshot = await getDocs(zonesRef)
-        console.log('🔥 Farm zones snapshot:', {
-          empty: zonesSnapshot.empty,
-          size: zonesSnapshot.size,
-          docs: zonesSnapshot.docs.length
-        })
 
         // If no zones found in farm collection, try global zones collection
         if (zonesSnapshot.empty) {
-          console.log('🔥 No zones in farm collection, trying global zones collection')
           zonesRef = collection(db, 'zones')
           const globalQuery = query(zonesRef, where('farmId', '==', currentFarm.id))
           zonesSnapshot = await getDocs(globalQuery)
-          console.log('🔥 Global zones snapshot:', {
-            empty: zonesSnapshot.empty,
-            size: zonesSnapshot.size,
-            docs: zonesSnapshot.docs.length
-          })
         }
 
         const zonesData = zonesSnapshot.docs.map(doc => {
           const data = doc.data()
-          console.log('🔥 Zone data for', doc.id, ':', data)
-          console.log('🔥 Raw boundary data (singular):', data.boundary)
-          console.log('🔥 Raw boundaries data (plural):', data.boundaries)
 
           // Handle different possible field names for boundaries (from debug code)
           let boundaries = data.boundary || data.boundaries || data.coordinates || data.polygon || data.points || []
-          
-          // Convert Firebase GeoPoint objects to standard lat/lng format
-          console.log(`🔥 Zone ${doc.id} processing boundaries:`, {
-            hasBoundaries: !!boundaries,
-            isArray: Array.isArray(boundaries),
-            length: boundaries?.length,
-            firstPoint: boundaries?.[0],
-            firstPointType: typeof boundaries?.[0]
-          })
-          
+
           if (boundaries && Array.isArray(boundaries) && boundaries.length > 0) {
-            console.log(`🔥 Zone ${doc.id} before conversion:`, boundaries[0])
             boundaries = boundaries.map((point: any, index: number) => {
-              console.log(`🔥 Converting point ${index}:`, point, typeof point)
               // Handle Firebase GeoPoint format
               if (point && typeof point === 'object' && ('_lat' in point || 'latitude' in point)) {
                 const converted = {
                   latitude: point._lat || point.latitude,
                   longitude: point._long || point.longitude
                 }
-                console.log(`🔥 Converted point ${index}:`, converted)
                 return converted
               }
-              console.log(`🔥 Point ${index} not converted (wrong format):`, point)
               return point
             })
-            console.log(`🔥 Zone ${doc.id} after conversion - boundaries length:`, boundaries.length)
-            console.log(`🔥 Zone ${doc.id} converted boundaries sample:`, boundaries.slice(0, 2))
-          } else {
-            console.log(`🔥 Zone ${doc.id} - No valid boundaries to convert`)
           }
 
           // Calculate area from boundaries if available
           let computedArea = data.area || 0
-          console.log(`🔥 Zone ${doc.id} area calculation:`, {
-            originalDataArea: data.area,
-            boundariesLength: boundaries?.length,
-            hasBoundaries: boundaries && Array.isArray(boundaries) && boundaries.length >= 3,
-            firstFewBoundaries: boundaries?.slice(0, 3)
-          })
-          
+
           if (boundaries && Array.isArray(boundaries) && boundaries.length >= 3) {
             try {
               computedArea = polygonAreaHectares(boundaries)
-              console.log(`🔥 Zone ${doc.id} computed area from boundaries:`, computedArea, 'hectares')
             } catch (error) {
-              console.warn(`Failed to compute area for zone ${doc.id}:`, error)
+              // Failed to compute area for zone
             }
-          } else {
-            console.log(`🔥 Zone ${doc.id} using stored area (no valid boundaries):`, computedArea)
           }
 
           // Handle metadata object (from debug code)
@@ -179,12 +136,6 @@ export default function SimplifiedZoneManagement() {
                                 (data.averageHealth && data.averageHealth < 7)
 
           const finalArea = computedArea || metadata.area || 0
-          console.log(`🔥 Zone ${doc.id} final area assignment:`, {
-            computedArea,
-            metadataArea: metadata.area,
-            finalArea,
-            willUseBoundariesForDisplay: boundaries && boundaries.length >= 3
-          })
 
           return {
             id: doc.id,
@@ -207,10 +158,8 @@ export default function SimplifiedZoneManagement() {
           } as Zone
         })
 
-        console.log('🔥 Final zones data:', zonesData)
         setZones(zonesData)
       } catch (error) {
-        console.error('Error loading zones:', error)
         setZones([])
       } finally {
         setLoading(false)
@@ -232,31 +181,22 @@ export default function SimplifiedZoneManagement() {
   const zonesNeedingAttention = zones.filter(zone => zone.needsAttention).length
 
   const formatArea = (zone: Zone) => {
-    console.log(`🔥 formatArea called for zone ${zone.id}:`, {
-      zoneArea: zone.area,
-      boundariesLength: zone.boundaries?.length,
-      hasValidBoundaries: zone.boundaries && zone.boundaries.length >= 3
-    })
-    
     // Calculate area from boundaries if available
     if (zone.boundaries && zone.boundaries.length >= 3) {
       try {
         const calculatedArea = polygonAreaHectares(zone.boundaries)
-        console.log(`🔥 formatArea calculated from boundaries:`, calculatedArea, 'ha')
         return `${calculatedArea.toFixed(1)} ha`
       } catch (error) {
-        console.warn('Failed to calculate area from boundaries:', error)
+        // Failed to calculate area from boundaries
       }
     }
-    
+
     // Fallback to stored area
     if (zone.area === 0) {
-      console.log(`🔥 formatArea - No area data available for zone ${zone.id}`)
       return "Chưa có dữ liệu"
     }
-    
+
     const fallbackArea = (zone.area / 10000).toFixed(1)
-    console.log(`🔥 formatArea fallback - stored area:`, zone.area, 'converted to:', fallbackArea, 'ha')
     return `${fallbackArea} ha`
   }
 
@@ -288,15 +228,13 @@ export default function SimplifiedZoneManagement() {
           })
           
           // Update local state
-          setZones(prev => prev.map(z => 
-            z.id === zone.id 
+          setZones(prev => prev.map(z =>
+            z.id === zone.id
               ? { ...z, lastInspectionDate: new Date(), needsAttention: false }
               : z
           ))
-          
-          console.log('✅ Zone inspection updated:', zone.id)
         } catch (error) {
-          console.error('❌ Failed to update zone inspection:', error)
+          // Failed to update zone inspection
         }
         break
     }
@@ -408,31 +346,22 @@ function ZoneCard({
                      'bg-red-100 text-red-800'
 
   const formatAreaFromZone = (zone: Zone) => {
-    console.log(`🔥 formatAreaFromZone called for zone ${zone.id}:`, {
-      zoneArea: zone.area,
-      boundariesLength: zone.boundaries?.length,
-      hasValidBoundaries: zone.boundaries && zone.boundaries.length >= 3
-    })
-    
     // Calculate area from boundaries if available
     if (zone.boundaries && zone.boundaries.length >= 3) {
       try {
         const calculatedArea = polygonAreaHectares(zone.boundaries)
-        console.log(`🔥 formatAreaFromZone calculated from boundaries:`, calculatedArea, 'ha')
         return `${calculatedArea.toFixed(1)} ha`
       } catch (error) {
-        console.warn('Failed to calculate area from boundaries:', error)
+        // Failed to calculate area from boundaries
       }
     }
-    
+
     // Fallback to stored area
     if (zone.area === 0) {
-      console.log(`🔥 formatAreaFromZone - No area data available for zone ${zone.id}`)
       return "Chưa có dữ liệu"
     }
-    
+
     const fallbackArea = (zone.area / 10000).toFixed(1)
-    console.log(`🔥 formatAreaFromZone fallback - stored area:`, zone.area, 'converted to:', fallbackArea, 'ha')
     return `${fallbackArea} ha`
   }
 

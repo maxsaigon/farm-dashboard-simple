@@ -34,7 +34,6 @@ export class MigrationService {
       
       return !photosSnapshot.empty
     } catch (error) {
-      console.error('Error checking for legacy data:', error)
       return false
     }
   }
@@ -42,8 +41,6 @@ export class MigrationService {
   // Migrate user's legacy data to farm-based structure
   static async migrateLegacyData(userId: string, user: User): Promise<string> {
     try {
-      console.log(`Starting migration for user ${userId}...`)
-      
       // 1. Create a default farm for the user
       const farmName = user.displayName ? `${user.displayName}'s Farm` : 'My Farm'
       const farmId = await FarmService.createFarm(
@@ -53,25 +50,19 @@ export class MigrationService {
         },
         userId
       )
-      
-      console.log(`Created default farm: ${farmId}`)
-      
+
       // 2. Migrate trees
-      const migratedTrees = await this.migrateTrees(userId, farmId)
-      console.log(`Migrated ${migratedTrees} trees`)
-      
+      await this.migrateTrees(userId, farmId)
+
       // 3. Migrate photos
-      const migratedPhotos = await this.migratePhotos(userId, farmId)
-      console.log(`Migrated ${migratedPhotos} photos`)
-      
+      await this.migratePhotos(userId, farmId)
+
       // 4. Clean up old collections (optional - keep for safety)
       // await this.cleanupLegacyData(userId)
-      
-      console.log(`Migration completed for user ${userId}`)
+
       return farmId
-      
+
     } catch (error) {
-      console.error('Migration failed:', error)
       throw new Error(`Migration failed: ${(error as Error).message}`)
     }
   }
@@ -203,52 +194,49 @@ export class MigrationService {
   
   // Clean up old legacy data (USE WITH CAUTION)
   static async cleanupLegacyData(userId: string): Promise<void> {
-    console.warn('Cleaning up legacy data - this action cannot be undone!')
-    
+
     // Delete old trees
     const treesQuery = query(
       collection(db, 'trees'),
       where('userId', '==', userId)
     )
     const treesSnapshot = await getDocs(treesQuery)
-    
+
     const batch = writeBatch(db)
     let operationCount = 0
-    
+
     for (const doc of treesSnapshot.docs) {
       batch.delete(doc.ref)
       operationCount++
-      
+
       // Firestore batch limit is 500 operations
       if (operationCount >= 500) {
         await batch.commit()
         operationCount = 0
       }
     }
-    
+
     // Delete old photos
     const photosQuery = query(
       collection(db, 'photos'),
       where('userId', '==', userId)
     )
     const photosSnapshot = await getDocs(photosQuery)
-    
+
     for (const doc of photosSnapshot.docs) {
       batch.delete(doc.ref)
       operationCount++
-      
+
       if (operationCount >= 500) {
         await batch.commit()
         operationCount = 0
       }
     }
-    
+
     // Commit remaining operations
     if (operationCount > 0) {
       await batch.commit()
     }
-    
-    console.log('Legacy data cleanup completed')
   }
   
   // Get migration status for a user
@@ -275,7 +263,6 @@ export class MigrationService {
         defaultFarmExists
       }
     } catch (error) {
-      console.error('Error getting migration status:', error)
       return {
         hasLegacyData: false,
         hasNewData: false,

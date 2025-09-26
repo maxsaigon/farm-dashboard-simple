@@ -193,7 +193,6 @@ export default function AnalyticsReporting() {
       }
       setReportData(emptyReportData)
     } catch (error) {
-      console.error('Error loading analytics data:', error)
       setReportData(null)
     } finally {
       setLoading(false)
@@ -224,7 +223,6 @@ export default function AnalyticsReporting() {
       // For now, set empty array until Firebase integration is complete
       setAvailableZones([])
     } catch (error) {
-      console.error('Error loading zones:', error)
       setAvailableZones([])
     }
   }
@@ -238,14 +236,13 @@ export default function AnalyticsReporting() {
       await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate generation
       
       // In real implementation, this would trigger download
-      console.log(`Generating ${format.toUpperCase()} report with filters:`, filters)
-      
+
       // Simulate file download
       const filename = `farm-report-${filters.reportType}-${new Date().toISOString().split('T')[0]}.${format}`
       alert(`Báo cáo ${filename} đã được tạo và tải xuống!`)
       
     } catch (error) {
-      console.error('Error generating report:', error)
+      // Error generating report
     } finally {
       setGeneratingReport(false)
     }

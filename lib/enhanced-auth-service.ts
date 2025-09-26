@@ -262,7 +262,6 @@ export class EnhancedAuthService {
       // Ensure permissions are populated from ROLE_PERMISSIONS if not already set
       if (!role.permissions || role.permissions.length === 0) {
         role.permissions = ROLE_PERMISSIONS[role.roleType] || []
-        console.log(`🔧 AUTO-POPULATED permissions for ${role.roleType}:`, role.permissions)
       }
       
       return role
@@ -279,10 +278,9 @@ export class EnhancedAuthService {
     grantedBy?: string
   ): Promise<UserRole> {
     const roleId = `${userId}_${roleType}_${scopeType}_${scopeId || 'system'}`
-    
+
     // Ensure permissions are always populated from ROLE_PERMISSIONS
     const permissions = ROLE_PERMISSIONS[roleType] || []
-    console.log(`🔧 GRANTING ROLE: ${roleType} with permissions:`, permissions)
     
     const userRole: UserRole = {
       id: roleId,
@@ -330,51 +328,32 @@ export class EnhancedAuthService {
 
   // Permission Checking
   hasPermission(permission: Permission, scopeId?: string): boolean {
-    console.log(`🔐 AUTH SERVICE: Checking permission ${permission} for scope ${scopeId}`)
-    console.log(`🔐 AUTH SERVICE: Current roles count:`, this.currentRoles.length)
-    
     if (!this.currentRoles.length) {
-      console.log(`🔐 AUTH SERVICE: No roles found`)
       return false
     }
 
     // Super admin has all permissions
     const hasSuperAdmin = this.currentRoles.some(role => role.roleType === 'super_admin')
     if (hasSuperAdmin) {
-      console.log(`🔐 AUTH SERVICE: Super admin access granted`)
       return true
     }
 
     // Check specific permissions
     const hasAccess = this.currentRoles.some(role => {
-      console.log(`🔐 AUTH SERVICE: Checking role:`, {
-        roleType: role.roleType,
-        scopeType: role.scopeType,
-        scopeId: role.scopeId,
-        isActive: role.isActive,
-        permissions: role.permissions,
-        hasPermission: role.permissions.includes(permission)
-      })
-      
       // Check if role is active and not expired
       if (!role.isActive || (role.expiresAt && role.expiresAt < new Date())) {
-        console.log(`🔐 AUTH SERVICE: Role inactive or expired`)
         return false
       }
 
       // Check if scope matches (if specified)
       if (scopeId && role.scopeId && role.scopeId !== scopeId) {
-        console.log(`🔐 AUTH SERVICE: Scope mismatch: required ${scopeId}, role has ${role.scopeId}`)
         return false
       }
 
       // Check if permission is granted
-      const hasPermission = role.permissions.includes(permission)
-      console.log(`🔐 AUTH SERVICE: Permission ${permission} in role: ${hasPermission}`)
-      return hasPermission
+      return role.permissions.includes(permission)
     })
-    
-    console.log(`🔐 AUTH SERVICE: Final result: ${hasAccess}`)
+
     return hasAccess
   }
 
@@ -514,7 +493,7 @@ export class EnhancedAuthService {
         timestamp: serverTimestamp()
       })
     } catch (error) {
-      console.error('Failed to log activity:', error)
+      // Failed to log activity
     }
   }
 

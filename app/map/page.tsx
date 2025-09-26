@@ -97,13 +97,11 @@ function MapPageContent() {
     setLoading(true)
     setError(null)
     try {
-      console.log('Loading data for farm:', farmId)
-      
       const [treesData, zonesData] = await Promise.all([
         loadTrees(farmId),
         loadZones(farmId)
       ])
-      
+
       // Map zone IDs/codes to human-friendly names
       const codeToName = new Map<string, string>()
       zonesData.forEach(z => {
@@ -118,14 +116,11 @@ function MapPageContent() {
 
       setTrees(treesWithNames)
       setZones(zonesData)
-      console.log('Data loaded - Trees:', treesData.length, 'Zones:', zonesData.length)
       
       // Handle zone focus if zone ID is in URL
       if (focusZoneId && zonesData.length > 0) {
         const targetZone = zonesData.find(zone => zone.id === focusZoneId)
         if (targetZone) {
-          console.log('🎯 Focusing on zone from URL:', targetZone.name, 'ID:', targetZone.id)
-          
           // Debug: Show how trees relate to this zone
           const relatedTrees = treesData.filter(tree =>
             (tree.zoneName || tree.zoneCode) === targetZone.id ||
@@ -133,9 +128,7 @@ function MapPageContent() {
             (tree as any).zoneId === targetZone.id ||
             (tree as any).zoneId === targetZone.name
           )
-          console.log('🌳 Trees in focused zone:', relatedTrees.length)
-          console.log('🌳 Sample tree zones:', treesData.slice(0, 5).map(t => ({ id: t.id, zoneName: t.zoneName, zoneCode: t.zoneCode, zoneId: (t as any).zoneId })))
-          
+
           setFocusedZone(targetZone)
           setSelectedZone(targetZone)
           // Ensure zones are visible for focusing
@@ -158,7 +151,6 @@ function MapPageContent() {
     if (!farmId) return []
 
     try {
-      console.log('Loading trees for farm:', farmId)
       const treesRef = collection(db, 'farms', farmId, 'trees')
       const treesSnapshot = await getDocs(treesRef)
       
@@ -181,8 +173,7 @@ function MapPageContent() {
           ...data
         } as Tree
       }).filter(tree => tree.latitude && tree.longitude && tree.latitude !== 0 && tree.longitude !== 0)
-      
-      console.log('Loaded trees with GPS:', treesData.length)
+
       return treesData
     } catch (error) {
       logger.error('Error loading trees:', error)
@@ -194,26 +185,20 @@ function MapPageContent() {
     if (!farmId) return []
 
     try {
-      console.log('Loading zones for farm:', farmId)
-      
       let zonesRef = collection(db, 'farms', farmId, 'zones')
       let zonesSnapshot = await getDocs(zonesRef)
-      console.log('Found zones in farm collection:', zonesSnapshot.docs.length)
-      
+
       if (zonesSnapshot.empty) {
-        console.log('No zones in farm collection, trying global zones collection')
         zonesRef = collection(db, 'zones')
         zonesSnapshot = await getDocs(query(zonesRef, where('farmId', '==', farmId)))
-        console.log('Found zones in global collection:', zonesSnapshot.docs.length)
       }
       
       const zonesData = zonesSnapshot.docs.map(doc => {
         const data = doc.data()
-        console.log('Processing zone:', doc.id, data)
-        
+
         const boundaries = data.boundary || data.boundaries || data.coordinates || data.polygon || data.points || []
         const metadata = data.metadata || {}
-        
+
         const computedArea = Array.isArray(boundaries) && boundaries.length >= 3 ? polygonAreaHectares(boundaries) : (data.area || metadata.area || 0)
         return {
           id: doc.id,
@@ -228,17 +213,12 @@ function MapPageContent() {
           createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date()
         }
       })
-      
-      console.log('All zones processed:', zonesData.length)
-      
+
       // For debugging, return all zones to see what we have
       const zonesWithBoundaries = zonesData.filter(zone => {
         const hasBoundaries = zone.boundaries && Array.isArray(zone.boundaries) && zone.boundaries.length >= 3
-        console.log(`Zone ${zone.id}: ${zone.boundaries?.length || 0} boundaries, valid: ${hasBoundaries}`)
         return hasBoundaries
       })
-      
-      console.log('Zones with valid boundaries:', zonesWithBoundaries.length)
       
       // Return zones with boundaries, or first 3 zones if none have boundaries (for debugging)
       return zonesWithBoundaries.length > 0 ? zonesWithBoundaries : zonesData.slice(0, 3)
@@ -258,11 +238,9 @@ function MapPageContent() {
 
   const handleZoneSelect = (zone: Zone) => {
     try {
-      console.log('🎯 handleZoneSelect called with:', zone?.id, zone?.name)
       if (zone && zone.id) {
         setSelectedZone(zone)
         setSelectedTree(null)
-        console.log('🎯 Zone selected successfully:', zone.name)
       } else {
         logger.error('🎯 Invalid zone passed to handleZoneSelect:', zone)
       }
@@ -324,9 +302,7 @@ function MapPageContent() {
   // Helper function to filter trees for a zone
   const getTreesForZone = (trees: Tree[], zone: Zone): Tree[] => {
     if (!zone) return trees
-    
-    console.log(`🔍 Filtering trees for zone: ${zone.name} (ID: ${zone.id})`)
-    
+
     // First try: exact matching by zone codes
     let filteredTrees = trees.filter(tree => {
       const zoneValue = tree.zoneName || tree.zoneCode
@@ -339,46 +315,28 @@ function MapPageContent() {
         zoneValue?.toLowerCase() === zone.id?.toLowerCase(),
         zoneValue?.toLowerCase() === zone.name?.toLowerCase()
       ].some(Boolean)
-      
-      if (matches) {
-        console.log(`✅ Tree ${tree.id} matched by zone: ${zoneValue}`)
-      }
+
       return matches
     })
-    
+
     // Second try: if no trees found by zone code, try geographic containment
     if (filteredTrees.length === 0 && zone.boundaries && zone.boundaries.length >= 3) {
-      console.log(`🌍 No trees found by zoneCode, trying geographic containment...`)
-      
       filteredTrees = trees.filter(tree => {
         const treeLat = (tree as any).location?.latitude || (tree as any).latitude
         const treeLng = (tree as any).location?.longitude || (tree as any).longitude
-        
+
         if (treeLat && treeLng && treeLat !== 0 && treeLng !== 0) {
           const isInside = isPointInPolygon(
             { lat: treeLat, lng: treeLng },
             zone.boundaries
           )
-          
-          if (isInside) {
-            console.log(`🎯 Tree ${tree.id} found inside zone boundaries`)
-          }
+
           return isInside
         }
         return false
       })
     }
-    
-    console.log(`🌳 Final filtered trees for zone ${zone.name}: ${filteredTrees.length} out of ${trees.length}`)
-    
-    // Debug: If still no trees, show what zone values we have
-    if (filteredTrees.length === 0) {
-      const zoneValues = trees.map(t => t.zoneName || t.zoneCode).filter(Boolean)
-      const uniqueZoneValues = Array.from(new Set(zoneValues))
-      console.log('🔍 Available zone values in trees:', uniqueZoneValues)
-      console.log('🔍 Looking for zone:', { id: zone.id, name: zone.name })
-    }
-    
+
     return filteredTrees
   }
 
@@ -580,7 +538,6 @@ function MapPageContent() {
                  <button
                    onClick={() => {
                      // Navigate to user location (would need to pass map ref or use callback)
-                     console.log('Navigate to user location')
                    }}
                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                  >
@@ -589,7 +546,6 @@ function MapPageContent() {
                  <button
                    onClick={() => {
                      // Fit all markers (would need to pass map ref or use callback)
-                     console.log('Fit all markers')
                    }}
                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
                  >
@@ -669,7 +625,6 @@ function MapPageContent() {
                 onTreeSelect={handleTreeSelect}
                 onZoneSelect={handleZoneSelect}
                 onZoneCreated={(zoneData: { boundaries: Array<{ latitude: number; longitude: number }> }) => {
-                  console.log('🎯 New zone created:', zoneData)
                   // TODO: Handle zone creation - save to Firebase and refresh zones
                 }}
                 enableDrawing={true} // Enable drawing tools for zone creation

@@ -93,7 +93,9 @@ const useEnhancedPositioning = () => {
           }].slice(-50)
         )
       },
-      (error) => console.error('Enhanced positioning error:', error),
+      (error) => {
+        // Enhanced positioning error
+      },
       {
         enableHighAccuracy: true,
         timeout: 3000,
@@ -171,7 +173,7 @@ const useAdvancedProximity = (
           isInside
         }
       } catch (error) {
-        console.warn('Error processing zone:', zone.id, error)
+        // Error processing zone
         return {
           ...zone,
           distance: Infinity,
@@ -210,13 +212,6 @@ export default function CustomFarmVectorMap({
   const [showBaseMap, setShowBaseMap] = useState(true)
 
   // Debug logging to see what data reaches the vector map
-  console.log('🎯 CustomFarmVectorMap received:', {
-    treesCount: trees.length,
-    zonesCount: zones.length,
-    farmBounds,
-    trees: trees.slice(0, 3), // Show first 3 trees
-    zones: zones.slice(0, 3)   // Show first 3 zones
-  })
 
   // Add test data when no real data is available
   const testTrees: Tree[] = trees.length === 0 ? [
@@ -262,11 +257,6 @@ export default function CustomFarmVectorMap({
       ]
     }
   ] : zones
-
-  console.log('🧪 Using data (test + real):', {
-    treesCount: testTrees.length,
-    zonesCount: testZones.length
-  })
   
   // Enhanced positioning and coordinate conversion
   const { userPosition, trackingHistory } = useEnhancedPositioning()
@@ -305,7 +295,7 @@ export default function CustomFarmVectorMap({
           }
         }
       } catch (error) {
-        console.warn('Error generating GeoJSON for zone:', zone.id, error)
+        // Error generating GeoJSON for zone
         return null
       }
     }).filter(Boolean) as any[]

@@ -54,19 +54,16 @@ export async function getTreePhotos(treeId: string): Promise<Photo[]> {
   try {
     // Validate inputs
     if (!treeId || typeof treeId !== 'string') {
-      console.warn('Invalid treeId provided to getTreePhotos:', treeId)
       return []
     }
 
     // Check if db is available
     if (!db) {
-      console.error('Firestore database not initialized')
       return []
     }
 
     const photosRef = safeCollection('photos')
     if (!photosRef) {
-      console.warn('Could not get photos collection reference')
       return []
     }
     
@@ -78,22 +75,18 @@ export async function getTreePhotos(treeId: string): Promise<Photo[]> {
         orderBy('timestamp', 'desc')
       )
       if (!q) {
-        console.warn('Could not build query with orderBy')
         throw new Error('Query building failed')
       }
       
       const docs = await safeGetDocs(q)
       return docs.map(convertToPhoto)
     } catch (indexError: any) {
-      console.warn('Index not available, using simple query:', indexError?.message || indexError)
-      
       // Fallback to simple query without orderBy
       const simpleQ = safeQuery(
         photosRef,
         where('treeId', '==', treeId)
       )
       if (!simpleQ) {
-        console.warn('Could not build simple query')
         return []
       }
       
@@ -104,7 +97,6 @@ export async function getTreePhotos(treeId: string): Promise<Photo[]> {
       return photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
     }
   } catch (error) {
-    console.error('Error getting tree photos for treeId:', treeId, error)
     return []
   }
 }
@@ -119,7 +111,6 @@ export function subscribeToTreePhotos(
   try {
     const photosRef = safeCollection('photos')
     if (!photosRef) {
-      console.error('Could not get photos collection for subscription')
       callback([])
       return () => {}
     }
@@ -133,7 +124,6 @@ export function subscribeToTreePhotos(
       )
       
       if (!q) {
-        console.warn('Could not build query for subscription')
         callback([])
         return () => {}
       }
@@ -142,20 +132,16 @@ export function subscribeToTreePhotos(
         const photos = docs.map(convertToPhoto)
         callback(photos)
       }, (error) => {
-        console.error('Error in subscription callback:', error)
         callback([])
       })
     } catch (indexError) {
-      console.warn('Index not available for subscription, using simple query')
-      
       // Fallback to simple query without orderBy
       const simpleQ = safeQuery(
         photosRef,
         where('treeId', '==', treeId)
       )
-      
+
       if (!simpleQ) {
-        console.warn('Could not build simple query for subscription')
         callback([])
         return () => {}
       }
@@ -166,12 +152,10 @@ export function subscribeToTreePhotos(
         const sortedPhotos = photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
         callback(sortedPhotos)
       }, (error) => {
-        console.error('Error in simple subscription callback:', error)
         callback([])
       })
     }
   } catch (error) {
-    console.error('Error setting up tree photos subscription:', error)
     return () => {}
   }
 }
@@ -183,7 +167,6 @@ export async function getFarmPhotos(farmId: string): Promise<Photo[]> {
   try {
     const photosRef = safeCollection('photos')
     if (!photosRef) {
-      console.warn('Could not get photos collection reference')
       return []
     }
     
@@ -196,15 +179,12 @@ export async function getFarmPhotos(farmId: string): Promise<Photo[]> {
         limit(100)
       )
       if (!q) {
-        console.warn('Could not build query with orderBy')
         throw new Error('Query building failed')
       }
       
       const docs = await safeGetDocs(q)
       return docs.map(convertToPhoto)
     } catch (indexError) {
-      console.warn('Index not available for farm photos, using simple query')
-      
       // Fallback to simple query without orderBy
       const simpleQ = safeQuery(
         photosRef,
@@ -212,7 +192,6 @@ export async function getFarmPhotos(farmId: string): Promise<Photo[]> {
         limit(100)
       )
       if (!simpleQ) {
-        console.warn('Could not build simple query')
         return []
       }
       
@@ -223,7 +202,6 @@ export async function getFarmPhotos(farmId: string): Promise<Photo[]> {
       return photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
     }
   } catch (error) {
-    console.error('Error getting farm photos:', error)
     return []
   }
 }
@@ -239,7 +217,6 @@ export async function getRecentPhotos(farmIds: string[], limitCount: number = 20
 
     const photosRef = safeCollection('photos')
     if (!photosRef) {
-      console.warn('Could not get photos collection reference')
       return []
     }
     
@@ -251,14 +228,12 @@ export async function getRecentPhotos(farmIds: string[], limitCount: number = 20
     )
     
     if (!q) {
-      console.warn('Could not build recent photos query')
       return []
     }
     
     const docs = await safeGetDocs(q)
     return docs.map(convertToPhoto)
   } catch (error) {
-    console.error('Error getting recent photos:', error)
     return []
   }
 }
@@ -273,7 +248,6 @@ export async function getPhotosByType(
   try {
     const photosRef = safeCollection('photos')
     if (!photosRef) {
-      console.warn('Could not get photos collection reference')
       return []
     }
     
@@ -288,15 +262,12 @@ export async function getPhotosByType(
       )
       
       if (!q) {
-        console.warn('Could not build query with orderBy')
         throw new Error('Query building failed')
       }
       
       const docs = await safeGetDocs(q)
       return docs.map(convertToPhoto)
     } catch (indexError) {
-      console.warn('Index not available for photos by type, using simple query')
-      
       // Fallback to simple query without orderBy
       const simpleQ = safeQuery(
         photosRef,
@@ -305,7 +276,6 @@ export async function getPhotosByType(
         limit(50)
       )
       if (!simpleQ) {
-        console.warn('Could not build simple query')
         return []
       }
       
@@ -316,7 +286,6 @@ export async function getPhotosByType(
       return photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
     }
   } catch (error) {
-    console.error('Error getting photos by type:', error)
     return []
   }
 }
@@ -344,23 +313,16 @@ export async function getPhotoWithUrls(photo: Photo, actualFarmId?: string): Pro
     
     // Use actualFarmId if provided, otherwise fall back to photo.farmId
     const effectiveFarmId = actualFarmId || photo.farmId
-    console.log(`🔧 Using farmId: '${effectiveFarmId}' (actualFarmId: '${actualFarmId}', photo.farmId: '${photo.farmId}')`)
-    
+
     if (effectiveFarmId && photo.treeId && photo.id) {
-      console.log(`🔧 Building paths with farmId: '${effectiveFarmId}', treeId: '${photo.treeId}', photoId: '${photo.id}'`)
       const basePath = `farms/${effectiveFarmId}/trees/${photo.treeId}/photos/${photo.id}`
-      console.log(`🔧 Base path: ${basePath}`)
-      
+
       correctPaths.push(
         `${basePath}/thumbnail.jpg`,
-        `${basePath}/compressed.jpg`, 
+        `${basePath}/compressed.jpg`,
         `${basePath}/ai_ready.jpg`,
         `${basePath}/${photo.filename}` // If filename is provided
       )
-      
-      console.log(`🔧 Correct paths generated:`, correctPaths)
-    } else {
-      console.warn(`🔧 Missing required fields - effectiveFarmId: '${effectiveFarmId}', treeId: '${photo.treeId}', photoId: '${photo.id}'`)
     }
     
     // Legacy/fallback paths for backwards compatibility
@@ -385,30 +347,27 @@ export async function getPhotoWithUrls(photo: Photo, actualFarmId?: string): Pro
       if (path.includes('thumbnail.jpg') || path === photo.thumbnailPath) {
         thumbnailUrl = await getImageUrl(path)
         if (thumbnailUrl) {
-          console.log(`Found thumbnail at: ${path}`)
           break
         }
       }
     }
-    
+
     // Try to get main image (prioritize compressed.jpg, then ai_ready.jpg)
     for (const path of allPaths) {
       if (path.includes('compressed.jpg') || path.includes('ai_ready.jpg') || path === photo.compressedPath || path === photo.aiReadyPath) {
         imageUrl = await getImageUrl(path)
         if (imageUrl) {
-          console.log(`Found image at: ${path}`)
           break
         }
       }
     }
-    
+
     // If no compressed image found, try any remaining paths
     if (!imageUrl) {
       for (const path of allPaths) {
         if (!path.includes('thumbnail.jpg')) { // Skip thumbnails for main image
           imageUrl = await getImageUrl(path)
           if (imageUrl) {
-            console.log(`Found fallback image at: ${path}`)
             break
           }
         }
@@ -420,12 +379,7 @@ export async function getPhotoWithUrls(photo: Photo, actualFarmId?: string): Pro
     
     photoWithUrls.isLoading = false
     photoWithUrls.loadError = !imageUrl && !thumbnailUrl
-    
-    if (photoWithUrls.loadError) {
-      console.warn('Failed to load any image for photo:', photo.id, 'Tried paths:', allPaths)
-    }
   } catch (error) {
-    console.error('Error loading photo URLs:', error)
     photoWithUrls.isLoading = false
     photoWithUrls.loadError = true
   }
@@ -441,7 +395,6 @@ export async function getPhotosWithUrls(photos: Photo[], actualFarmId?: string):
     const photoPromises = photos.map(photo => getPhotoWithUrls(photo, actualFarmId))
     return await Promise.all(photoPromises)
   } catch (error) {
-    console.error('Error loading photos with URLs:', error)
     return photos.map(photo => ({ ...photo, loadError: true }))
   }
 }

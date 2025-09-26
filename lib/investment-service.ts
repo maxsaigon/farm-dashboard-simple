@@ -67,6 +67,7 @@ export function subscribeToInvestments(userId: string, farmId: string, callback:
         createdBy: data.createdBy,
         createdAt: toDate(data.createdAt) || undefined,
         updatedAt: toDate(data.updatedAt) || undefined,
+        images: Array.isArray(data.images) ? data.images : undefined,
       }
     })
     callback(items)

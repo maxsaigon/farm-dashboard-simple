@@ -12,11 +12,6 @@ export default function UserInfo() {
     const unsubscribe = onAuthStateChange((firebaseUser) => {
       setUser(firebaseUser)
       setLoading(false)
-      console.log('Auth state changed:', firebaseUser ? {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName
-      } : 'Not authenticated')
     })
 
     return () => unsubscribe()

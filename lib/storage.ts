@@ -1,5 +1,5 @@
 import { storage } from './firebase'
-import { ref, getDownloadURL, listAll, StorageReference } from 'firebase/storage'
+import { ref, getDownloadURL, listAll, StorageReference, uploadBytes, UploadResult } from 'firebase/storage'
 
 /**
  * Get download URL for a file in Firebase Storage
@@ -244,5 +244,38 @@ export async function checkStoragePathExists(path: string): Promise<boolean> {
     return true
   } catch (error) {
     return false
+  }
+}
+
+/**
+ * Upload a file to Firebase Storage
+ */
+export async function uploadFile(file: File, path: string): Promise<string> {
+  try {
+    const storageRef = ref(storage, path)
+    const snapshot = await uploadBytes(storageRef, file)
+    const downloadURL = await getDownloadURL(snapshot.ref)
+    return downloadURL
+  } catch (error) {
+    console.error('Error uploading file:', error)
+    throw error
+  }
+}
+
+/**
+ * Upload multiple files to Firebase Storage
+ */
+export async function uploadFiles(files: File[], basePath: string): Promise<string[]> {
+  try {
+    const uploadPromises = files.map(async (file, index) => {
+      const fileName = `${Date.now()}_${index}_${file.name}`
+      const path = `${basePath}/${fileName}`
+      return await uploadFile(file, path)
+    })
+
+    return await Promise.all(uploadPromises)
+  } catch (error) {
+    console.error('Error uploading files:', error)
+    throw error
   }
 }

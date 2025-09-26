@@ -191,12 +191,10 @@ export default function InteractiveMap() {
     if (!currentFarm?.id) return []
 
     try {
-      console.log('Loading trees for farm:', currentFarm.id)
       const treesRef = collection(db, 'farms', currentFarm.id, 'trees')
-      
+
       // Try to load all trees first, then filter by GPS coordinates
       const treesSnapshot = await getDocs(treesRef)
-      console.log('Found trees documents:', treesSnapshot.docs.length)
       
       const treesWithGPS = treesSnapshot.docs
         .map(doc => {
@@ -216,8 +214,7 @@ export default function InteractiveMap() {
           }
         })
         .filter(tree => tree.latitude > 0 && tree.longitude > 0)
-      
-      console.log('Trees with GPS coordinates:', treesWithGPS.length)
+
       return treesWithGPS
     } catch (error) {
       console.error('Error loading trees with GPS:', error)
@@ -229,19 +226,14 @@ export default function InteractiveMap() {
     if (!currentFarm?.id) return []
 
     try {
-      console.log('Loading zones for farm:', currentFarm.id)
-      
       // Try to load zones from farm-specific collection first
       let zonesRef = collection(db, 'farms', currentFarm.id, 'zones')
       let zonesSnapshot = await getDocs(zonesRef)
-      console.log('Found zones in farm collection:', zonesSnapshot.docs.length)
-      
+
       // If no zones found in farm collection, try global zones collection filtered by farmId
       if (zonesSnapshot.empty) {
-        console.log('No zones in farm collection, trying global zones collection')
         zonesRef = collection(db, 'zones')
         zonesSnapshot = await getDocs(query(zonesRef, where('farmId', '==', currentFarm.id)))
-        console.log('Found zones in global collection:', zonesSnapshot.docs.length)
       }
       
       const zones = zonesSnapshot.docs.map(doc => {
@@ -260,8 +252,7 @@ export default function InteractiveMap() {
           createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date()
         }
       })
-      
-      console.log('Processed zones:', zones.length)
+
       return zones
     } catch (error) {
       console.error('Error loading farm zones:', error)
@@ -335,7 +326,6 @@ export default function InteractiveMap() {
       }
 
       setIsMapReady(true)
-      console.log('Google Maps initialized successfully')
     } catch (error) {
       console.error('Error initializing map:', error)
     }
@@ -547,7 +537,6 @@ export default function InteractiveMap() {
 
   const updateUserLocationMarker = (location: { lat: number; lng: number }) => {
     // Implementation for user location marker
-    console.log('User location:', location)
   }
 
   const centerOnUser = () => {

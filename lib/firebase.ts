@@ -32,8 +32,6 @@ const requiredEnvVars = [
   'NEXT_PUBLIC_FIREBASE_APP_ID'
 ]
 
-console.log('🔥 Firebase connected to project:', firebaseConfig.projectId)
-
 let app: FirebaseApp
 let db: Firestore
 let auth: Auth
@@ -43,12 +41,10 @@ try {
   // Prevent multiple Firebase initialization
   if (getApps().length === 0) {
     app = initializeApp(firebaseConfig)
-    console.log('Firebase initialized successfully')
   } else {
     app = getApps()[0]
-    console.log('Using existing Firebase app')
   }
-  
+
   // Initialize Firebase services with safer settings for v12+
   try {
     // More conservative Firestore initialization to avoid assertion errors
@@ -57,18 +53,15 @@ try {
       experimentalForceLongPolling: false,
       ignoreUndefinedProperties: true, // Help with type safety
     })
-    console.log('Firestore initialized with custom settings')
   } catch (firestoreError) {
-    console.warn('Custom Firestore initialization failed, using default:', firestoreError)
     // Fallback to default getFirestore
     db = getFirestore(app)
   }
-  
+
   auth = getAuth(app)
   storage = getStorage(app)
-  
+
 } catch (error) {
-  console.error('Error initializing Firebase:', error)
   throw error
 }
 

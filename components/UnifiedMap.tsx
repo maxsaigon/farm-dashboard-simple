@@ -339,7 +339,7 @@ const calculateMapBounds = (trees: Tree[], zones: Zone[]) => {
 
   return {
     center: [centerLat, centerLng] as [number, number],
-    zoom: Math.min(zoom, 18) // Cap at 18 for detail
+    zoom: Math.min(zoom, 22) // Cap at 22 for very close zoom (10m radius)
   }
 }
 
@@ -637,7 +637,7 @@ const UnifiedMap = memo(({
     onTreeSelect?.(tree)
 
     if (mapRef.current && tree.latitude && tree.longitude) {
-      mapRef.current.setView([tree.latitude, tree.longitude], 19)
+      mapRef.current.setView([tree.latitude, tree.longitude], 22)
     }
   }, [onTreeSelect])
 
@@ -660,10 +660,12 @@ const UnifiedMap = memo(({
         scrollWheelZoom={true}
         doubleClickZoom={true}
         dragging={true}
+        touchZoom={true}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          maxZoom={22}
         />
 
         {/* Drawing Controls */}

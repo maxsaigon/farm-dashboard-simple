@@ -57,19 +57,6 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
     setLoading(true)
     try {
       const unsubscribe = subscribeToTrees(currentFarm.id, user.uid, (updatedTrees) => {
-        console.log('🌳 TreeList received trees:', updatedTrees.length)
-        
-        // If we get an empty array and it's not due to no trees, it might be an access issue
-        if (updatedTrees.length === 0) {
-          console.log('🔍 No trees received - this might be due to farm access issues')
-          console.log('🔍 Current farm:', currentFarm.id, currentFarm.name)
-          console.log('🔍 Current user:', user.uid, user.email)
-          console.log('🔍 To fix this issue, you can:')
-          console.log('1. Visit /tmp_debug_access to debug farm access')
-          console.log('2. Run the farm access fix script in the console')
-          console.log('3. Contact an administrator to grant you access')
-        }
-        
         // Show real data or empty list if no trees loaded
         setTrees(updatedTrees)
         setLoading(false)
@@ -81,7 +68,6 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
         }
       }
     } catch (error) {
-      console.error('Error subscribing to trees:', error)
       setTrees([])
       setLoading(false)
     }
