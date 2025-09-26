@@ -98,7 +98,6 @@ export class BusinessRulesService {
 
       return rules
     } catch (error) {
-      console.error('Error fetching business rules:', error)
       return []
     }
   }
@@ -128,7 +127,6 @@ export class BusinessRulesService {
 
       return doc.id
     } catch (error) {
-      console.error('Error creating business rule:', error)
       throw error
     }
   }
@@ -145,7 +143,6 @@ export class BusinessRulesService {
         updatedAt: Timestamp.now()
       })
     } catch (error) {
-      console.error('Error updating business rule:', error)
       throw error
     }
   }
@@ -156,7 +153,6 @@ export class BusinessRulesService {
       const ruleRef = doc(db, 'businessRules', ruleId)
       await deleteDoc(ruleRef)
     } catch (error) {
-      console.error('Error deleting business rule:', error)
       throw error
     }
   }
@@ -394,9 +390,8 @@ export class BusinessRulesService {
 
   private static async executeCallWebhookAction(action: RuleAction, context: Record<string, any>): Promise<void> {
     const { url, method, headers, payload } = action.parameters
-    
+
     // This would typically be handled by a cloud function
-    console.log('Webhook action:', { url, method, headers, payload, context })
   }
 
   private static async executeAssignUserAction(action: RuleAction, context: Record<string, any>): Promise<void> {
@@ -428,7 +423,6 @@ export class BusinessRulesService {
 
       return templates
     } catch (error) {
-      console.error('Error fetching rule templates:', error)
       return this.getDefaultTemplates()
     }
   }
@@ -541,7 +535,6 @@ export class BusinessRulesService {
 
       return await this.createBusinessRule(rule)
     } catch (error) {
-      console.error('Error creating rule from template:', error)
       throw error
     }
   }
@@ -572,7 +565,6 @@ export class BusinessRulesService {
 
       return executions.slice(0, limit)
     } catch (error) {
-      console.error('Error fetching rule executions:', error)
       return []
     }
   }

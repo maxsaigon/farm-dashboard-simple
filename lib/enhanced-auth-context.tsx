@@ -88,17 +88,12 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
             
             // Load user roles and permissions
             const userRoles = await enhancedAuthService.loadUserRoles(firebaseUser.uid)
-            console.log('🔐 Setting roles in auth service:', userRoles.length, 'roles')
-            userRoles.forEach(role => {
-              console.log(`  - ${role.roleType} (${role.scopeType}:${role.scopeId}) - Active: ${role.isActive}`)
-            })
             // Set the current user in the service so permissions work correctly
             enhancedAuthService.setCurrentUserAndRoles(enhancedUser, userRoles)
-            
+
             // Load user data
             await loadUserData(firebaseUser.uid)
           } catch (error) {
-            console.error('Error loading user profile:', error)
             // If loading fails, clear everything
             clearUserData()
           }
@@ -107,7 +102,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           clearUserData()
         }
       } catch (error) {
-        console.error('Auth state change error:', error)
         clearUserData()
       } finally {
         setLoading(false)
@@ -139,26 +133,22 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     try {
       // Load user roles
       const userRoles = await enhancedAuthService.loadUserRoles(userId)
-      console.log('🔐 Loaded user roles:', userRoles.length)
-      userRoles.forEach(role => {
-        console.log(`  - ${role.roleType} permissions:`, role.permissions)
-      })
       setRoles(userRoles)
-      
+
       // Calculate permissions
       const userPermissions = enhancedAuthService.getCurrentPermissions()
       setPermissions(userPermissions)
-      
+
       // Load available farms based on user access
       const userFarms = await loadUserFarms(userId, userRoles)
       setFarms(userFarms)
-      
+
       // Load organizations if user has org-level roles
       const userOrganizations = await loadUserOrganizations(userId, userRoles)
       setOrganizations(userOrganizations)
-      
+
     } catch (error) {
-      console.error('Error loading user data:', error)
+      // Error loading user data
     }
   }
 
@@ -176,7 +166,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       try {
         return dateValue.toDate()
       } catch (error) {
-        console.warn('Error converting Firestore timestamp:', error)
         return new Date()
       }
     }
@@ -199,92 +188,57 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       const nanoseconds = timestampObj.nanoseconds || 0
       return new Date(seconds * 1000 + nanoseconds / 1000000)
     }
-    
-    console.warn('Unknown date format:', dateValue)
+
     return new Date()
   }
 
   const loadUserFarms = async (userId: string, userRoles: UserRole[]): Promise<EnhancedFarm[]> => {
     try {
-      console.log('🔍 Loading farms for user:', userId)
-      console.log('🔍 User roles received:', userRoles.length)
-      
-      // Debug: Log all roles
-      userRoles.forEach((role, index) => {
-        console.log(`Role ${index + 1}:`, {
-          roleType: role.roleType,
-          scopeType: role.scopeType,
-          scopeId: role.scopeId,
-          isActive: role.isActive
-        })
-      })
-      
       // Get farm IDs from roles - with detailed filtering
       const farmRoles = userRoles.filter(role => {
         const isFarmRole = role.scopeType === 'farm'
         const isActive = role.isActive === true // Explicit check
         const hasScope = Boolean(role.scopeId)
-        
-        if (isFarmRole) {
-          console.log(`Farm role check: ${role.roleType} | Active: ${isActive} | HasScope: ${hasScope} | ScopeId: ${role.scopeId}`)
-        }
-        
+
         return isFarmRole && isActive && hasScope
       })
-      
-      console.log('🏭 Active farm roles found:', farmRoles.length)
-      
+
       const farmIds = farmRoles.map(role => role.scopeId).filter(Boolean) as string[]
-      console.log('🏭 Farm IDs to load:', farmIds)
 
       if (farmIds.length === 0) {
-        console.warn('⚠️ No farm IDs found from active roles')
         return []
       }
 
       // Load farms
       const farmsPromises = farmIds.map(async (farmId) => {
         try {
-          console.log(`📥 Loading farm: ${farmId}`)
-          
           const { getDoc, doc } = await import('firebase/firestore')
           const { db } = await import('./firebase')
-          
+
           const farmDoc = await getDoc(doc(db, 'farms', farmId))
-          
+
           if (!farmDoc.exists()) {
-            console.error(`❌ Farm ${farmId} does not exist in database`)
             return null
           }
 
           const farmData = farmDoc.data()
-          console.log(`✅ Successfully loaded farm: ${farmData.name} (${farmId})`)
-          
+
           return {
             id: farmDoc.id,
             ...farmData,
             createdDate: convertToDate(farmData.createdDate)
           } as EnhancedFarm
         } catch (error) {
-          console.error(`❌ Error loading farm ${farmId}:`, error)
           return null
         }
       })
 
       const loadedFarms = await Promise.all(farmsPromises)
       const validFarms = loadedFarms.filter(Boolean) as EnhancedFarm[]
-      
-      console.log(`✅ Successfully loaded ${validFarms.length} farms for user`)
-      
-      // Debug: Log loaded farms
-      validFarms.forEach(farm => {
-        console.log(`  - ${farm.name} (${farm.id})`)
-      })
-      
+
       return validFarms
-      
+
     } catch (error) {
-      console.error('❌ Error loading user farms:', error)
       return []
     }
   }
@@ -317,7 +271,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
             updatedAt: convertToDate(orgData.updatedAt)
           } as Organization
         } catch (error) {
-          console.error(`Error loading organization ${orgId}:`, error)
           return null
         }
       })
@@ -326,7 +279,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       return loadedOrgs.filter(Boolean) as Organization[]
       
     } catch (error) {
-      console.error('Error loading user organizations:', error)
       return []
     }
   }
@@ -381,10 +333,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
 
   // Permission checking
   const hasPermission = (permission: Permission, scopeId?: string): boolean => {
-    const result = enhancedAuthService.hasPermission(permission, scopeId)
-    console.log(`🔐 Permission check: ${permission} for scope ${scopeId} = ${result}`)
-    console.log(`🔐 Current roles:`, roles.map(r => ({ roleType: r.roleType, permissions: r.permissions, scopeId: r.scopeId, isActive: r.isActive })))
-    return result
+    return enhancedAuthService.hasPermission(permission, scopeId)
   }
 
   const hasRole = (roleType: RoleType, scopeId?: string): boolean => {
@@ -423,7 +372,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
 
   const refreshUserData = async (): Promise<void> => {
     if (user) {
-      console.log('🔄 Refreshing user data for:', user.email)
       await loadUserData(user.uid)
     }
   }

@@ -60,7 +60,6 @@ export class AuditService {
         timestamp: Timestamp.now()
       })
     } catch (error) {
-      console.error('Error logging audit event:', error)
       // Don't throw error to avoid breaking the main operation
     }
   }
@@ -129,7 +128,6 @@ export class AuditService {
         lastDoc: snapshot.docs[snapshot.docs.length - 1]
       }
     } catch (error) {
-      console.error('Error fetching audit logs:', error)
       return { logs: [] }
     }
   }
@@ -174,7 +172,6 @@ export class AuditService {
         complianceScore
       }
     } catch (error) {
-      console.error('Error calculating audit stats:', error)
       return {
         totalLogs: 0,
         criticalEvents: 0,
@@ -203,7 +200,6 @@ export class AuditService {
 
       return rules
     } catch (error) {
-      console.error('Error fetching compliance rules:', error)
       return []
     }
   }
@@ -256,9 +252,8 @@ export class AuditService {
         })
       }
 
-      console.log('Default compliance rules initialized')
     } catch (error) {
-      console.error('Error initializing compliance rules:', error)
+      // Error initializing compliance rules
     }
   }
 

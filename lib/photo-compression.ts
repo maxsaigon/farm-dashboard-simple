@@ -93,46 +93,40 @@ async function compressToTargetSize(
   let blob: Blob | null = null
   let bestBlob: Blob | null = null
   let attempts = 0
-  
-  console.log(`📸 Starting compression with target: ${options.maxSizeKB}KB`)
-  
+
   // Try decreasing quality until size target is met
   while (attempts < 10) {
     blob = await new Promise<Blob | null>(resolve => {
       canvas.toBlob(resolve, `image/${options.format}`, quality)
     })
-    
+
     if (!blob) throw new Error('Failed to compress image')
-    
+
     const sizeKB = blob.size / 1024
-    console.log(`📸 Attempt ${attempts + 1}: ${sizeKB.toFixed(1)}KB at ${(quality * 100).toFixed(0)}% quality`)
-    
+
     // Always keep the best result so far
     if (!bestBlob || blob.size < bestBlob.size) {
       bestBlob = blob
     }
-    
+
     // Success if size is acceptable
     if (sizeKB <= options.maxSizeKB || quality <= 0.1) {
       break
     }
-    
+
     // Reduce quality for next attempt
     quality = Math.max(0.1, quality - 0.1)
     attempts++
   }
   
   if (!bestBlob) throw new Error('Failed to compress image')
-  
+
   // Convert blob to File
   const extension = options.format === 'jpeg' ? 'jpg' : options.format
   const baseName = originalFileName.split('.')[0] || 'compressed'
   const fileName = `${baseName}_compressed.${extension}`
-  
-  const finalSizeKB = bestBlob.size / 1024
-  console.log(`📸 Final compressed size: ${finalSizeKB.toFixed(1)}KB`)
-  
-  return new File([bestBlob], fileName, { 
+
+  return new File([bestBlob], fileName, {
     type: `image/${options.format}`,
     lastModified: Date.now()
   })
@@ -142,13 +136,11 @@ async function compressToTargetSize(
  * Main compression function using Canvas API
  */
 export async function compressImage(
-  file: File, 
+  file: File,
   options: Partial<CompressionOptions> = {}
 ): Promise<File> {
   const opts = { ...DEFAULT_COMPRESSION_OPTIONS, ...options }
-  
-  console.log(`📸 Compressing ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`)
-  
+
   return new Promise((resolve, reject) => {
     // Only process image files
     if (!file.type.startsWith('image/')) {
@@ -169,33 +161,25 @@ export async function compressImage(
       try {
         // Calculate new dimensions maintaining aspect ratio
         const { width, height } = calculateDimensions(
-          img.width, 
-          img.height, 
-          opts.maxWidth, 
+          img.width,
+          img.height,
+          opts.maxWidth,
           opts.maxHeight
         )
-        
-        console.log(`📸 Resizing from ${img.width}x${img.height} to ${width}x${height}`)
-        
+
         canvas.width = width
         canvas.height = height
-        
+
         // High quality drawing
         ctx.imageSmoothingEnabled = true
         ctx.imageSmoothingQuality = 'high'
-        
+
         // Draw and compress
         ctx.drawImage(img, 0, 0, width, height)
-        
+
         // Compress to target size
         const compressedFile = await compressToTargetSize(canvas, opts, file.name)
-        
-        const originalSizeMB = file.size / 1024 / 1024
-        const compressedSizeMB = compressedFile.size / 1024 / 1024
-        const reduction = ((originalSizeMB - compressedSizeMB) / originalSizeMB * 100)
-        
-        console.log(`📸 Compression complete: ${originalSizeMB.toFixed(2)}MB → ${compressedSizeMB.toFixed(2)}MB (${reduction.toFixed(1)}% reduction)`)
-        
+
         resolve(compressedFile)
       } catch (error) {
         reject(error)

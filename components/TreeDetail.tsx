@@ -170,10 +170,9 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       }, 1500)
       
     } catch (error) {
-      console.error('Error updating tree:', error)
       setSaveStatus('error')
       showError(
-        'Không thể lưu thông tin', 
+        'Không thể lưu thông tin',
         'Vui lòng kiểm tra kết nối mạng và thử lại.'
       )
     } finally {
@@ -208,7 +207,6 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       onTreeDelete?.(tree.id)
       onClose()
     } catch (error) {
-      console.error('Error deleting tree:', error)
       alert('Có lỗi xảy ra khi xóa cây')
     } finally {
       setLoading(false)
@@ -240,18 +238,9 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
         customFields: updatedCustomFields,
         updatedAt: new Date()
       }
-      
-      console.log('Saving custom fields:', {
-        farmId: currentFarm.id,
-        treeId,
-        updatedCustomFields,
-        updatedTreeData
-      })
-      
+
       await updateTree(currentFarm.id, treeId, user.uid, updatedTreeData)
-      
-      console.log('Custom fields saved successfully to Firebase')
-      
+
       setCustomFields(updatedCustomFields)
       
       // Update the parent component's tree data if callback exists
@@ -263,7 +252,6 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
         onTreeUpdate(updatedTree)
       }
     } catch (error) {
-      console.error('Error saving custom fields:', error)
       throw error // Let CustomFieldsSection handle the error display
     }
   }, [user, currentFarm, showError, onTreeUpdate, tree])

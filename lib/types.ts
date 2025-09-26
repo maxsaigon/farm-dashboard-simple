@@ -121,6 +121,7 @@ export interface Investment {
   isRecurring?: boolean
   recurringPeriod?: string
   farmId: string
+  images?: string[] // Array of image URLs/names stored in Firestore
 }
 
 // Fertilizer calculations

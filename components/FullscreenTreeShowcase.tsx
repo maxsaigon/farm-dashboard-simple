@@ -194,7 +194,7 @@ function SeasonInvestmentCard({ farmId, currentSeasonYear }: { farmId: string, c
           }
         })
       } catch (error) {
-        console.error('Error loading investment data:', error)
+        // Error loading investment data
       } finally {
         setLoading(false)
       }
@@ -337,18 +337,11 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
 
   // Initialize fruit count when tree changes, considering durian season status
   useEffect(() => {
-    console.log('🔥 DEBUG: Tree changed, initializing count:', {
-      tree: !!tree,
-      treeId: tree?.id,
-      manualFruitCount: tree?.manualFruitCount,
-      newCount: tree?.manualFruitCount || 0
-    })
     if (tree) {
       // Check if we're in a new season that should reset count to 0
       const shouldResetCount = lastSeason && getDurianSeasonStatus(lastSeason)?.expectedNextSeason === 'Mùa hiện tại'
-      
+
       if (shouldResetCount) {
-        console.log('🔥 DEBUG: New season detected, resetting count to 0')
         setCount(0)
       } else {
         setCount(tree.manualFruitCount || 0)
@@ -407,7 +400,7 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
           setLastSeason(null)
         }
       } catch (e) {
-        console.warn('Failed to fetch seasons', e)
+        // Failed to fetch seasons
         setLastSeason(null)
       } finally {
         setSeasonLoading(false)
@@ -426,88 +419,50 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
   }, [tree])
 
   const handleSave = async () => {
-    console.log('🔥 DEBUG: handleSave clicked!')
-    console.log('🔥 DEBUG: Current state:', {
-      user: !!user,
-      userId: user?.uid,
-      currentFarm: !!currentFarm,
-      farmId: currentFarm?.id,
-      tree: !!tree,
-      treeId: tree?.id,
-      count: count,
-      canSave: !!user && !!currentFarm,
-      saving: saving
-    })
-
     if (!user) {
-      console.log('❌ DEBUG: No user logged in')
       showError('Lỗi', 'Bạn chưa đăng nhập')
       return
     }
-    
+
     if (!currentFarm) {
-      console.log('❌ DEBUG: No farm selected')
       showError('Lỗi', 'Chưa chọn trang trại')
       return
     }
-    
+
     if (!tree) {
-      console.log('❌ DEBUG: No tree data')
       showError('Lỗi', 'Không có dữ liệu cây')
       return
     }
-
-    console.log('✅ DEBUG: All validations passed, starting save...')
     
-    // Debug: Check user's farm access and admin status
+    // Check user's farm access and admin status
     try {
       const { FarmService } = await import('@/lib/farm-service')
       const { AdminService } = await import('@/lib/admin-service')
-      
+
       const isAdmin = AdminService.isAdmin(user.uid)
-      console.log('🔥 DEBUG: Is user admin?', isAdmin)
-      
+
       const userAccess = await FarmService.getUserFarmAccess(user.uid, currentFarm.id)
-      console.log('🔥 DEBUG: User farm access:', userAccess)
-      
+
       // Also check what farms the user DOES have access to
       const userFarms = await FarmService.getUserFarms(user.uid)
-      console.log('🔥 DEBUG: All user farms:', userFarms.map(f => ({ id: f.id, name: f.name })))
-      console.log('🔥 DEBUG: Current farm trying to access:', { id: currentFarm.id, name: currentFarm.name })
-      
+
     } catch (error) {
-      console.log('❌ DEBUG: Could not check user access:', error)
+      // Could not check user access
     }
     
     try {
       setSaving(true)
-      console.log('🔥 DEBUG: Calling updateTree with:', {
-        farmId: currentFarm.id,
-        treeId: tree.id,
-        userId: user.uid,
-        data: { manualFruitCount: count }
-      })
-      
+
       await updateTree(currentFarm.id, tree.id, user.uid, { manualFruitCount: count })
-      
-      console.log('✅ DEBUG: updateTree successful!')
-      
+
       onSaved?.({ ...tree, manualFruitCount: count })
-      console.log('✅ DEBUG: onSaved callback called')
-      
+
       showSuccess('Đã lưu', 'Số lượng trái đã được cập nhật')
-      console.log('✅ DEBUG: Success message shown')
-      
+
     } catch (e) {
-      console.error('❌ DEBUG: Save failed:', e)
-      console.error('❌ DEBUG: Error details:', {
-        message: e instanceof Error ? e.message : 'Unknown error',
-        stack: e instanceof Error ? e.stack : 'No stack trace'
-      })
       showError('Lỗi', `Không thể lưu: ${e instanceof Error ? e.message : 'Lỗi không xác định'}`)
     } finally {
       setSaving(false)
-      console.log('🔥 DEBUG: Save operation completed, saving set to false')
     }
   }
 
@@ -533,17 +488,6 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
   }
 
   const canSave = !!user && !!currentFarm
-
-  // Debug logging for button state
-  console.log('🔥 DEBUG: Button render state:', {
-    canSave,
-    saving,
-    user: !!user,
-    currentFarm: !!currentFarm,
-    tree: !!tree,
-    count,
-    buttonDisabled: !canSave || saving
-  })
 
   return (
     <div className="fixed inset-0 z-[50000] bg-white">
@@ -626,11 +570,6 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
                   value={count || ''}
                   onChange={(e) => {
                     const newValue = parseInt(e.target.value) || 0
-                    console.log('🔥 DEBUG: Input changed:', {
-                      inputValue: e.target.value,
-                      parsedValue: newValue,
-                      oldCount: count
-                    })
                     setCount(newValue)
                   }}
                   className="w-full px-6 py-4 border-2 border-green-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-3xl font-bold text-center text-green-600 bg-white/80"

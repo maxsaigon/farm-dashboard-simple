@@ -88,7 +88,6 @@ export default function MobileCameraCapture() {
         setIsInitialized(true)
       }
     } catch (err) {
-      console.error('Error accessing camera:', err)
       setError({
         type: 'permission',
         message: 'Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập.'
@@ -108,7 +107,7 @@ export default function MobileCameraCapture() {
           })
         },
         (error) => {
-          console.error('Error getting location:', error)
+          // Error getting location
         },
         {
           enableHighAccuracy: true,
@@ -150,7 +149,6 @@ export default function MobileCameraCapture() {
       }, 'image/jpeg', 0.9)
       
     } catch (err) {
-      console.error('Error capturing photo:', err)
       setError({
         type: 'device',
         message: 'Không thể chụp ảnh. Vui lòng thử lại.'
@@ -199,10 +197,9 @@ export default function MobileCameraCapture() {
         ...metadata,
         location: location || undefined
       }))
-      
+
       // Upload photo (replace with actual API call)
-      console.log('Uploading photo...', { metadata, location })
-      
+
       // Simulate upload delay
       await new Promise(resolve => setTimeout(resolve, 2000))
       
@@ -210,7 +207,6 @@ export default function MobileCameraCapture() {
       window.location.href = '/photos'
       
     } catch (err) {
-      console.error('Error saving photo:', err)
       setError({
         type: 'network',
         message: 'Không thể lưu ảnh. Vui lòng kiểm tra kết nối mạng.'

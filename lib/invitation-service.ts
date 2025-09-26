@@ -520,18 +520,12 @@ export class InvitationService {
   }
 
   private async sendInvitationEmail(
-    invitation: FarmInvitation, 
-    farm: EnhancedFarm, 
+    invitation: FarmInvitation,
+    farm: EnhancedFarm,
     inviter: EnhancedUser
   ): Promise<void> {
     // TODO: Implement email service integration
     // This would integrate with SendGrid, AWS SES, or similar service
-    console.log('Sending invitation email:', {
-      to: invitation.inviteeEmail,
-      from: inviter.email,
-      subject: `Invitation to join ${farm.name}`,
-      invitationCode: invitation.invitationCode
-    })
   }
 
   private async logInvitationActivity(
@@ -553,7 +547,7 @@ export class InvitationService {
         status: 'success'
       })
     } catch (error) {
-      console.error('Failed to log invitation activity:', error)
+      // Failed to log invitation activity
     }
   }
 }

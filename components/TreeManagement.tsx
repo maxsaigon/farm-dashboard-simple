@@ -123,7 +123,6 @@ export default function TreeManagement() {
       // For now, set empty array until Firebase integration is complete
       setTrees([])
     } catch (error) {
-      console.error('Error loading trees:', error)
       setTrees([])
     } finally {
       setLoading(false)
@@ -248,7 +247,7 @@ export default function TreeManagement() {
           break
       }
     } catch (error) {
-      console.error(`Error ${action}:`, error)
+      // Error handling for tree action
     }
   }
 
@@ -268,8 +267,6 @@ export default function TreeManagement() {
       'Số ảnh': tree.photoCount,
       'Ghi chú': tree.notes
     }))
-    
-    console.log('Exporting trees:', csvData)
   }
 
   if (!hasPermission('trees:read')) {

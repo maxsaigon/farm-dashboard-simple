@@ -313,7 +313,6 @@ export class SimpleAuthService {
         activeUsers: accessSnapshot.docs.length
       }
     } catch (error) {
-      console.error('Error getting farm stats:', error)
       return {
         totalTrees: 0,
         totalPhotos: 0,
@@ -344,9 +343,8 @@ export class SimpleAuthService {
     }
     
     await setDoc(invitationRef, invitation)
-    
+
     // TODO: Send email invitation (integrate with email service)
-    console.log(`Invitation sent to ${email} for farm ${farmId} with role ${role}`)
   }
 
   async acceptInvitation(invitationId: string, userId: string): Promise<void> {

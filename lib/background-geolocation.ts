@@ -59,15 +59,12 @@ class BackgroundGeolocationService {
       this.config = { ...config, options: { ...this.defaultOptions, ...config.options } }
       this.isActive = true
 
-      console.log('📍 Starting background geolocation tracking:', this.config)
-
       this.watchId = navigator.geolocation.watchPosition(
         (position) => {
           this.handleLocationUpdate(position)
           resolve()
         },
         (error) => {
-          console.error('Background geolocation error:', error)
           this.config?.onError?.(error)
           reject(error)
         },
@@ -85,7 +82,6 @@ class BackgroundGeolocationService {
     this.config = null
     this.lastLocation = null
     this.lastUpdateTime = 0
-    console.log('📍 Stopped background geolocation tracking')
   }
 
   private handleLocationUpdate(position: GeolocationPosition): void {
@@ -133,8 +129,6 @@ class BackgroundGeolocationService {
 
     // Call callback if provided
     this.config?.onLocationUpdate?.(location)
-
-    console.log('📍 Background location update:', location)
   }
 
   private calculateDistance(loc1: LocationData, loc2: LocationData): number {
@@ -164,7 +158,6 @@ class BackgroundGeolocationService {
   updateConfig(updates: Partial<BackgroundLocationConfig>): void {
     if (this.config) {
       this.config = { ...this.config, ...updates }
-      console.log('📍 Updated background geolocation config:', updates)
     }
   }
 }
@@ -197,10 +190,10 @@ export const registerBackgroundLocationWorker = () => {
   if ('serviceWorker' in navigator && 'geolocation' in navigator) {
     navigator.serviceWorker.register('/background-location-worker.js')
       .then(registration => {
-        console.log('📍 Background location worker registered:', registration.scope)
+        // Background location worker registered
       })
       .catch(error => {
-        console.error('📍 Background location worker registration failed:', error)
+        // Background location worker registration failed
       })
   }
 }
@@ -209,12 +202,10 @@ export const registerBackgroundLocationWorker = () => {
 export const createBackgroundLocationWorkerScript = (): string => {
   return `
 self.addEventListener('install', event => {
-  console.log('Background location worker installed')
   self.skipWaiting()
 })
 
 self.addEventListener('activate', event => {
-  console.log('Background location worker activated')
   event.waitUntil(clients.claim())
 })
 
@@ -252,7 +243,7 @@ function startBackgroundTracking(config) {
       })
     },
     error => {
-      console.error('Background location error:', error)
+      // Background location error
     },
     config.options || {
       enableHighAccuracy: true,

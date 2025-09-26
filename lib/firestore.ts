@@ -31,7 +31,6 @@ function convertToDate(dateValue: unknown): Date | null {
     try {
       return (dateValue as Timestamp).toDate()
     } catch (error) {
-      console.warn('Error converting Firestore timestamp:', error)
       return null
     }
   }
@@ -54,8 +53,7 @@ function convertToDate(dateValue: unknown): Date | null {
     const nanoseconds = timestampObj.nanoseconds || 0
     return new Date(seconds * 1000 + nanoseconds / 1000000)
   }
-  
-  console.warn('Unknown date format:', dateValue)
+
   return null
 }
 
@@ -86,14 +84,12 @@ export function subscribeToTrees(farmId: string, userId: string, callback: (tree
           const enrichedTrees = await enrichTreesWithZoneNames(trees, farmId)
           treesWithZones.push(...enrichedTrees)
         } catch (error) {
-          console.error(`Error enriching trees for farm ${farmId}:`, error)
           treesWithZones.push(...trees) // Fallback without zone names
         }
       }
       
       callback(treesWithZones)
     }).catch(error => {
-      console.error('Error loading admin trees:', error)
       callback([])
     })
     return () => {} // Return empty unsubscribe function for admin
@@ -102,22 +98,6 @@ export function subscribeToTrees(farmId: string, userId: string, callback: (tree
   // Check farm access first for non-admin users
   FarmService.checkFarmAccess(userId, farmId, ['read']).then(async hasAccess => {
     if (!hasAccess) {
-      console.error('No access to farm:', farmId)
-      
-      // Try to get user's farms to see what they have access to
-      try {
-        const userFarms = await FarmService.getUserFarms(userId)
-        console.log('User has access to farms:', userFarms.map(f => ({ id: f.id, name: f.name })))
-        
-        if (userFarms.length === 0) {
-          console.error('User has no farm access at all. Please contact admin.')
-        } else {
-          console.error(`User does not have access to farm ${farmId}. Available farms:`, userFarms.map(f => f.id))
-        }
-      } catch (error) {
-        console.error('Error checking user farms:', error)
-      }
-      
       callback([])
       return
     }
@@ -167,15 +147,12 @@ export function subscribeToTrees(farmId: string, userId: string, callback: (tree
         enrichTreesWithZoneNames(trees, farmId).then(enrichedTrees => {
           callback(enrichedTrees)
         }).catch(error => {
-          console.error('Error enriching trees with zone names:', error)
           callback(trees) // Fallback to trees without zone names
         })
       } catch (error) {
-        console.error('Error processing tree data:', error)
         callback([])
       }
     }, (error) => {
-      console.error('Firestore subscription error:', error)
       // Call with empty array on error to prevent infinite loading
       callback([])
     })
@@ -254,9 +231,7 @@ export async function updateTree(farmId: string, treeId: string, userId: string,
       delete updateData[key as keyof typeof updateData]
     }
   })
-  
-  console.log('Updating tree with data:', updateData)
-  
+
   await updateDoc(treeRef, updateData)
 }
 
@@ -368,9 +343,9 @@ async function getZoneNameMap(farmId: string): Promise<Map<string, string>> {
         zoneNameMap.set(data.code, zoneName)
       }
     })
-    
+
   } catch (error) {
-    console.error('Error loading zone names:', error)
+    // Error loading zone names
   }
   
   return zoneNameMap
@@ -393,7 +368,6 @@ export function subscribeToPhotos(farmId: string, userId: string, callback: (pho
     AdminService.getAllPhotos().then(allPhotos => {
       callback(allPhotos as Photo[])
     }).catch(error => {
-      console.error('Error loading admin photos:', error)
       callback([])
     })
     return () => {} // Return empty unsubscribe function for admin
@@ -433,7 +407,6 @@ export function subscribeToManualEntries(farmId: string, userId: string, callbac
     AdminService.getAllManualEntries().then(allEntries => {
       callback(allEntries as ManualEntry[])
     }).catch(error => {
-      console.error('Error loading admin manual entries:', error)
       callback([])
     })
     return () => {} // Return empty unsubscribe function for admin

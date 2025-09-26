@@ -97,7 +97,7 @@ export default function FarmerFriendlyMap({
           })
         },
         (error) => {
-          console.log('Location access denied or unavailable')
+          // Location access denied or unavailable
         },
         { enableHighAccuracy: true, timeout: 10000 }
       )

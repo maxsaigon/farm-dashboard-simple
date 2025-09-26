@@ -256,7 +256,6 @@ export const useVoiceCommands = (commands: Record<string, () => void>) => {
 
   const startListening = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.warn('Voice recognition not supported')
       return
     }
 

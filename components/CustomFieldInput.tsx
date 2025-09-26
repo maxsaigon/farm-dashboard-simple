@@ -255,10 +255,10 @@ export function CustomFieldInput({ field, value, onSave, onCancel, className = '
           <span className="text-2xl">{field.icon}</span>
           <div className="flex-1">
             <h4 className="font-medium text-gray-900">{field.labelVi}</h4>
-            <p className="text-lg text-gray-700 mt-1">
+            <div className="text-lg text-gray-700 mt-1">
               {value ? (
                 field.type === 'yes_no' ? (value.value ? 'Có' : 'Không') :
-                field.type === 'harvest_date' && value.value instanceof Date ? 
+                field.type === 'harvest_date' && value.value instanceof Date ?
                   value.value.toLocaleDateString('vi-VN') :
                 value.value instanceof Date ?
                   value.value.toLocaleDateString('vi-VN') :
@@ -267,7 +267,7 @@ export function CustomFieldInput({ field, value, onSave, onCancel, className = '
                 <span className="text-gray-400">Chưa có dữ liệu</span>
               )}
               {field.unit && value && ` ${field.unit === 'meters' ? 'mét' : field.unit}`}
-            </p>
+            </div>
           </div>
         </div>
       </div>

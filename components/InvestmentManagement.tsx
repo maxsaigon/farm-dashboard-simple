@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import {
   CurrencyDollarIcon,
@@ -12,8 +12,10 @@ import {
   CalendarIcon,
   FunnelIcon,
   ArrowDownTrayIcon,
-  TagIcon
+  TagIcon,
+  PhotoIcon
 } from '@heroicons/react/24/outline'
+import { XMarkIcon } from '@heroicons/react/24/solid'
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon
@@ -21,6 +23,8 @@ import {
 import { subscribeToInvestments as subInvestments, addInvestment as addInv, updateInvestment as updInv, deleteInvestment as delInv, migrateLegacyInvestments } from '@/lib/investment-service'
 import { db } from '@/lib/firebase'
 import { collection, getDocs, query, where } from 'firebase/firestore'
+import { compressImageSmart } from '@/lib/photo-compression'
+import { uploadFiles } from '@/lib/storage'
 
 // Helper function to get season info from date
 function getSeasonFromDate(date: Date): { year: number, phase: string } {
@@ -57,6 +61,7 @@ interface Investment {
   recurringPeriod?: string
   farmId: string
   createdBy: string
+  images?: string[]
 }
 
 interface FertilizerCalculation {
@@ -85,6 +90,8 @@ export default function InvestmentManagement() {
   const [showInvestmentModal, setShowInvestmentModal] = useState(false)
   
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null)
+  const [selectedPhoto, setSelectedPhoto] = useState<Investment | null>(null)
+  const [showPhotoModal, setShowPhotoModal] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'summary' | 'calculator'>('list')
   const [filterCategory, setFilterCategory] = useState('all')
   const [filterDateRange, setFilterDateRange] = useState('all')
@@ -325,6 +332,7 @@ export default function InvestmentManagement() {
           treeCount: investmentData.treeCount,
           isRecurring: Boolean(investmentData.isRecurring),
           recurringPeriod: investmentData.recurringPeriod,
+          images: investmentData.images,
           createdBy: user.uid,
           userId: user.uid,
         } as any)
@@ -489,9 +497,25 @@ export default function InvestmentManagement() {
                       <div className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
                         <div className="flex items-center space-x-4 flex-1">
                           <div className="flex-shrink-0">
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <CurrencyDollarIcon className="h-6 w-6 text-blue-600" />
-                            </div>
+                            {investment.images && investment.images.length > 0 ? (
+                              <div className="h-10 w-10 rounded-lg overflow-hidden border border-gray-200 cursor-pointer" onClick={() => {
+                                setSelectedPhoto(investment)
+                                setShowPhotoModal(true)
+                              }}>
+                                <img
+                                  src={investment.images[0]}
+                                  alt="Hoá đơn"
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/placeholder-image.png'
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                <CurrencyDollarIcon className="h-6 w-6 text-blue-600" />
+                              </div>
+                            )}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center space-x-2">
@@ -591,6 +615,105 @@ export default function InvestmentManagement() {
         />
       )}
 
+      {/* Photo Modal */}
+      {showPhotoModal && selectedPhoto && (
+        <PhotoModal
+          investment={selectedPhoto}
+          isOpen={showPhotoModal}
+          onClose={() => {
+            setShowPhotoModal(false)
+            setSelectedPhoto(null)
+          }}
+        />
+      )}
+
+    </div>
+  )
+}
+
+// Photo Modal Component for viewing invoices
+function PhotoModal({
+  investment,
+  isOpen,
+  onClose
+}: {
+  investment: Investment
+  isOpen: boolean
+  onClose: () => void
+}) {
+  if (!isOpen || !investment.images || investment.images.length === 0) return null
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(amount)
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[9999]"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Hoá đơn - {investment.category} - {formatCurrency(investment.amount)}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div className="p-4 overflow-y-auto max-h-[80vh]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {investment.images.map((imageUrl, index) => (
+              <div key={index} className="space-y-2">
+                <div className="text-sm text-gray-600">
+                  Hoá đơn {index + 1}
+                </div>
+                <img
+                  src={imageUrl}
+                  alt={`Hoá đơn ${index + 1}`}
+                  className="w-full h-auto max-h-96 object-contain rounded-lg border border-gray-200"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/placeholder-image.png'
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-700">Danh mục:</span>
+                <span className="ml-2 text-gray-900">{investment.category}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Số tiền:</span>
+                <span className="ml-2 text-gray-900">{formatCurrency(investment.amount)}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Ngày:</span>
+                <span className="ml-2 text-gray-900">{new Date(investment.date).toLocaleDateString('vi-VN')}</span>
+              </div>
+              {investment.notes && (
+                <div className="md:col-span-2">
+                  <span className="font-medium text-gray-700">Ghi chú:</span>
+                  <span className="ml-2 text-gray-900">{investment.notes}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -916,19 +1039,62 @@ function InvestmentModal({
     category: investment?.category || categories[0] || 'Phân bón',
     subcategory: investment?.subcategory || '',
     date: investment?.date ? new Date(investment.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    notes: investment?.notes || ''
+    notes: investment?.notes || '',
+    images: investment?.images || []
   })
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [uploadingImages, setUploadingImages] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!formData.amount || formData.amount <= 0) {
       alert('Vui lòng nhập số tiền hợp lệ')
       return
     }
-    onSave({
-      ...formData,
-      date: new Date(formData.date)
-    })
+
+    try {
+      let imageUrls: string[] = formData.images || []
+
+      // Upload new images if any
+      if (selectedFiles.length > 0) {
+        setUploadingImages(true)
+        const compressedFiles = await Promise.all(
+          selectedFiles.map(file => compressImageSmart(file, 'general'))
+        )
+
+        const basePath = `investments/${Date.now()}`
+        const uploadedUrls = await uploadFiles(compressedFiles, basePath)
+        imageUrls = [...imageUrls, ...uploadedUrls]
+        setUploadingImages(false)
+      }
+
+      onSave({
+        ...formData,
+        images: imageUrls,
+        date: new Date(formData.date)
+      })
+    } catch (error) {
+      console.error('Error uploading images:', error)
+      alert('Lỗi khi tải lên hình ảnh: ' + (error instanceof Error ? error.message : String(error)))
+      setUploadingImages(false)
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    setSelectedFiles(prev => [...prev, ...files])
+  }
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const removeExistingImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images?.filter((_, i) => i !== index) || []
+    }))
   }
 
   if (!isOpen) return null
@@ -1074,6 +1240,88 @@ function InvestmentModal({
                   className="w-full px-6 py-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg bg-white/80"
                   placeholder="Mô tả chi tiết (tùy chọn)"
                 />
+              </div>
+
+              {/* Image Upload */}
+              <div>
+                <label className="block text-lg font-semibold text-gray-800 mb-3">Hoá đơn</label>
+                <div className="space-y-4">
+                  {/* Existing Images */}
+                  {formData.images && formData.images.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Hoá đơn hiện có:</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        {formData.images.map((imageUrl, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={imageUrl}
+                              alt={`Investment ${index + 1}`}
+                              className="w-full h-20 object-cover rounded-lg border"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeExistingImage(index)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* New Images to Upload */}
+                  {selectedFiles.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Hoá đơn mới:</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        {selectedFiles.map((file, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`New ${index + 1}`}
+                              className="w-full h-20 object-cover rounded-lg border"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeSelectedFile(index)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload Button */}
+                  <div className="flex items-center space-x-4">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImages}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium"
+                    >
+                      <PhotoIcon className="h-4 w-4" />
+                      <span>{uploadingImages ? 'Đang tải...' : 'Chọn hoá đơn'}</span>
+                    </button>
+                    {selectedFiles.length > 0 && (
+                      <span className="text-sm text-gray-600">
+                        {selectedFiles.length} hoá đơn được chọn
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Save Button */}

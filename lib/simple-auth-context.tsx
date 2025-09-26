@@ -196,7 +196,6 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         const state = JSON.parse(stored)
         // Only restore if less than 1 hour old
         if (Date.now() - state.timestamp < 60 * 60 * 1000) {
-          console.log('🔄 Restoring auth state from localStorage')
           return {
             user: state.user,
             farms: state.farms,
@@ -206,7 +205,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         }
       }
     } catch (error) {
-      console.warn('Failed to restore auth state:', error)
+      // Failed to restore auth state
     }
     return null
   }
@@ -218,8 +217,6 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         setFirebaseUser(firebaseUser)
         
         if (firebaseUser) {
-          console.log('🔐 User signed in:', firebaseUser.email)
-
           // Try to restore from localStorage for faster loading
           const restoredState = restoreAuthState()
           if (restoredState) {
@@ -236,9 +233,8 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
             // Load fresh data
             await loadFreshAuthData(firebaseUser)
           }
-          
+
         } else {
-          console.log('🔐 User signed out')
           setUser(null)
           setFarms([])
           setCurrentFarmState(null)
@@ -253,8 +249,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        console.warn('🔥 Auth system using demo mode due to Firestore unavailability:', errorMessage)
-        
+
         // Provide demo data for offline/demo mode
         if (firebaseUser) {
           setUser({
@@ -266,7 +261,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
             preferredLanguage: 'vi',
             timezone: 'Asia/Ho_Chi_Minh'
           })
-          
+
           const demoFarmAccess = [{
             farmId: 'demo-farm-001',
             userId: firebaseUser.uid,
@@ -275,7 +270,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
             grantedBy: firebaseUser.uid,
             isActive: true
           }]
-          
+
           const demoFarm = {
             id: 'demo-farm-001',
             name: 'Nông trại Demo',
@@ -286,12 +281,10 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
             isActive: true,
             createdDate: new Date()
           }
-          
+
           setFarmAccess(demoFarmAccess)
           setFarms([demoFarm])
           setCurrentFarmState(demoFarm)
-          
-          console.log('✅ Demo mode activated with demo farm for user:', firebaseUser.email)
         }
       } finally {
         setLoading(false)
@@ -321,7 +314,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         id: farmRef.id,
         createdDate: serverTimestamp()
       })
-      
+
       // Create farm access for the user as owner
       const accessRef = doc(collection(db, 'farmAccess'))
       const farmAccess: FarmAccess = {
@@ -332,21 +325,17 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         grantedBy: firebaseUser.uid,
         isActive: true
       }
-      
+
       await setDoc(accessRef, {
         ...farmAccess,
         grantedAt: serverTimestamp()
       })
-      
-      console.log('✅ Created default farm:', farmRef.id, 'for user:', firebaseUser.email)
-      
+
       return {
         id: farmRef.id,
         ...defaultFarmData
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.warn('🔥 Cannot create farm in Firestore, using demo farm:', errorMessage)
       // Return demo farm when Firestore is unavailable
       return {
         id: 'demo-farm-001',
@@ -424,7 +413,6 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.warn('🔥 Firestore unavailable, using demo user profile:', errorMessage)
       // Return demo user profile when Firestore is unavailable
       return {
         uid: firebaseUser.uid,
@@ -454,7 +442,6 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       })) as FarmAccess[]
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.warn('🔥 Firestore unavailable for farm access, using demo mode:', errorMessage)
       // Return demo farm access for demo user
       return [{
         farmId: 'demo-farm-001',
@@ -491,7 +478,6 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       return farms.filter(Boolean) as SimpleFarm[]
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.warn('🔥 Firestore unavailable for farms, using demo mode:', errorMessage)
       // Return demo farm for demo access
       return access.map(a => ({
         id: a.farmId,
@@ -513,7 +499,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         lastLoginAt: serverTimestamp()
       }, { merge: true })
     } catch (error) {
-      console.error('❌ Error updating last login:', error)
+      // Error updating last login
     }
   }
 
@@ -521,11 +507,9 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   const loadUserFarmAccessCached = async (userId: string): Promise<FarmAccess[]> => {
     const now = Date.now()
     if (authCache.current.farmAccess && (now - authCache.current.lastFetch) < CACHE_EXPIRY) {
-      console.log('🔄 Using cached farm access data')
       return authCache.current.farmAccess
     }
 
-    console.log('📥 Fetching fresh farm access data')
     const access = await loadUserFarmAccess(userId)
     authCache.current.farmAccess = access
     authCache.current.lastFetch = now
@@ -535,11 +519,9 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   const loadUserFarmsCached = async (access: FarmAccess[]): Promise<SimpleFarm[]> => {
     const now = Date.now()
     if (authCache.current.farms && (now - authCache.current.lastFetch) < CACHE_EXPIRY) {
-      console.log('🔄 Using cached farms data')
       return authCache.current.farms
     }
 
-    console.log('📥 Fetching fresh farms data')
     const farms = await loadUserFarms(access)
     authCache.current.farms = farms
     authCache.current.lastFetch = now
@@ -562,7 +544,6 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
 
       // If user has no farm access, create a default farm for them
       if (userFarms.length === 0 && access.length === 0) {
-        console.log('🏗️ Creating default farm for new user:', firebaseUser.email)
         try {
           const defaultFarm = await createDefaultFarmForUser(firebaseUser, userProfile)
           if (defaultFarm) {
@@ -578,7 +559,6 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
             }
           }
         } catch (error) {
-          console.error('❌ Failed to create default farm:', error)
           // Continue without farm - user can create one later
           setFarms([])
         }
@@ -597,7 +577,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       // Save state to localStorage
       setTimeout(saveAuthState, 1000) // Save after a short delay to ensure state is set
     } catch (error) {
-      console.error('Error loading fresh auth data:', error)
+      // Error loading fresh auth data
     }
   }
 
