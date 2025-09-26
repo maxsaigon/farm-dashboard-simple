@@ -7,16 +7,17 @@ export const MODAL_Z_INDEX = {
   // Base layers
   NAVIGATION: 40,        // z-40: Navigation bars, headers
   SIDEBAR: 30,           // z-30: Sidebar overlays
-  
-  // Modal layers (hierarchical)
-  MAP_OVERLAY: 9995,     // Map popups, tooltips (lowest modal)
-  TREE_DETAIL: 9996,     // Tree/Zone detail modals
-  MANAGEMENT_MODAL: 9998, // Form modals, management interfaces
-  PHOTO_VIEWER: 9999,    // Photo galleries, image viewers (highest)
-  
+  BOTTOM_TAB_BAR: 50,    // z-50: Bottom tab bar (higher than navigation)
+
+  // Modal layers (hierarchical) - must be above bottom tab bar
+  MAP_OVERLAY: 10001,    // Map popups, tooltips (lowest modal)
+  TREE_DETAIL: 10002,    // Tree/Zone detail modals
+  MANAGEMENT_MODAL: 10003, // Form modals, management interfaces
+  PHOTO_VIEWER: 10004,   // Photo galleries, image viewers (highest)
+
   // Emergency/System layers
-  LOADING_OVERLAY: 10000, // Loading screens
-  ERROR_MODAL: 10001,    // Error messages, alerts
+  LOADING_OVERLAY: 10005, // Loading screens
+  ERROR_MODAL: 10006,    // Error messages, alerts
 } as const
 
 export type ModalType = keyof typeof MODAL_Z_INDEX
@@ -33,12 +34,12 @@ export function getModalZIndex(type: ModalType): number {
  */
 export function getModalZClass(type: ModalType): string {
   const zIndex = MODAL_Z_INDEX[type]
-  
-  // Use bracket notation for custom z-index values
-  if (zIndex >= 9995) {
+
+  // Use bracket notation for all custom z-index values
+  if (zIndex >= 50) {
     return `z-[${zIndex}]`
   }
-  
+
   // Standard Tailwind classes
   switch (zIndex) {
     case 40: return 'z-40'
