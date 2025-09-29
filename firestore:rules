@@ -62,27 +62,25 @@ service cloud.firestore {
     match /farmInvitations/{invitationId} {
       allow read: if isAuthenticated() &&
         (request.auth.uid == resource.data.invitedBy ||
-         hasOwnerAccess(resource.data.farmId) ||
          isOwner());
-      allow write: if hasOwnerAccess(resource.data.farmId) || isOwner();
-      allow create: if hasOwnerAccess(resource.data.farmId) || isOwner();
+      allow write: if isAuthenticated() || isOwner();
+      allow create: if isAuthenticated() || isOwner();
     }
 
     // User farm access (legacy collection)
     match /userFarmAccess/{accessId} {
       allow read: if isAuthenticated() &&
         (request.auth.uid == resource.data.userId ||
-         hasOwnerAccess(resource.data.farmId) ||
          isOwner());
-      allow write: if hasOwnerAccess(resource.data.farmId) || isOwner();
+      allow write: if isAuthenticated() || isOwner();
     }
 
     // Zones collection
     match /zones/{zoneId} {
-      allow read: if hasFarmAccess(resource.data.farmId) || isOwner();
-      allow write: if hasManagerAccess(resource.data.farmId) || isOwner();
-      allow create: if hasManagerAccess(resource.data.farmId) || isOwner();
-      allow delete: if hasOwnerAccess(resource.data.farmId) || isOwner();
+      allow read: if isAuthenticated() || isOwner();
+      allow write: if isAuthenticated() || isOwner();
+      allow create: if isAuthenticated() || isOwner();
+      allow delete: if isAuthenticated() || isOwner();
     }
 
     // Investments collection
