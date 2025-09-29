@@ -22,6 +22,14 @@ const TABS: TabItem[] = [
 export default function BottomTabBar() {
   const pathname = usePathname()
 
+  // Only show bottom tab bar on main app pages, not on login, admin, test, debug pages
+  const allowedPaths = ['/', '/map', '/zones', '/money', '/trees', '/camera']
+  const shouldShow = allowedPaths.some(path => pathname === path || (path !== '/' && pathname?.startsWith(path)))
+
+  if (!shouldShow) {
+    return null
+  }
+
   const haptic = useCallback(() => {
     try {
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
