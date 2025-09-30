@@ -113,8 +113,8 @@ class BackgroundGeolocationService {
     this.lastLocation = location
     this.lastUpdateTime = now
 
-    // Send to WebSocket
-    if (this.config) {
+    // Send to WebSocket (only if WebSocket is enabled)
+    if (this.config && this.wsService.isEnabled) {
       this.wsService.sendLocation({
         userId: this.config.userId || 'anonymous',
         farmId: this.config.farmId,

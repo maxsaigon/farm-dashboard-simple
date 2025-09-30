@@ -50,8 +50,16 @@ class WebSocketService {
 
   private initializeSocket() {
     try {
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL
+
+      // Don't initialize if no WebSocket URL is provided or if explicitly disabled
+      if (!wsUrl || wsUrl === '/' || wsUrl.trim() === '') {
+        console.log('WebSocket disabled - no server URL provided')
+        return
+      }
+
       // Connect to WebSocket server (will fallback to HTTP polling if WS not available)
-      this.socket = io(process.env.NEXT_PUBLIC_WS_URL || '/', {
+      this.socket = io(wsUrl, {
         transports: ['websocket', 'polling'],
         timeout: 5000,
         forceNew: true,
@@ -62,9 +70,10 @@ class WebSocketService {
 
       this.setupEventHandlers()
     } catch (error) {
-      // Failed to initialize WebSocket
+      console.error('Failed to initialize WebSocket:', error)
     }
   }
+
 
   private setupEventHandlers() {
     if (!this.socket) return
@@ -169,6 +178,11 @@ class WebSocketService {
     return this.socket?.connected || false
   }
 
+  // Check if WebSocket is enabled
+  get isEnabled(): boolean {
+    return this.socket !== null
+  }
+
   // Cleanup
   disconnect() {
     if (this.socket) {
@@ -195,6 +209,7 @@ export const useWebSocket = () => {
 
   return {
     isConnected: ws.isConnected,
+    isEnabled: ws.isEnabled,
     joinFarm: (farmId: string, userId?: string) => ws.joinFarm(farmId, userId),
     leaveFarm: (farmId: string) => ws.leaveFarm(farmId),
     sendLocation: (location: UserLocation) => ws.sendLocation(location),
@@ -207,7 +222,7 @@ export const useWebSocket = () => {
 
 // Hook for real-time data updates
 export const useRealTimeUpdates = (farmId?: string) => {
-  const { isConnected, joinFarm, leaveFarm, on, off } = useWebSocket()
+  const { isConnected, isEnabled, joinFarm, leaveFarm, on, off } = useWebSocket()
   const [connectionStatus, setConnectionStatus] = React.useState<{
     connected: boolean
     error?: string
@@ -227,14 +242,15 @@ export const useRealTimeUpdates = (farmId?: string) => {
   }, [on, off])
 
   React.useEffect(() => {
-    if (farmId) {
+    if (farmId && isEnabled) {
       joinFarm(farmId)
       return () => leaveFarm(farmId)
     }
-  }, [farmId, joinFarm, leaveFarm])
+  }, [farmId, joinFarm, leaveFarm, isEnabled])
 
   return {
     isConnected,
+    isEnabled,
     connectionStatus,
     on,
     off
