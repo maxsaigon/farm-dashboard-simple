@@ -389,7 +389,7 @@ const UnifiedMap = memo(({
   const [zones, setZones] = useState<Zone[]>(initialZones)
 
   // WebSocket real-time updates
-  const { isConnected, connectionStatus, on, off } = useRealTimeUpdates(farmId)
+  const { isConnected, isEnabled, connectionStatus, on, off } = useRealTimeUpdates(farmId)
 
   // Background geolocation
   const { startTracking, stopTracking, isActive: bgTrackingActive } = useBackgroundGeolocation()
@@ -446,7 +446,7 @@ const UnifiedMap = memo(({
 
   // Set up WebSocket event listeners
   useEffect(() => {
-    if (!enableRealTime) return
+    if (!enableRealTime || !isEnabled) return
 
     const handleTreeUpdate = (data: { treeId: string, updates: Partial<Tree> }) => {
       console.log('🔄 Real-time tree update:', data)
@@ -510,7 +510,7 @@ const UnifiedMap = memo(({
       off('zone-deleted', handleZoneDeleted)
       off('farm-alert', handleFarmAlert)
     }
-  }, [enableRealTime, on, off])
+  }, [enableRealTime, isEnabled, on, off])
 
   // Convert zones to GeoJSON
   const zonesGeoJSON = React.useMemo(() => ({
