@@ -352,17 +352,21 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
   // Handle fullscreen mode
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden'
-      
+      // Use setTimeout to avoid hydration issues with DOM manipulation
+      const timer = setTimeout(() => {
+        document.body.style.overflow = 'hidden'
+      }, 0)
+
       const handleEscape = (e: KeyboardEvent) => {
         if (e.key === 'Escape' && !showShareModal) {
           onClose()
         }
       }
-      
+
       document.addEventListener('keydown', handleEscape)
-      
+
       return () => {
+        clearTimeout(timer)
         document.body.style.overflow = ''
         document.removeEventListener('keydown', handleEscape)
       }

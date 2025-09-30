@@ -266,7 +266,7 @@ export default function TreeNoteSystem({ treeId, farmId, className = '' }: TreeN
                 {/* Action Buttons */}
                 <div className="flex justify-between items-center">
                   <div className="text-xs text-gray-500">
-                    💡 Mẹo: Sử dụng @tên để nhắc thành viên khác
+                    <span>💡 Mẹo: Sử dụng @tên để nhắc thành viên khác</span>
                   </div>
                   <div className="flex space-x-2">
                     <button
