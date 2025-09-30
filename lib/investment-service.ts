@@ -42,11 +42,16 @@ export type InvestmentRecord = Investment & {
 
 export function subscribeToInvestments(userId: string, farmId: string, callback: (items: InvestmentRecord[]) => void) {
   if (!userId || !farmId) {
+    console.log('subscribeToInvestments: Missing userId or farmId')
     callback([])
     return () => {}
   }
+
+  console.log(`subscribeToInvestments: Setting up listener for user ${userId}, farm ${farmId}`)
   const q = query(investmentsCol(userId, farmId), orderBy('date', 'desc'))
+
   return onSnapshot(q, (snap) => {
+    console.log(`subscribeToInvestments: Received ${snap.docs.length} investments`)
     const items: InvestmentRecord[] = snap.docs.map(d => {
       const data = d.data() as any
       return {
@@ -73,6 +78,12 @@ export function subscribeToInvestments(userId: string, farmId: string, callback:
     callback(items)
   }, (err) => {
     console.error('subscribeToInvestments error:', err)
+    console.error('subscribeToInvestments error details:', {
+      userId,
+      farmId,
+      errorCode: err.code,
+      errorMessage: err.message
+    })
     callback([])
   })
 }

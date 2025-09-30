@@ -134,11 +134,25 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   const getFilteredImages = (): DisplayImage[] => {
     const firestoreImages = photos.filter(photo => photo.imageUrl)
 
+    // Create a set of Firestore image URLs to avoid duplicates
+    const firestoreImageUrls = new Set(firestoreImages.map(img => img.imageUrl))
+
+    // Filter out storage images that already exist in Firestore
+    const uniqueStorageImages = [
+      ...storageImages.general
+        .filter(url => !firestoreImageUrls.has(url))
+        .map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
+      ...storageImages.health
+        .filter(url => !firestoreImageUrls.has(url))
+        .map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
+      ...storageImages.fruitCount
+        .filter(url => !firestoreImageUrls.has(url))
+        .map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url }))
+    ]
+
     return [
       ...firestoreImages,
-      ...storageImages.general.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
-      ...storageImages.health.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
-      ...storageImages.fruitCount.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url }))
+      ...uniqueStorageImages
     ]
   }
 
