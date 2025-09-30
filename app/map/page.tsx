@@ -79,6 +79,17 @@ function MapPageContent() {
   const [proximityRadius, setProximityRadius] = useState(30)
   const [showUserPath, setShowUserPath] = useState(false)
 
+  // Tree status visibility controls
+  const [showYoungTrees, setShowYoungTrees] = useState(true)
+  const [showMatureTrees, setShowMatureTrees] = useState(true)
+  const [showOldTrees, setShowOldTrees] = useState(true)
+
+  // Health status visibility controls
+  const [showExcellentHealth, setShowExcellentHealth] = useState(true)
+  const [showGoodHealth, setShowGoodHealth] = useState(true)
+  const [showFairHealth, setShowFairHealth] = useState(true)
+  const [showPoorHealth, setShowPoorHealth] = useState(true)
+
   // Debug farm ID for testing
   const debugFarmId = "F210C3FC-F191-4926-9C15-58D6550A716A"
   const debugFarm = { id: debugFarmId, name: "Debug Farm" }
@@ -229,6 +240,31 @@ function MapPageContent() {
     }
   }
 
+  // Helper function to filter trees based on selected status options
+  const getFilteredTrees = (trees: Tree[]): Tree[] => {
+    return trees.filter(tree => {
+      // Filter by tree status
+      const treeStatus = tree.treeStatus || 'Mature'
+      const showTreeStatus =
+        (treeStatus === 'Young Tree' && showYoungTrees) ||
+        (treeStatus === 'Cây Non' && showYoungTrees) ||
+        (treeStatus === 'Mature' && showMatureTrees) ||
+        (treeStatus === 'Cây Trưởng Thành' && showMatureTrees) ||
+        (treeStatus === 'Old' && showOldTrees) ||
+        (treeStatus === 'Cây Già' && showOldTrees)
+
+      // Filter by health status
+      const healthStatus = tree.healthStatus || 'Good'
+      const showHealthStatus =
+        (healthStatus === 'Excellent' && showExcellentHealth) ||
+        (healthStatus === 'Good' && showGoodHealth) ||
+        (healthStatus === 'Fair' && showFairHealth) ||
+        (healthStatus === 'Poor' && showPoorHealth)
+
+      return showTreeStatus && showHealthStatus
+    })
+  }
+
   const handleTreeSelect = (tree: Tree) => {
     console.log('🌳 Tree selected from map:', tree.name || tree.variety)
     setSelectedTree(tree)
@@ -360,6 +396,27 @@ function MapPageContent() {
     )
   }
 
+  <style jsx>{`
+    .slider::-webkit-slider-thumb {
+      appearance: none;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: #3b82f6;
+      cursor: pointer;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .slider::-moz-range-thumb {
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: #3b82f6;
+      cursor: pointer;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+  `}</style>
   return (
     <div className="min-h-screen bg-gray-50 safe-bottom">
       {/* Header */}
@@ -465,41 +522,178 @@ function MapPageContent() {
 
            
 
-           {/* Advanced Settings Panel */}
+           {/* Advanced Settings Panel - Mobile Optimized */}
            {showAdvancedSettings && (
-             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 {/* Left Column */}
-                 <div className="space-y-3">
-                   <h3 className="font-semibold text-gray-800">Hiển thị</h3>
+             <div className="bg-white rounded-xl p-4 mx-2 border border-gray-200 shadow-sm">
+               {/* Single Column Layout for Mobile */}
+               <div className="space-y-4">
+                 {/* Display Section */}
+                 <div className="space-y-4">
+                   <h3 className="font-semibold text-gray-800 text-base">Hiển thị</h3>
 
-                   <label className="flex items-center space-x-3 cursor-pointer">
-                     <input
-                       type="checkbox"
-                       checked={showUserPath}
-                       onChange={(e) => setShowUserPath(e.target.checked)}
-                       className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                     />
-                     <span className="text-sm text-gray-700">Đường đi GPS</span>
-                   </label>
+                   {/* GPS Path Toggle */}
+                   <div className="bg-gray-50 rounded-lg p-3">
+                     <label className="flex items-center justify-between cursor-pointer">
+                       <div className="flex items-center space-x-3">
+                         <input
+                           type="checkbox"
+                           checked={showUserPath}
+                           onChange={(e) => setShowUserPath(e.target.checked)}
+                           className="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                         />
+                         <span className="text-sm font-medium text-gray-700">Đường đi GPS</span>
+                       </div>
+                       <span className="text-xs text-gray-500">Hiện đường đi</span>
+                     </label>
+                   </div>
+
+                   {/* Tree Status Section */}
+                   <div className="bg-gray-50 rounded-lg p-4">
+                     <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                       <span className="mr-2">🌳</span>
+                       Trạng thái cây
+                     </h4>
+                     <div className="space-y-3">
+                       <label className="flex items-center justify-between cursor-pointer py-1">
+                         <div className="flex items-center space-x-3">
+                           <input
+                             type="checkbox"
+                             checked={showYoungTrees}
+                             onChange={(e) => setShowYoungTrees(e.target.checked)}
+                             className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                           />
+                           <span className="text-sm font-medium text-gray-700">Cây non</span>
+                         </div>
+                         <span className={`text-xs px-2 py-1 rounded-full ${showYoungTrees ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                           {showYoungTrees ? 'Hiện' : 'Ẩn'}
+                         </span>
+                       </label>
+
+                       <label className="flex items-center justify-between cursor-pointer py-1">
+                         <div className="flex items-center space-x-3">
+                           <input
+                             type="checkbox"
+                             checked={showMatureTrees}
+                             onChange={(e) => setShowMatureTrees(e.target.checked)}
+                             className="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                           />
+                           <span className="text-sm font-medium text-gray-700">Cây trưởng thành</span>
+                         </div>
+                         <span className={`text-xs px-2 py-1 rounded-full ${showMatureTrees ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                           {showMatureTrees ? 'Hiện' : 'Ẩn'}
+                         </span>
+                       </label>
+
+                       <label className="flex items-center justify-between cursor-pointer py-1">
+                         <div className="flex items-center space-x-3">
+                           <input
+                             type="checkbox"
+                             checked={showOldTrees}
+                             onChange={(e) => setShowOldTrees(e.target.checked)}
+                             className="w-5 h-5 text-orange-600 border-2 border-gray-300 rounded focus:ring-orange-500 focus:ring-2"
+                           />
+                           <span className="text-sm font-medium text-gray-700">Cây già</span>
+                         </div>
+                         <span className={`text-xs px-2 py-1 rounded-full ${showOldTrees ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
+                           {showOldTrees ? 'Hiện' : 'Ẩn'}
+                         </span>
+                       </label>
+                     </div>
+                   </div>
+
+                   {/* Health Status Section */}
+                   <div className="bg-gray-50 rounded-lg p-4">
+                     <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                       <span className="mr-2">❤️</span>
+                       Tình trạng sức khỏe
+                     </h4>
+                     <div className="space-y-3">
+                       <label className="flex items-center justify-between cursor-pointer py-1">
+                         <div className="flex items-center space-x-3">
+                           <input
+                             type="checkbox"
+                             checked={showExcellentHealth}
+                             onChange={(e) => setShowExcellentHealth(e.target.checked)}
+                             className="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                           />
+                           <span className="text-sm font-medium text-gray-700">Tuyệt vời</span>
+                         </div>
+                         <span className={`text-xs px-2 py-1 rounded-full ${showExcellentHealth ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                           {showExcellentHealth ? 'Hiện' : 'Ẩn'}
+                         </span>
+                       </label>
+
+                       <label className="flex items-center justify-between cursor-pointer py-1">
+                         <div className="flex items-center space-x-3">
+                           <input
+                             type="checkbox"
+                             checked={showGoodHealth}
+                             onChange={(e) => setShowGoodHealth(e.target.checked)}
+                             className="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                           />
+                           <span className="text-sm font-medium text-gray-700">Tốt</span>
+                         </div>
+                         <span className={`text-xs px-2 py-1 rounded-full ${showGoodHealth ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                           {showGoodHealth ? 'Hiện' : 'Ẩn'}
+                         </span>
+                       </label>
+
+                       <label className="flex items-center justify-between cursor-pointer py-1">
+                         <div className="flex items-center space-x-3">
+                           <input
+                             type="checkbox"
+                             checked={showFairHealth}
+                             onChange={(e) => setShowFairHealth(e.target.checked)}
+                             className="w-5 h-5 text-yellow-600 border-2 border-gray-300 rounded focus:ring-yellow-500 focus:ring-2"
+                           />
+                           <span className="text-sm font-medium text-gray-700">Khá</span>
+                         </div>
+                         <span className={`text-xs px-2 py-1 rounded-full ${showFairHealth ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>
+                           {showFairHealth ? 'Hiện' : 'Ẩn'}
+                         </span>
+                       </label>
+
+                       <label className="flex items-center justify-between cursor-pointer py-1">
+                         <div className="flex items-center space-x-3">
+                           <input
+                             type="checkbox"
+                             checked={showPoorHealth}
+                             onChange={(e) => setShowPoorHealth(e.target.checked)}
+                             className="w-5 h-5 text-red-600 border-2 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
+                           />
+                           <span className="text-sm font-medium text-gray-700">Kém</span>
+                         </div>
+                         <span className={`text-xs px-2 py-1 rounded-full ${showPoorHealth ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
+                           {showPoorHealth ? 'Hiện' : 'Ẩn'}
+                         </span>
+                       </label>
+                     </div>
+                   </div>
                  </div>
 
-                 <div className="space-y-3">
-                   <h3 className="font-semibold text-gray-800">GPS</h3>
+                 {/* GPS Section */}
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <h3 className="font-semibold text-gray-800 text-base mb-3 flex items-center">
+                     <span className="mr-2">📍</span>
+                     GPS
+                   </h3>
 
                    {!backgroundTrackingEnabled ? (
                      <button
                        onClick={() => setBackgroundTrackingEnabled(true)}
-                       className="w-full bg-purple-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                       className="w-full bg-purple-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors active:bg-purple-800 min-touch"
                      >
-                       📍 Bật GPS theo dõi
+                       Bật GPS theo dõi
                      </button>
                    ) : (
-                     <div className="flex items-center justify-between">
-                       <span className="text-sm text-gray-700">GPS đang bật</span>
+                     <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                       <div className="flex items-center space-x-2">
+                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                         <span className="text-sm font-medium text-purple-700">GPS đang bật</span>
+                       </div>
                        <button
                          onClick={() => setBackgroundTrackingEnabled(false)}
-                         className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                         className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 active:bg-red-800 min-touch"
                        >
                          Tắt
                        </button>
@@ -507,14 +701,19 @@ function MapPageContent() {
                    )}
                  </div>
 
-                 {/* Right Column */}
-                 <div className="space-y-3">
-                   <h3 className="font-semibold text-gray-800">Phát hiện</h3>
+                 {/* Proximity Detection Section */}
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <h3 className="font-semibold text-gray-800 text-base mb-3 flex items-center">
+                     <span className="mr-2">🎯</span>
+                     Phát hiện
+                   </h3>
 
-                   <div className="space-y-2">
+                   <div className="space-y-3">
                      <div className="flex items-center justify-between">
-                       <span className="text-sm text-gray-700">Bán kính</span>
-                       <span className="text-sm font-medium text-gray-900">{proximityRadius}m</span>
+                       <span className="text-sm font-medium text-gray-700">Bán kính phát hiện</span>
+                       <div className="bg-white px-3 py-1 rounded-full border border-gray-200">
+                         <span className="text-sm font-bold text-gray-900">{proximityRadius}m</span>
+                       </div>
                      </div>
                      <input
                        type="range"
@@ -523,7 +722,7 @@ function MapPageContent() {
                        step="5"
                        value={proximityRadius}
                        onChange={(e) => setProximityRadius(Number(e.target.value))}
-                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                       className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                      />
                      <div className="flex justify-between text-xs text-gray-500">
                        <span>10m</span>
@@ -533,31 +732,35 @@ function MapPageContent() {
                  </div>
                </div>
 
-               {/* Quick Actions */}
-               <div className="flex space-x-2 pt-4 mt-4 border-t border-gray-200">
-                 <button
-                   onClick={() => {
-                     // Navigate to user location (would need to pass map ref or use callback)
-                   }}
-                   className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                 >
-                   📍 Vị trí tôi
-                 </button>
-                 <button
-                   onClick={() => {
-                     // Fit all markers (would need to pass map ref or use callback)
-                   }}
-                   className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-                 >
-                   🔍 Phù hợp tất cả
-                 </button>
-                 <button
-                   onClick={() => setShowAdvancedSettings(false)}
-                   className="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
-                 >
-                   Đóng
-                 </button>
-               </div>
+                 {/* Quick Actions - Mobile Optimized */}
+                 <div className="flex flex-col space-y-3 pt-4 mt-4 border-t border-gray-200">
+                   <div className="grid grid-cols-2 gap-3">
+                     <button
+                       onClick={() => {
+                         // Navigate to user location (would need to pass map ref or use callback)
+                       }}
+                       className="bg-blue-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-blue-700 active:bg-blue-800 transition-colors min-touch flex items-center justify-center space-x-2"
+                     >
+                       <span>📍</span>
+                       <span>Vị trí tôi</span>
+                     </button>
+                     <button
+                       onClick={() => {
+                         // Fit all markers (would need to pass map ref or use callback)
+                       }}
+                       className="bg-green-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-green-700 active:bg-green-800 transition-colors min-touch flex items-center justify-center space-x-2"
+                     >
+                       <span>🔍</span>
+                       <span>Phù hợp tất cả</span>
+                     </button>
+                   </div>
+                   <button
+                     onClick={() => setShowAdvancedSettings(false)}
+                     className="w-full bg-gray-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-gray-700 active:bg-gray-800 transition-colors min-touch"
+                   >
+                     Đóng cài đặt
+                   </button>
+                 </div>
              </div>
            )}
          </div>
@@ -618,7 +821,7 @@ function MapPageContent() {
           ) : (
             <>
               <UnifiedMapNoSSR
-                trees={showTrees ? (focusedZone ? getTreesForZone(trees, focusedZone) : trees) : []}
+                trees={showTrees ? (focusedZone ? getFilteredTrees(getTreesForZone(trees, focusedZone)) : getFilteredTrees(trees)) : []}
                 zones={showZones ? (focusedZone ? [focusedZone] : zones) : []}
                 selectedTree={selectedTree}
                 selectedZone={selectedZone}
