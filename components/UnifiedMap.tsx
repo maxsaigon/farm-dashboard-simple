@@ -564,48 +564,29 @@ const UnifiedMap = memo(({
     }
   }, [proximityData, proximityRadius])
 
-  // Tree marker styling based on tree status and other conditions
+  // Tree marker styling - Simplified without treeStatus filtering
   const getTreeMarkerIcon = useCallback((tree: Tree) => {
     const isSelected = selectedTree?.id === tree.id
     const isNearby = proximityData.trees.some(t => t.id === tree.id)
     const nearbyTree = proximityData.trees.find(t => t.id === tree.id)
 
-    // Base color based on tree status (support both English and Vietnamese)
-    let baseColor = '#6b7280' // default gray
-
-    if (tree.treeStatus === 'Young Tree' || tree.treeStatus === 'Cây Non') {
-      baseColor = '#eab308' // yellow for young trees
-    } else if (tree.treeStatus === 'Mature' || tree.treeStatus === 'Cây Trưởng Thành') {
-      baseColor = '#22c55e' // normal green for mature trees
-    } else if (tree.treeStatus === 'Old' || tree.treeStatus === 'Cây Già') {
-      baseColor = '#16a34a' // darker green for old trees
-    }
-
-    // Override colors for special states
-    let color = baseColor
+    // Simplified color logic - all trees use same base color
+    let color = '#22c55e' // default green for all trees
     let size = 16
 
     if (isSelected) {
       color = '#ef4444' // red for selected (highest priority)
       size = 24
     } else if (isNearby) {
-      // Keep the base color but make it slightly brighter for nearby trees
-      color = baseColor
+      color = '#22c55e' // green for nearby trees
       size = 20
     } else if (tree.needsAttention) {
-      color = '#8b5cf6' // purple for attention needed (overrides base color)
+      color = '#f59e0b' // amber for attention needed
       size = 18
     }
 
-    // Create status indicator emoji
-    let statusEmoji = '🌳'
-    if (tree.treeStatus === 'Young Tree' || tree.treeStatus === 'Cây Non') {
-      statusEmoji = '🌱'
-    } else if (tree.treeStatus === 'Mature' || tree.treeStatus === 'Cây Trưởng Thành') {
-      statusEmoji = '🌳'
-    } else if (tree.treeStatus === 'Old' || tree.treeStatus === 'Cây Già') {
-      statusEmoji = '🌲'
-    }
+    // Simple emoji for all trees
+    const statusEmoji = '🌳'
 
     return L.divIcon({
       className: 'tree-marker-unified',
@@ -615,7 +596,7 @@ const UnifiedMap = memo(({
           width: ${size}px;
           height: ${size}px;
           border-radius: 50%;
-          border: 1px solid white;
+          border: 3px solid white;
           box-shadow: 0 2px 6px rgba(0,0,0,0.3);
           display: flex;
           align-items: center;

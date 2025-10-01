@@ -79,16 +79,6 @@ function MapPageContent() {
   const [proximityRadius, setProximityRadius] = useState(30)
   const [showUserPath, setShowUserPath] = useState(false)
 
-  // Tree status visibility controls
-  const [showYoungTrees, setShowYoungTrees] = useState(true)
-  const [showMatureTrees, setShowMatureTrees] = useState(true)
-  const [showOldTrees, setShowOldTrees] = useState(true)
-
-  // Health status visibility controls
-  const [showExcellentHealth, setShowExcellentHealth] = useState(true)
-  const [showGoodHealth, setShowGoodHealth] = useState(true)
-  const [showFairHealth, setShowFairHealth] = useState(true)
-  const [showPoorHealth, setShowPoorHealth] = useState(true)
 
   // Debug farm ID for testing
   const debugFarmId = "F210C3FC-F191-4926-9C15-58D6550A716A"
@@ -240,29 +230,9 @@ function MapPageContent() {
     }
   }
 
-  // Helper function to filter trees based on selected status options
+  // Helper function to filter trees - simplified to show all trees
   const getFilteredTrees = (trees: Tree[]): Tree[] => {
-    return trees.filter(tree => {
-      // Filter by tree status
-      const treeStatus = tree.treeStatus || 'Mature'
-      const showTreeStatus =
-        (treeStatus === 'Young Tree' && showYoungTrees) ||
-        (treeStatus === 'Cây Non' && showYoungTrees) ||
-        (treeStatus === 'Mature' && showMatureTrees) ||
-        (treeStatus === 'Cây Trưởng Thành' && showMatureTrees) ||
-        (treeStatus === 'Old' && showOldTrees) ||
-        (treeStatus === 'Cây Già' && showOldTrees)
-
-      // Filter by health status
-      const healthStatus = tree.healthStatus || 'Good'
-      const showHealthStatus =
-        (healthStatus === 'Excellent' && showExcellentHealth) ||
-        (healthStatus === 'Good' && showGoodHealth) ||
-        (healthStatus === 'Fair' && showFairHealth) ||
-        (healthStatus === 'Poor' && showPoorHealth)
-
-      return showTreeStatus && showHealthStatus
-    })
+    return trees // Show all trees without filtering
   }
 
   const handleTreeSelect = (tree: Tree) => {
@@ -547,128 +517,7 @@ function MapPageContent() {
                      </label>
                    </div>
 
-                   {/* Tree Status Section */}
-                   <div className="bg-gray-50 rounded-lg p-4">
-                     <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                       <span className="mr-2">🌳</span>
-                       Trạng thái cây
-                     </h4>
-                     <div className="space-y-3">
-                       <label className="flex items-center justify-between cursor-pointer py-1">
-                         <div className="flex items-center space-x-3">
-                           <input
-                             type="checkbox"
-                             checked={showYoungTrees}
-                             onChange={(e) => setShowYoungTrees(e.target.checked)}
-                             className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                           />
-                           <span className="text-sm font-medium text-gray-700">Cây non</span>
-                         </div>
-                         <span className={`text-xs px-2 py-1 rounded-full ${showYoungTrees ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                           {showYoungTrees ? 'Hiện' : 'Ẩn'}
-                         </span>
-                       </label>
 
-                       <label className="flex items-center justify-between cursor-pointer py-1">
-                         <div className="flex items-center space-x-3">
-                           <input
-                             type="checkbox"
-                             checked={showMatureTrees}
-                             onChange={(e) => setShowMatureTrees(e.target.checked)}
-                             className="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
-                           />
-                           <span className="text-sm font-medium text-gray-700">Cây trưởng thành</span>
-                         </div>
-                         <span className={`text-xs px-2 py-1 rounded-full ${showMatureTrees ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                           {showMatureTrees ? 'Hiện' : 'Ẩn'}
-                         </span>
-                       </label>
-
-                       <label className="flex items-center justify-between cursor-pointer py-1">
-                         <div className="flex items-center space-x-3">
-                           <input
-                             type="checkbox"
-                             checked={showOldTrees}
-                             onChange={(e) => setShowOldTrees(e.target.checked)}
-                             className="w-5 h-5 text-orange-600 border-2 border-gray-300 rounded focus:ring-orange-500 focus:ring-2"
-                           />
-                           <span className="text-sm font-medium text-gray-700">Cây già</span>
-                         </div>
-                         <span className={`text-xs px-2 py-1 rounded-full ${showOldTrees ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
-                           {showOldTrees ? 'Hiện' : 'Ẩn'}
-                         </span>
-                       </label>
-                     </div>
-                   </div>
-
-                   {/* Health Status Section */}
-                   <div className="bg-gray-50 rounded-lg p-4">
-                     <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                       <span className="mr-2">❤️</span>
-                       Tình trạng sức khỏe
-                     </h4>
-                     <div className="space-y-3">
-                       <label className="flex items-center justify-between cursor-pointer py-1">
-                         <div className="flex items-center space-x-3">
-                           <input
-                             type="checkbox"
-                             checked={showExcellentHealth}
-                             onChange={(e) => setShowExcellentHealth(e.target.checked)}
-                             className="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
-                           />
-                           <span className="text-sm font-medium text-gray-700">Tuyệt vời</span>
-                         </div>
-                         <span className={`text-xs px-2 py-1 rounded-full ${showExcellentHealth ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                           {showExcellentHealth ? 'Hiện' : 'Ẩn'}
-                         </span>
-                       </label>
-
-                       <label className="flex items-center justify-between cursor-pointer py-1">
-                         <div className="flex items-center space-x-3">
-                           <input
-                             type="checkbox"
-                             checked={showGoodHealth}
-                             onChange={(e) => setShowGoodHealth(e.target.checked)}
-                             className="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
-                           />
-                           <span className="text-sm font-medium text-gray-700">Tốt</span>
-                         </div>
-                         <span className={`text-xs px-2 py-1 rounded-full ${showGoodHealth ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                           {showGoodHealth ? 'Hiện' : 'Ẩn'}
-                         </span>
-                       </label>
-
-                       <label className="flex items-center justify-between cursor-pointer py-1">
-                         <div className="flex items-center space-x-3">
-                           <input
-                             type="checkbox"
-                             checked={showFairHealth}
-                             onChange={(e) => setShowFairHealth(e.target.checked)}
-                             className="w-5 h-5 text-yellow-600 border-2 border-gray-300 rounded focus:ring-yellow-500 focus:ring-2"
-                           />
-                           <span className="text-sm font-medium text-gray-700">Khá</span>
-                         </div>
-                         <span className={`text-xs px-2 py-1 rounded-full ${showFairHealth ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>
-                           {showFairHealth ? 'Hiện' : 'Ẩn'}
-                         </span>
-                       </label>
-
-                       <label className="flex items-center justify-between cursor-pointer py-1">
-                         <div className="flex items-center space-x-3">
-                           <input
-                             type="checkbox"
-                             checked={showPoorHealth}
-                             onChange={(e) => setShowPoorHealth(e.target.checked)}
-                             className="w-5 h-5 text-red-600 border-2 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
-                           />
-                           <span className="text-sm font-medium text-gray-700">Kém</span>
-                         </div>
-                         <span className={`text-xs px-2 py-1 rounded-full ${showPoorHealth ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
-                           {showPoorHealth ? 'Hiện' : 'Ẩn'}
-                         </span>
-                       </label>
-                     </div>
-                   </div>
                  </div>
 
                  {/* GPS Section */}
@@ -821,7 +670,7 @@ function MapPageContent() {
           ) : (
             <>
               <UnifiedMapNoSSR
-                trees={showTrees ? (focusedZone ? getFilteredTrees(getTreesForZone(trees, focusedZone)) : getFilteredTrees(trees)) : []}
+                trees={showTrees ? (focusedZone ? getTreesForZone(trees, focusedZone) : trees) : []}
                 zones={showZones ? (focusedZone ? [focusedZone] : zones) : []}
                 selectedTree={selectedTree}
                 selectedZone={selectedZone}
