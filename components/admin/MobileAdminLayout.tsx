@@ -7,14 +7,16 @@ import {
   XMarkIcon, BellIcon, UserCircleIcon
 } from '@heroicons/react/24/outline'
 
+type AdminSection = 'dashboard' | 'users' | 'farms' | 'roles' | 'settings'
+
 interface MobileAdminLayoutProps {
   children: React.ReactNode
-  currentSection: string
-  onSectionChange: (section: string) => void
+  currentSection: AdminSection
+  onSectionChange: (section: AdminSection) => void
   isSuperAdmin: boolean
 }
 
-const navigationItems = [
+const navigationItems: Array<{ id: AdminSection; name: string; icon: any; emoji: string }> = [
   { id: 'dashboard', name: 'Tổng quan', icon: HomeIcon, emoji: '📊' },
   { id: 'users', name: 'Người dùng', icon: UsersIcon, emoji: '👥' },
   { id: 'farms', name: 'Nông trại', icon: BuildingOfficeIcon, emoji: '🏭' },
