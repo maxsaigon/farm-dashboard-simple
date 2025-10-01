@@ -75,7 +75,7 @@ export function DataReconciliationManager() {
 
   const migrateFarmTrees = async (farmId: string) => {
     const status = farmStatuses.find(s => s.farmId === farmId)
-    if (!status?.result) return 0
+    if (!status?.result || !user) return 0
 
     setGlobalMigrating(prev => new Set(prev).add(farmId))
 
