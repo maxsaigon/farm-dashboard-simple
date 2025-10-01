@@ -20,59 +20,72 @@ export async function getImageUrl(path: string): Promise<string | null> {
  * Path: farms/{farmId}/trees/{treeId}/photos/{photoId}/
  */
 export async function getTreeImages(treeId: string, farmId?: string): Promise<string[]> {
-  try {
-    const urls: string[] = []
-    
-    if (farmId) {
-      // Use correct path structure: farms/{farmId}/trees/{treeId}/photos/
-      try {
-        const treePath = `farms/${farmId}/trees/${treeId}/photos`
-        const treeRef = ref(storage, treePath)
-        const result = await listAll(treeRef)
-        
-        // For each photo folder, get only the best quality image (one per photoID)
-        for (const photoFolder of result.prefixes) {
-          const photoResult = await listAll(photoFolder)
-          
-          // Priority order: compressed.jpg > ai_ready.jpg > thumbnail.jpg > any other image
-          const priorityOrder = ['compressed.jpg', 'ai_ready.jpg', 'thumbnail.jpg']
-          let selectedUrl: string | null = null
-          
-          // First, try to find images in priority order
-          for (const priority of priorityOrder) {
-            const matchingItem = photoResult.items.find(item => 
-              item.name.toLowerCase() === priority
-            )
-            if (matchingItem) {
-              try {
-                selectedUrl = await getDownloadURL(matchingItem)
-                break
-              } catch (error) {
-                console.error(`Error getting URL for ${matchingItem.fullPath}:`, error)
-              }
-            }
-          }
-          
-          // If no priority image found, take the first available image
-          if (!selectedUrl && photoResult.items.length > 0) {
-            for (const itemRef of photoResult.items) {
-              try {
-                selectedUrl = await getDownloadURL(itemRef)
-                break
-              } catch (error) {
-                console.error(`Error getting URL for ${itemRef.fullPath}:`, error)
-              }
-            }
-          }
-          
-          if (selectedUrl) {
-            urls.push(selectedUrl)
-          }
-        }
-      } catch (error) {
-        console.debug(`No images found in farms/${farmId}/trees/${treeId}/photos`)
-      }
-    }
+   try {
+     const urls: string[] = []
+     console.log('🔍 Storage: Getting tree images for treeId:', treeId, 'farmId:', farmId)
+
+     if (farmId) {
+       // Use correct path structure: farms/{farmId}/trees/{treeId}/photos/
+       try {
+         const treePath = `farms/${farmId}/trees/${treeId}/photos`
+         console.log('📁 Storage: Looking in path:', treePath)
+         const treeRef = ref(storage, treePath)
+         const result = await listAll(treeRef)
+         console.log('📁 Storage: Found', result.prefixes.length, 'photo folders')
+
+         // For each photo folder, get only the best quality image (one per photoID)
+         for (const photoFolder of result.prefixes) {
+           console.log('📁 Storage: Processing photo folder:', photoFolder.name)
+           const photoResult = await listAll(photoFolder)
+           console.log('  Found', photoResult.items.length, 'files in folder')
+
+           // Priority order: compressed.jpg > ai_ready.jpg > thumbnail.jpg > any other image
+           const priorityOrder = ['compressed.jpg', 'ai_ready.jpg', 'thumbnail.jpg']
+           let selectedUrl: string | null = null
+
+           // First, try to find images in priority order
+           for (const priority of priorityOrder) {
+             const matchingItem = photoResult.items.find(item =>
+               item.name.toLowerCase() === priority
+             )
+             if (matchingItem) {
+               console.log('  Found priority file:', matchingItem.name)
+               try {
+                 selectedUrl = await getDownloadURL(matchingItem)
+                 console.log('  Got URL:', selectedUrl)
+                 break
+               } catch (error) {
+                 console.error(`Error getting URL for ${matchingItem.fullPath}:`, error)
+               }
+             }
+           }
+
+           // If no priority image found, take the first available image
+           if (!selectedUrl && photoResult.items.length > 0) {
+             console.log('  No priority file found, trying first available')
+             for (const itemRef of photoResult.items) {
+               try {
+                 selectedUrl = await getDownloadURL(itemRef)
+                 console.log('  Got URL from first available:', selectedUrl)
+                 break
+               } catch (error) {
+                 console.error(`Error getting URL for ${itemRef.fullPath}:`, error)
+               }
+             }
+           }
+
+           if (selectedUrl) {
+             console.log('  Adding URL to results:', selectedUrl)
+             urls.push(selectedUrl)
+           } else {
+             console.log('  No valid URL found for this photo folder')
+           }
+         }
+         console.log('📁 Storage: Total URLs from correct path:', urls.length)
+       } catch (error) {
+         console.debug(`No images found in farms/${farmId}/trees/${treeId}/photos`)
+       }
+     }
     
     // Fallback to legacy path patterns if farmId not provided or no images found
     if (urls.length === 0) {
@@ -116,48 +129,70 @@ export async function getTreeImages(treeId: string, farmId?: string): Promise<st
  * Get images for a tree by various filename patterns
  */
 export async function getTreeImagesByPattern(treeId: string, qrCode?: string, farmId?: string): Promise<{
-  general: string[]
-  health: string[]
-  fruitCount: string[]
-}> {
-  try {
-    const allImages = await getTreeImages(treeId, farmId)
-    
-    // If we have QR code, also try to find images by QR code pattern
-    if (qrCode) {
-      const qrImages = await getTreeImages(qrCode, farmId)
-      allImages.push(...qrImages)
-    }
-    
-    // Categorize images based on filename patterns
-    const categorized = {
-      general: [] as string[],
-      health: [] as string[],
-      fruitCount: [] as string[]
-    }
-    
-    allImages.forEach(url => {
-      const filename = url.split('/').pop()?.toLowerCase() || ''
-      
-      if (filename.includes('health') || filename.includes('disease')) {
-        categorized.health.push(url)
-      } else if (filename.includes('fruit') || filename.includes('count')) {
-        categorized.fruitCount.push(url)
-      } else {
-        categorized.general.push(url)
-      }
-    })
-    
-    return categorized
-  } catch (error) {
-    console.error('Error categorizing tree images:', error)
-    return {
-      general: [],
-      health: [],
-      fruitCount: []
-    }
-  }
-}
+   general: string[]
+   health: string[]
+   fruitCount: string[]
+ }> {
+   try {
+     console.log('🔍 Storage: Getting images by pattern for treeId:', treeId, 'qrCode:', qrCode, 'farmId:', farmId)
+
+     const allImages = await getTreeImages(treeId, farmId)
+     console.log('📁 Storage: Images from treeId:', allImages.length, 'images')
+
+     // If we have QR code, also try to find images by QR code pattern
+     if (qrCode) {
+       console.log('🔍 Storage: Also searching by QR code:', qrCode)
+       const qrImages = await getTreeImages(qrCode, farmId)
+       console.log('📁 Storage: Images from QR code:', qrImages.length, 'images')
+
+       // Check for duplicates before adding
+       const existingUrls = new Set(allImages)
+       const newQrImages = qrImages.filter(url => !existingUrls.has(url))
+       console.log('📁 Storage: New QR images after deduplication:', newQrImages.length, 'images')
+
+       allImages.push(...newQrImages)
+     }
+
+     console.log('📁 Storage: Total combined images before categorization:', allImages.length)
+
+     // Categorize images based on filename patterns
+     const categorized = {
+       general: [] as string[],
+       health: [] as string[],
+       fruitCount: [] as string[]
+     }
+
+     allImages.forEach((url, index) => {
+       const filename = url.split('/').pop()?.toLowerCase() || ''
+       console.log(`  Image ${index}: ${filename} -> category: ${
+         filename.includes('health') || filename.includes('disease') ? 'health' :
+         filename.includes('fruit') || filename.includes('count') ? 'fruitCount' : 'general'
+       }`)
+
+       if (filename.includes('health') || filename.includes('disease')) {
+         categorized.health.push(url)
+       } else if (filename.includes('fruit') || filename.includes('count')) {
+         categorized.fruitCount.push(url)
+       } else {
+         categorized.general.push(url)
+       }
+     })
+
+     console.log('📊 Storage: Final categorization:')
+     console.log('  General:', categorized.general.length)
+     console.log('  Health:', categorized.health.length)
+     console.log('  FruitCount:', categorized.fruitCount.length)
+
+     return categorized
+   } catch (error) {
+     console.error('Error categorizing tree images:', error)
+     return {
+       general: [],
+       health: [],
+       fruitCount: []
+     }
+   }
+ }
 
 /**
  * Get thumbnail URL for an image (with fallback to original)
