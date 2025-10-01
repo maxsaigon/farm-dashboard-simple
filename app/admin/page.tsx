@@ -3,31 +3,37 @@
 import { useState, useEffect } from 'react'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { useRouter } from 'next/navigation'
-import { ShieldCheckIcon } from '@heroicons/react/24/outline'
-// Simplified Admin Components
-import SimpleAdminDashboard from '@/components/admin/SimpleAdminDashboard'
-import SimpleFarmAssignmentSystem from '@/components/admin/SimpleFarmAssignmentSystem'
-import SimpleUserManagement from '@/components/admin/SimpleUserManagement'
+import MobileAdminLayout from '@/components/admin/MobileAdminLayout'
+import AdminDashboardMobile from '@/components/admin/AdminDashboardMobile'
+import UserManagementMobile from '@/components/admin/UserManagementMobile'
+import FarmManagementMobile from '@/components/admin/FarmManagementMobile'
+import SuperAdminPanel from '@/components/admin/SuperAdminPanel'
+import SystemSettingsMobile from '@/components/admin/SystemSettingsMobile'
 
-type AdminView = 'dashboard' | 'user-management' | 'farm-assignments' | 'settings'
+type AdminSection = 'dashboard' | 'users' | 'farms' | 'roles' | 'settings'
 
 export default function AdminPage() {
   const { user, isAdmin, loading } = useSimpleAuth()
   const router = useRouter()
-  const [currentView, setCurrentView] = useState<AdminView>('dashboard')
+  const [currentSection, setCurrentSection] = useState<AdminSection>('dashboard')
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   useEffect(() => {
     if (!loading && (!user || !isAdmin())) {
       router.push('/login')
     }
-  }, [user, isAdmin, loading, router])
+    // Check for super admin (you can customize this logic)
+    if (user?.email === 'admin@farm.com' || user?.uid === 'O6aFgoNhDigSIXk6zdYSDrFWhWG2') {
+      setIsSuperAdmin(true)
+    }
+  }, [user, isAdmin, loading])
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading admin panel...</p>
+          <p className="text-gray-600">Đang tải...</p>
         </div>
       </div>
     )
@@ -37,95 +43,42 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <ShieldCheckIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600 mb-4">You need super admin privileges to access this area.</p>
+          <p className="text-gray-600 mb-4">Bạn cần quyền super admin để truy cập khu vực này.</p>
           <button
             onClick={() => router.push('/login')}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
-            Go to Login
+            Đăng nhập
           </button>
         </div>
       </div>
     )
   }
 
-  const renderCurrentView = () => {
-    switch (currentView) {
+  const renderCurrentSection = () => {
+    switch (currentSection) {
       case 'dashboard':
-        return <SimpleAdminDashboard />
-      case 'user-management':
-        return <SimpleUserManagement />
-      case 'farm-assignments':
-        return <SimpleFarmAssignmentSystem />
+        return <AdminDashboardMobile />
+      case 'users':
+        return <UserManagementMobile />
+      case 'farms':
+        return <FarmManagementMobile />
+      case 'roles':
+        return isSuperAdmin ? <SuperAdminPanel /> : <UserManagementMobile />
       case 'settings':
-        return <SystemSettings />
+        return <SystemSettingsMobile />
       default:
-        return <SimpleAdminDashboard />
+        return <AdminDashboardMobile />
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Simple Admin Layout */}
-      <div className="bg-white shadow">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <h1 className="text-xl font-semibold text-gray-900">Admin Panel</h1>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-500">👋 {user?.displayName || user?.email}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8" aria-label="Tabs">
-            {[
-              { id: 'dashboard', name: '📊 Tổng quan', description: 'Bảng điều khiển' },
-              { id: 'user-management', name: '👥 Người dùng', description: 'Quản lý người dùng' },
-              { id: 'farm-assignments', name: '🏭 Phân quyền', description: 'Gán quyền nông trại' },
-              { id: 'settings', name: '⚙️ Cài đặt', description: 'Cài đặt hệ thống' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setCurrentView(tab.id as AdminView)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  currentView === tab.id
-                    ? 'border-green-500 text-green-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex flex-col items-center">
-                  <span>{tab.name}</span>
-                  <span className="text-xs text-gray-400 mt-1">{tab.description}</span>
-                </div>
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="px-4 sm:px-6 lg:px-8 py-8">
-        {renderCurrentView()}
-      </div>
-    </div>
-  )
-}
-
-// Placeholder for SystemSettings component
-function SystemSettings() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">System Settings</h2>
-      <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-gray-600">System settings panel will be implemented here.</p>
-        <p className="text-sm text-gray-500 mt-2">This will include global configuration options, security settings, and system maintenance tools.</p>
-      </div>
-    </div>
+    <MobileAdminLayout
+      currentSection={currentSection}
+      onSectionChange={setCurrentSection}
+      isSuperAdmin={isSuperAdmin}
+    >
+      {renderCurrentSection()}
+    </MobileAdminLayout>
   )
 }

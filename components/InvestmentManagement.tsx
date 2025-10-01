@@ -21,6 +21,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/solid'
 import { subscribeToInvestments as subInvestments, addInvestment as addInv, updateInvestment as updInv, deleteInvestment as delInv, migrateLegacyInvestments } from '@/lib/investment-service'
+import { FarmService } from '@/lib/farm-service'
 import { db } from '@/lib/firebase'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { compressImageSmart } from '@/lib/photo-compression'
@@ -86,7 +87,9 @@ interface InvestmentSummary {
 export default function InvestmentManagement() {
   const { user, hasPermission, currentFarm } = useSimpleAuth()
   const [investments, setInvestments] = useState<Investment[]>([])
-  
+  const [farmMembers, setFarmMembers] = useState<Array<{userId: string, displayName?: string, email?: string}>>([])
+  const investmentsRef = useRef<Map<string, Investment>>(new Map())
+
   const [loading, setLoading] = useState(true)
   const [showInvestmentModal, setShowInvestmentModal] = useState(false)
   
@@ -138,21 +141,50 @@ export default function InvestmentManagement() {
   useEffect(() => {
     if (hasPermission('read')) {
       loadInvestments()
-      
+      loadFarmMembers()
     }
   }, [hasPermission, currentFarm])
 
-  // Realtime subscription for investments per active farm
+  // Realtime subscription for investments from all farm members
   useEffect(() => {
     if (!user || !currentFarm?.id || !hasPermission('read')) {
       setInvestments([])
       return
     }
-    const unsubscribe = subInvestments(user.uid, currentFarm.id, (items) => {
-      setInvestments(items as unknown as Investment[])
+
+    const unsubscribes: (() => void)[] = []
+
+    const updateCombinedInvestments = () => {
+      const combined = Array.from(investmentsRef.current.values())
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      setInvestments(combined)
+    }
+
+    // Subscribe to current user's investments
+    const unsubscribeCurrentUser = subInvestments(user.uid, currentFarm.id, (items) => {
+      items.forEach(item => investmentsRef.current.set(item.id, item as unknown as Investment))
+      updateCombinedInvestments()
     })
-    return () => { try { unsubscribe && unsubscribe() } catch {} }
-  }, [user?.uid, currentFarm?.id, hasPermission])
+    unsubscribes.push(unsubscribeCurrentUser)
+
+    // Subscribe to other farm members' investments
+    farmMembers.forEach(member => {
+      if (member.userId !== user.uid) {
+        const unsubscribeOtherUser = subInvestments(member.userId, currentFarm.id, (items) => {
+          items.forEach(item => investmentsRef.current.set(item.id, item as unknown as Investment))
+          updateCombinedInvestments()
+        })
+        unsubscribes.push(unsubscribeOtherUser)
+      }
+    })
+
+    return () => {
+      investmentsRef.current.clear()
+      unsubscribes.forEach(unsubscribe => {
+        try { unsubscribe && unsubscribe() } catch {}
+      })
+    }
+  }, [user?.uid, currentFarm?.id, hasPermission, farmMembers])
 
   // Fertilizer calculations hidden in demo
 
@@ -163,7 +195,7 @@ export default function InvestmentManagement() {
   const loadInvestments = async () => {
     try {
       setLoading(true)
-      
+
       // Check permission before loading data
       if (!hasPermission('read')) {
         setInvestments([])
@@ -176,13 +208,13 @@ export default function InvestmentManagement() {
       //   .where('isDeleted', '==', false)
       //   .orderBy('date', 'desc')
       //   .get()
-      // 
+      //
       // const loadedInvestments = investmentsQuery.docs.map(doc => ({
       //   id: doc.id,
       //   ...doc.data(),
       //   date: doc.data().date?.toDate()
       // })) as Investment[]
-      // 
+      //
       // setInvestments(loadedInvestments)
 
       // For now, set empty array until Firebase integration is complete
@@ -194,6 +226,19 @@ export default function InvestmentManagement() {
       setInvestments([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadFarmMembers = async () => {
+    if (!user || !currentFarm?.id || !hasPermission('read')) {
+      return
+    }
+
+    try {
+      const members = await FarmService.getFarmMembersWithDisplayNames(currentFarm.id, user.uid)
+      setFarmMembers(members)
+    } catch (error) {
+      console.error('Error loading farm members:', error)
     }
   }
 
@@ -282,7 +327,17 @@ export default function InvestmentManagement() {
   // Helper to get user display name
   const getUserDisplayName = (userId: string): string => {
     if (userId === user?.uid) return 'Bạn'
-    // You can extend this to lookup user names from farm members
+
+    // Look up user name from farm members
+    const member = farmMembers.find(m => m.userId === userId)
+    if (member?.displayName) {
+      return member.displayName
+    }
+    if (member?.email) {
+      return member.email.split('@')[0] // Show email username part
+    }
+
+    // Fallback to truncated ID if no name found
     return userId.substring(0, 8) + '...'
   }
 
@@ -530,10 +585,15 @@ export default function InvestmentManagement() {
                               )}
                             </div>
                             {investment.createdBy && (
-                              <div className="flex items-center space-x-1 mt-1">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                  👤 {getUserDisplayName(investment.createdBy)}
-                                </span>
+                              <div className="flex items-center space-x-2 mt-2">
+                                <div className="flex items-center space-x-1">
+                                  <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
+                                    {getUserDisplayName(investment.createdBy).charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                    {getUserDisplayName(investment.createdBy)}
+                                  </span>
+                                </div>
                               </div>
                             )}
                             <div className="flex items-center space-x-4 mt-1">
@@ -590,8 +650,8 @@ export default function InvestmentManagement() {
       {viewMode === 'summary' && (
         <div className="space-y-6">
           {/* Season Investment Card */}
-          <SeasonInvestmentCard 
-            farmId={currentFarm?.id || ''} 
+          <SeasonInvestmentCard
+            investments={investments}
             currentSeasonYear={getSeasonFromDate(new Date()).year}
           />
           <InvestmentSummaryView summary={summary} />
@@ -717,7 +777,7 @@ function PhotoModal({
 }
 
 // Season Investment Summary Component
-function SeasonInvestmentCard({ farmId, currentSeasonYear }: { farmId: string, currentSeasonYear: number }) {
+function SeasonInvestmentCard({ investments, currentSeasonYear }: { investments: Investment[], currentSeasonYear: number }) {
   const [investmentData, setInvestmentData] = useState<{
     lastSeason: { year: number, total: number, count: number },
     currentSeason: { year: number, total: number, count: number }
@@ -725,55 +785,33 @@ function SeasonInvestmentCard({ farmId, currentSeasonYear }: { farmId: string, c
     lastSeason: { year: currentSeasonYear - 1, total: 0, count: 0 },
     currentSeason: { year: currentSeasonYear, total: 0, count: 0 }
   })
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const loadInvestmentData = async () => {
-      try {
-        setLoading(true)
-        console.log(`SeasonInvestmentCard: Loading investment data for farm ${farmId}, seasons ${currentSeasonYear - 1} and ${currentSeasonYear}`)
+    // Calculate seasonal investment data from provided investments
+    const lastSeasonInvestments = investments.filter(inv => {
+      const invYear = new Date(inv.date).getFullYear()
+      return invYear === currentSeasonYear - 1
+    })
 
-        // Load current season investments - using the correct nested path structure
-        // Note: This component needs access to user ID to query the correct path
-        console.log(`SeasonInvestmentCard: Cannot query investments without user ID - this component needs to be updated`)
-        console.log(`SeasonInvestmentCard: Expected path: users/{userId}/farms/${farmId}/investments`)
+    const currentSeasonInvestments = investments.filter(inv => {
+      const invYear = new Date(inv.date).getFullYear()
+      return invYear === currentSeasonYear
+    })
 
-        // For now, return empty data since we can't query without user context
-        setInvestmentData({
-          lastSeason: { year: currentSeasonYear - 1, total: 0, count: 0 },
-          currentSeason: { year: currentSeasonYear, total: 0, count: 0 }
-        })
-      } catch (error) {
-        console.error('SeasonInvestmentCard: Error loading investment data:', error)
-        console.error('SeasonInvestmentCard: Error details:', {
-          farmId,
-          currentSeasonYear,
-          errorCode: (error as any)?.code,
-          errorMessage: (error as any)?.message
-        })
-      } finally {
-        setLoading(false)
+    setInvestmentData({
+      lastSeason: {
+        year: currentSeasonYear - 1,
+        total: lastSeasonInvestments.reduce((sum, inv) => sum + inv.amount, 0),
+        count: lastSeasonInvestments.length
+      },
+      currentSeason: {
+        year: currentSeasonYear,
+        total: currentSeasonInvestments.reduce((sum, inv) => sum + inv.amount, 0),
+        count: currentSeasonInvestments.length
       }
-    }
+    })
+  }, [investments, currentSeasonYear])
 
-    if (farmId) {
-      loadInvestmentData()
-    }
-  }, [farmId, currentSeasonYear])
-
-  if (loading) {
-    return (
-      <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl border border-blue-200 p-6 shadow-sm">
-        <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="h-16 bg-gray-200 rounded"></div>
-            <div className="h-16 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   const { lastSeason, currentSeason } = investmentData
   const difference = currentSeason.total - lastSeason.total

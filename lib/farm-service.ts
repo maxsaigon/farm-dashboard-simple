@@ -277,7 +277,63 @@ export class FarmService {
     
     return farmUsers
   }
-  
+
+  // Get user IDs with access to a farm (for investment viewing)
+  static async getFarmMemberIds(farmId: string, requesterId: string): Promise<string[]> {
+    const requesterAccess = await this.getUserFarmAccess(requesterId, farmId)
+    if (!requesterAccess) {
+      throw new Error('No permission to view farm')
+    }
+
+    const accessQuery = query(
+      collection(db, 'userFarmAccess'),
+      where('farmId', '==', farmId)
+    )
+
+    const snapshot = await getDocs(accessQuery)
+    return snapshot.docs.map(doc => doc.data().userId as string)
+  }
+
+  // Get farm members with display names (for investment viewing)
+  static async getFarmMembersWithDisplayNames(farmId: string, requesterId: string): Promise<Array<{userId: string, displayName?: string, email?: string}>> {
+    const requesterAccess = await this.getUserFarmAccess(requesterId, farmId)
+    if (!requesterAccess) {
+      throw new Error('No permission to view farm')
+    }
+
+    const accessQuery = query(
+      collection(db, 'userFarmAccess'),
+      where('farmId', '==', farmId)
+    )
+
+    const snapshot = await getDocs(accessQuery)
+    const members: Array<{userId: string, displayName?: string, email?: string}> = []
+
+    for (const accessDoc of snapshot.docs) {
+      const userId = accessDoc.data().userId as string
+
+      // Try to fetch user display name
+      try {
+        const userDoc = await getDoc(doc(db, 'users', userId))
+        if (userDoc.exists()) {
+          const userData = userDoc.data()
+          members.push({
+            userId,
+            displayName: userData.displayName || undefined,
+            email: userData.email || undefined
+          })
+        } else {
+          members.push({ userId })
+        }
+      } catch (error) {
+        console.warn('Could not fetch user details for investment display:', error)
+        members.push({ userId })
+      }
+    }
+
+    return members
+  }
+
   // Real-time listener for user's farms
   static subscribeToUserFarms(userId: string, callback: (farms: Farm[]) => void) {
     const accessQuery = query(
