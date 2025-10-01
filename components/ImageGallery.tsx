@@ -32,10 +32,12 @@ type DisplayImage = PhotoWithUrls | StorageImage
 const storageImagesCache = new Map<string, { general: string[], health: string[], fruitCount: string[] }>()
 
 export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
-  const { user, currentFarm } = useSimpleAuth()
-  const { showSuccess, showError } = useToast()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const cameraInputRef = useRef<HTMLInputElement>(null)
+   const { user, currentFarm } = useSimpleAuth()
+   const { showSuccess, showError } = useToast()
+   const fileInputRef = useRef<HTMLInputElement>(null)
+   const cameraInputRef = useRef<HTMLInputElement>(null)
+
+   console.log('🎯 ImageGallery: Component render for tree:', tree.id, 'name:', tree.name, 'qrCode:', tree.qrCode)
 
   // Use correct farmId - prioritize tree.farmId, then fallback to known working farmId
   const effectiveFarmId = tree.farmId && tree.farmId !== 'default' ? tree.farmId : 'F210C3FC-F191-4926-9C15-58D6550A716A'
@@ -68,8 +70,20 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   useEffect(() => {
     if (!tree.id) return
 
+    console.log('🔄 ImageGallery: Loading Firestore photos for tree:', tree.id)
+
     const unsubscribe = subscribeToTreePhotos(tree.id, async (firestorePhotos) => {
+      console.log('📸 ImageGallery: Received Firestore photos:', firestorePhotos.length, 'photos')
+      firestorePhotos.forEach((photo, index) => {
+        console.log(`  Photo ${index}: ID=${photo.id}, filename=${photo.filename}, path=${photo.localPath}`)
+      })
+
       const photosWithUrls = await getPhotosWithUrls(firestorePhotos, effectiveFarmId)
+      console.log('🔗 ImageGallery: Photos with URLs:', photosWithUrls.length, 'photos')
+      photosWithUrls.forEach((photo, index) => {
+        console.log(`  PhotoWithUrl ${index}: ID=${photo.id}, imageUrl=${photo.imageUrl}, thumbnailUrl=${photo.thumbnailUrl}`)
+      })
+
       setPhotos(photosWithUrls)
       // Set loading to false as soon as Firestore photos are loaded
       setLoading(false)
@@ -85,17 +99,25 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
 
       // Create cache key
       const cacheKey = `${tree.id}-${tree.qrCode || ''}-${effectiveFarmId}`
+      console.log('🔄 ImageGallery: Loading storage images for tree:', tree.id, 'cacheKey:', cacheKey)
 
       // Check cache first
       const cachedImages = storageImagesCache.get(cacheKey)
       if (cachedImages) {
+        console.log('💾 ImageGallery: Using cached storage images:', cachedImages)
         setStorageImages(cachedImages)
         return
       }
 
       setStorageImagesLoading(true)
       try {
+        console.log('📁 ImageGallery: Fetching storage images from service...')
         const images = await getTreeImagesByPattern(tree.id, tree.qrCode, effectiveFarmId)
+        console.log('📁 ImageGallery: Storage images loaded:', images)
+        console.log('  General:', images.general.length, 'images')
+        console.log('  Health:', images.health.length, 'images')
+        console.log('  FruitCount:', images.fruitCount.length, 'images')
+
         // Cache the result
         storageImagesCache.set(cacheKey, images)
         setStorageImages(images)
@@ -133,27 +155,43 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   // Get all images (no filtering needed since tabs are removed)
   const getFilteredImages = (): DisplayImage[] => {
     const firestoreImages = photos.filter(photo => photo.imageUrl)
+    console.log('🔍 ImageGallery: Filtering images...')
+    console.log('  Firestore images:', firestoreImages.length, 'images')
+    firestoreImages.forEach((img, index) => {
+      console.log(`    Firestore ${index}: ID=${img.id}, URL=${img.imageUrl}`)
+    })
 
     // Create a set of Firestore image URLs to avoid duplicates
     const firestoreImageUrls = new Set(firestoreImages.map(img => img.imageUrl))
+    console.log('  Firestore URLs set size:', firestoreImageUrls.size)
 
     // Filter out storage images that already exist in Firestore
+    const generalStorageFiltered = storageImages.general.filter(url => !firestoreImageUrls.has(url))
+    const healthStorageFiltered = storageImages.health.filter(url => !firestoreImageUrls.has(url))
+    const fruitCountStorageFiltered = storageImages.fruitCount.filter(url => !firestoreImageUrls.has(url))
+
+    console.log('  Storage images after filtering:')
+    console.log('    General:', generalStorageFiltered.length, 'images')
+    console.log('    Health:', healthStorageFiltered.length, 'images')
+    console.log('    FruitCount:', fruitCountStorageFiltered.length, 'images')
+
     const uniqueStorageImages = [
-      ...storageImages.general
-        .filter(url => !firestoreImageUrls.has(url))
-        .map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
-      ...storageImages.health
-        .filter(url => !firestoreImageUrls.has(url))
-        .map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
-      ...storageImages.fruitCount
-        .filter(url => !firestoreImageUrls.has(url))
-        .map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url }))
+      ...generalStorageFiltered.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
+      ...healthStorageFiltered.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url })),
+      ...fruitCountStorageFiltered.map(url => ({ imageUrl: url, isStorage: true, thumbnailUrl: url }))
     ]
 
-    return [
+    const result = [
       ...firestoreImages,
       ...uniqueStorageImages
     ]
+
+    console.log('  Final combined images:', result.length, 'images')
+    result.forEach((img, index) => {
+      console.log(`    Final ${index}: ${'id' in img ? `Firestore ID=${img.id}` : 'Storage'}, URL=${img.imageUrl}`)
+    })
+
+    return result
   }
 
   const filteredImages = getFilteredImages()
