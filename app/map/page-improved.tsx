@@ -21,6 +21,8 @@ import {
 import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
 import BottomSheet from '@/components/ui/BottomSheet'
 import AuthGuard from '@/components/AuthGuard'
+import { DataReconciliationStatus } from '@/components/DataReconciliationStatus'
+import { DataReconciliationService } from '@/lib/data-reconciliation-service'
 
 interface Zone {
   id: string
@@ -125,9 +127,10 @@ function MapPageContent() {
 
   const loadTrees = async (farmId: string): Promise<Tree[]> => {
     try {
+      // Load trees from web collection first
       const treesRef = collection(db, 'farms', farmId, 'trees')
       const treesSnapshot = await getDocs(treesRef)
-      
+
       const treesData = treesSnapshot.docs.map(doc => {
         const data = doc.data()
         return {
@@ -146,9 +149,34 @@ function MapPageContent() {
           longitude: data.longitude || 0,
           ...data
         } as Tree
-      }).filter(tree => tree.latitude && tree.longitude && tree.latitude !== 0 && tree.longitude !== 0)
-      
-      return treesData
+      })
+
+      // Filter trees with valid GPS coordinates
+      const validTrees = treesData.filter(tree =>
+        tree.latitude && tree.longitude && tree.latitude !== 0 && tree.longitude !== 0
+      )
+
+      // Check for missing trees from iOS collection and include them
+      try {
+        if (currentFarm) {
+          const reconciliationResult = await DataReconciliationService.compareTreesForFarm(farmId, currentFarm.id)
+
+          // Add missing iOS trees that have valid GPS coordinates
+          const missingTreesWithGPS = reconciliationResult.missingInWeb.filter(tree =>
+            tree.latitude && tree.longitude && tree.latitude !== 0 && tree.longitude !== 0
+          )
+
+          if (missingTreesWithGPS.length > 0) {
+            console.log(`🗺️ Including ${missingTreesWithGPS.length} missing iOS trees in map`)
+            validTrees.push(...missingTreesWithGPS)
+          }
+        }
+      } catch (reconciliationError) {
+        console.warn('Could not load missing iOS trees for map:', reconciliationError)
+        // Continue with web trees only if reconciliation fails
+      }
+
+      return validTrees
     } catch (error) {
       console.error('Error loading trees:', error)
       return []
@@ -315,6 +343,11 @@ function MapPageContent() {
                 <AdjustmentsHorizontalIcon className="h-5 w-5" />
               </button>
             </div>
+          </div>
+
+          {/* Data Reconciliation Status */}
+          <div className="mb-4">
+            <DataReconciliationStatus showDetails={false} />
           </div>
 
           {/* Simple View Mode Selector */}

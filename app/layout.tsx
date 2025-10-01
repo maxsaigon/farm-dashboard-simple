@@ -88,7 +88,7 @@ export const metadata: Metadata = {
     url: "https://farm-manager.vercel.app",
     siteName: "Farm Manager",
     title: "Farm Manager - Ứng dụng di động quản lý trang trại",
-    description: "Ứng dụng di động quản lý trang trại thông minh. Chỉ hỗ trợ trên điện thoại và máy tính bảng. Chụp ảnh AI, theo dõi cây trồng trực tiếp tại vườn.",
+    description: "Ung dung di dong quan ly trang trai thong minh. Chi ho tro tren dien thoai va may tinh bang. Chup anh AI, theo doi cay trong truc tiep tai vuon.",
     images: [
       {
         url: "/og-image.jpg",

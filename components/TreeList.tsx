@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { subscribeToTrees } from '@/lib/firestore'
+import { DataReconciliationService } from '@/lib/data-reconciliation-service'
 import { Tree } from '@/lib/types'
 import { 
   MagnifyingGlassIcon,
@@ -56,9 +57,29 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
 
     setLoading(true)
     try {
-      const unsubscribe = subscribeToTrees(currentFarm.id, user.uid, (updatedTrees) => {
+      const unsubscribe = subscribeToTrees(currentFarm.id, user.uid, async (updatedTrees) => {
         // Show real data or empty list if no trees loaded
-        setTrees(updatedTrees)
+        let allTrees = [...updatedTrees]
+
+        // Check for missing trees from iOS collection and include them
+        try {
+          const reconciliationResult = await DataReconciliationService.compareTreesForFarm(currentFarm.id, user.uid)
+
+          // Add missing iOS trees that aren't already in the web collection
+          const missingTrees = reconciliationResult.missingInWeb.filter(iosTree =>
+            !updatedTrees.some(webTree => webTree.id === iosTree.id)
+          )
+
+          if (missingTrees.length > 0) {
+            console.log(`🌳 Including ${missingTrees.length} missing iOS trees in tree list`)
+            allTrees.push(...missingTrees)
+          }
+        } catch (reconciliationError) {
+          console.warn('Could not load missing iOS trees for tree list:', reconciliationError)
+          // Continue with web trees only if reconciliation fails
+        }
+
+        setTrees(allTrees)
         setLoading(false)
       })
 
