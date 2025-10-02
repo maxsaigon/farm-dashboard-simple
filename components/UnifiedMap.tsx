@@ -775,20 +775,22 @@ const UnifiedMap = memo(({
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setGpsEnabled(!gpsEnabled)}
-            className={`p-2 rounded-md transition-colors ${
+            className={`p-3 rounded-lg font-medium transition-all active:scale-95 ${
               gpsEnabled
-                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-green-600 text-white hover:bg-green-700 shadow-green-200'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-2 border-gray-300'
             }`}
-            title={gpsEnabled ? 'Tắt GPS' : 'Bật GPS'}
+            title={gpsEnabled ? 'Tắt GPS tracking' : 'Bật GPS tracking'}
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-            </svg>
+            <div className="flex items-center space-x-2">
+              <svg className={`w-5 h-5 ${gpsEnabled ? 'animate-pulse' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm font-bold">
+                {gpsEnabled ? 'GPS ON' : 'GPS'}
+              </span>
+            </div>
           </button>
-          <span className="text-xs text-gray-600">
-            {gpsEnabled ? 'GPS ON' : 'GPS OFF'}
-          </span>
         </div>
 
         {/* Show user path toggle (only when GPS is enabled) */}
@@ -873,11 +875,23 @@ const UnifiedMap = memo(({
       {/* Position Info Panel (only when GPS is enabled) */}
       {gpsEnabled && userPosition && (
         <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 text-sm">
-          <div className="font-bold text-red-600">📍 Vị trí</div>
+          <div className="font-bold text-red-600">📍 Vị trí của bạn</div>
           <div className="font-mono text-xs space-y-1">
             <div>{userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}</div>
-            <div>±{userPosition.accuracy.toFixed(0)}m</div>
+            <div>Độ chính xác: ±{userPosition.accuracy.toFixed(0)}m</div>
             {userPosition.speed && <div>Tốc độ: {(userPosition.speed * 3.6).toFixed(1)} km/h</div>}
+          </div>
+        </div>
+      )}
+
+      {/* GPS Instructions (when GPS is disabled) */}
+      {!gpsEnabled && (
+        <div className="absolute bottom-4 left-4 bg-blue-50 border border-blue-200 rounded-lg shadow-lg p-3 text-sm max-w-xs">
+          <div className="font-bold text-blue-600 mb-1">💡 Mẹo sử dụng</div>
+          <div className="text-xs text-blue-700 space-y-1">
+            <div>• Nhấn nút "GPS" để bật theo dõi vị trí</div>
+            <div>• Vị trí của bạn sẽ hiển thị bằng chấm đỏ</div>
+            <div>• Phát hiện cây và vùng gần vị trí hiện tại</div>
           </div>
         </div>
       )}
