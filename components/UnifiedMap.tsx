@@ -79,11 +79,40 @@ const useOptimizedPositioning = (enabled: boolean = true, updateInterval: number
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    if (!enabled) return
+    console.log('🔄 useOptimizedPositioning Effect:', {
+      enabled,
+      updateInterval,
+      hasNavigatorGeolocation: !!navigator.geolocation,
+      timestamp: new Date().toISOString()
+    })
+
+    if (!enabled) {
+      console.log('⏹️ GPS disabled, clearing interval')
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+      return
+    }
+
+    if (!navigator.geolocation) {
+      console.error('❌ navigator.geolocation not available')
+      return
+    }
 
     const updatePosition = () => {
+      console.log('📍 Requesting GPS position...')
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log('✅ GPS position received:', {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: position.timestamp,
+            coords: position.coords
+          })
+
           const newPos = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
@@ -104,7 +133,15 @@ const useOptimizedPositioning = (enabled: boolean = true, updateInterval: number
             }].slice(-20)
           )
         },
-        (error) => console.warn('GPS positioning error:', error),
+        (error) => {
+          console.error('❌ GPS positioning error:', {
+            code: error.code,
+            message: error.message,
+            PERMISSION_DENIED: error.PERMISSION_DENIED,
+            POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
+            TIMEOUT: error.TIMEOUT
+          })
+        },
         {
           enableHighAccuracy: true,
           timeout: 5000,
@@ -114,14 +151,18 @@ const useOptimizedPositioning = (enabled: boolean = true, updateInterval: number
     }
 
     // Initial position
+    console.log('🚀 Starting GPS positioning...')
     updatePosition()
 
     // Set up interval for updates
+    console.log(`⏰ Setting up GPS interval: ${updateInterval}ms`)
     intervalRef.current = setInterval(updatePosition, updateInterval)
 
     return () => {
+      console.log('🛑 Cleaning up GPS interval')
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
+        intervalRef.current = null
       }
     }
   }, [enabled, updateInterval])
@@ -405,8 +446,52 @@ const UnifiedMap = memo(({
   // GPS state management
   const [gpsEnabled, setGpsEnabled] = useState(false)
 
+  // Check GPS permissions and capabilities on mount
+  useEffect(() => {
+    console.log('🚀 UnifiedMap Mounted - GPS Debug Info:', {
+      hasGeolocation: !!navigator.geolocation,
+      hasPermissions: !!navigator.permissions,
+      isSecureContext: window.isSecureContext,
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString(),
+      location: window.location.href
+    })
+
+    // Check geolocation permission if available
+    if (navigator.permissions && navigator.geolocation) {
+      navigator.permissions.query({ name: 'geolocation' })
+        .then(permission => {
+          console.log('📋 Initial GPS Permission:', permission.state)
+        })
+        .catch(err => {
+          console.log('📋 Could not check GPS permission:', err)
+        })
+    }
+  }, [])
+
   // Optimized positioning (only when GPS is enabled)
   const { userPosition, trackingHistory } = useOptimizedPositioning(gpsEnabled, 2000)
+
+  // Debug GPS state changes
+  useEffect(() => {
+    console.log('🔄 GPS State Changed:', {
+      gpsEnabled,
+      hasUserPosition: !!userPosition,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent
+    })
+  }, [gpsEnabled, userPosition])
+
+  // Debug userPosition changes
+  useEffect(() => {
+    console.log('📍 UserPosition Updated:', {
+      hasPosition: !!userPosition,
+      position: userPosition,
+      gpsEnabled,
+      timestamp: new Date().toISOString()
+    })
+  }, [userPosition, gpsEnabled])
+
   const proximityData = useProximityDetection(trees, zones, gpsEnabled ? userPosition : null, proximityRadius)
 
   // Handle background tracking toggle (only when GPS is enabled)
@@ -700,6 +785,14 @@ const UnifiedMap = memo(({
         {/* User Position and Tracking (only when GPS is enabled) */}
         {gpsEnabled && userPosition && (
           <>
+            {console.log('🗺️ Rendering user position on map:', {
+              position: userPosition,
+              showUserPath,
+              pathCoordinatesLength: userPathCoordinates.length,
+              proximityRadius,
+              timestamp: new Date().toISOString()
+            })}
+
             {/* User tracking path */}
             {showUserPath && userPathCoordinates.length > 1 && (
               <Polyline
@@ -774,7 +867,18 @@ const UnifiedMap = memo(({
       <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 space-y-2">
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setGpsEnabled(!gpsEnabled)}
+            onClick={() => {
+              console.log('🖱️ GPS Button Clicked:', {
+                currentState: gpsEnabled,
+                newState: !gpsEnabled,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                isSecureContext: window.isSecureContext,
+                permissions: navigator.permissions ? 'available' : 'not available',
+                buttonVisible: true
+              })
+              setGpsEnabled(!gpsEnabled)
+            }}
             className={`p-3 rounded-lg font-medium transition-all active:scale-95 ${
               gpsEnabled
                 ? 'bg-green-600 text-white hover:bg-green-700 shadow-green-200'
@@ -791,7 +895,87 @@ const UnifiedMap = memo(({
               </span>
             </div>
           </button>
+
+          {/* Quick GPS Test Button */}
+          <button
+            onClick={async () => {
+              console.log('🧪 Testing GPS permissions and location...')
+
+              if (!navigator.geolocation) {
+                console.error('❌ Geolocation not supported')
+                alert('Geolocation không được hỗ trợ trên trình duyệt này')
+                return
+              }
+
+              if (navigator.permissions) {
+                try {
+                  const permission = await navigator.permissions.query({ name: 'geolocation' })
+                  console.log('📋 GPS Permission status:', permission.state)
+                } catch (e) {
+                  console.log('📋 Could not check permissions:', e)
+                }
+              }
+
+              // Try to get current position once
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  console.log('✅ Manual GPS test successful:', {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                    accuracy: position.coords.accuracy
+                  })
+                  alert(`✅ GPS hoạt động! Vị trí: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`)
+                },
+                (error) => {
+                  console.error('❌ Manual GPS test failed:', {
+                    code: error.code,
+                    message: error.message
+                  })
+                  alert(`❌ GPS lỗi: ${error.message} (Code: ${error.code})`)
+                },
+                {
+                  enableHighAccuracy: true,
+                  timeout: 10000,
+                  maximumAge: 60000
+                }
+              )
+            }}
+            className="p-2 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 border border-purple-300"
+            title="Test GPS nhanh"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
+
+        {/* Debug Info Panel */}
+        <div className="bg-gray-50 p-2 rounded text-xs space-y-1">
+          <div className="font-bold text-gray-700">🔧 GPS Debug:</div>
+          <div>GPS: <span className={gpsEnabled ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+            {gpsEnabled ? 'ON' : 'OFF'}
+          </span></div>
+          <div>Position: <span className={userPosition ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+            {userPosition ? 'YES' : 'NO'}
+          </span></div>
+          <div>Geolocation: <span className={navigator.geolocation ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+            {navigator.geolocation ? 'YES' : 'NO'}
+          </span></div>
+          <div>Permission: <span className={navigator.permissions ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+            {navigator.permissions ? 'YES' : 'NO'}
+          </span></div>
+        </div>
+
+        {/* Force Enable GPS Button */}
+        <button
+          onClick={() => {
+            console.log('🚀 Force enabling GPS...')
+            setGpsEnabled(true)
+          }}
+          className="w-full p-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 active:bg-blue-800"
+        >
+          🚀 Force Enable GPS
+        </button>
 
         {/* Show user path toggle (only when GPS is enabled) */}
         {gpsEnabled && (
@@ -874,27 +1058,83 @@ const UnifiedMap = memo(({
 
       {/* Position Info Panel (only when GPS is enabled) */}
       {gpsEnabled && userPosition && (
-        <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 text-sm">
-          <div className="font-bold text-red-600">📍 Vị trí của bạn</div>
-          <div className="font-mono text-xs space-y-1">
-            <div>{userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}</div>
-            <div>Độ chính xác: ±{userPosition.accuracy.toFixed(0)}m</div>
-            {userPosition.speed && <div>Tốc độ: {(userPosition.speed * 3.6).toFixed(1)} km/h</div>}
+        <>
+          {console.log('📋 Rendering position info panel:', {
+            position: userPosition,
+            gpsEnabled,
+            timestamp: new Date().toISOString()
+          })}
+          <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 text-sm">
+            <div className="font-bold text-red-600">📍 Vị trí của bạn</div>
+            <div className="font-mono text-xs space-y-1">
+              <div>{userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}</div>
+              <div>Độ chính xác: ±{userPosition.accuracy.toFixed(0)}m</div>
+              {userPosition.speed && <div>Tốc độ: {(userPosition.speed * 3.6).toFixed(1)} km/h</div>}
+            </div>
           </div>
-        </div>
+        </>
       )}
+
 
       {/* GPS Instructions (when GPS is disabled) */}
       {!gpsEnabled && (
         <div className="absolute bottom-4 left-4 bg-blue-50 border border-blue-200 rounded-lg shadow-lg p-3 text-sm max-w-xs">
-          <div className="font-bold text-blue-600 mb-1">💡 Mẹo sử dụng</div>
+          <div className="font-bold text-blue-600 mb-1">💡 Hướng dẫn GPS</div>
           <div className="text-xs text-blue-700 space-y-1">
             <div>• Nhấn nút "GPS" để bật theo dõi vị trí</div>
+            <div>• Cho phép truy cập vị trí khi được hỏi</div>
             <div>• Vị trí của bạn sẽ hiển thị bằng chấm đỏ</div>
             <div>• Phát hiện cây và vùng gần vị trí hiện tại</div>
+            <div className="mt-2 pt-2 border-t border-blue-200">
+              <div className="font-bold text-blue-800">🔧 Debug Panel:</div>
+              <div>• Sử dụng nút tím để test GPS nhanh</div>
+              <div>• Nhấn "Force Enable GPS" để bật trực tiếp</div>
+              <div>• Xem tọa độ ở góc phải màn hình</div>
+            </div>
           </div>
         </div>
       )}
+
+
+      {/* GPS Permission Request Helper */}
+      {gpsEnabled && !userPosition && (
+        <div className="absolute bottom-4 left-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-lg p-3 text-sm max-w-xs">
+          <div className="font-bold text-yellow-600 mb-1">⚠️ Chờ GPS...</div>
+          <div className="text-xs text-yellow-700 space-y-1">
+            <div>• Đang lấy vị trí GPS...</div>
+            <div>• Hãy cho phép truy cập vị trí nếu được hỏi</div>
+            <div>• Đảm bảo GPS/Location services đã bật</div>
+            <div>• Kiểm tra kết nối internet</div>
+          </div>
+        </div>
+      )}
+
+      {/* Current Location Display (when available) */}
+      {userPosition && (
+        <div className="absolute top-20 left-4 bg-green-50 border border-green-200 rounded-lg shadow-lg p-2 text-xs">
+          <div className="font-bold text-green-600">📍 Vị trí hiện tại:</div>
+          <div className="font-mono text-green-700">
+            {userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}
+          </div>
+          <div className="text-green-600">±{userPosition.accuracy.toFixed(0)}m</div>
+        </div>
+      )}
+
+      {/* Compact GPS Status (always visible) */}
+      <div className="absolute top-4 right-4 bg-black bg-opacity-75 text-white rounded p-2 text-xs font-mono">
+        <div>GPS: <span className={gpsEnabled ? 'text-green-400' : 'text-red-400'}>
+          {gpsEnabled ? 'ON' : 'OFF'}
+        </span></div>
+        <div>Pos: <span className={userPosition ? 'text-green-400' : 'text-red-400'}>
+          {userPosition ? 'YES' : 'NO'}
+        </span></div>
+        {userPosition && (
+          <>
+            <div>{userPosition.lat.toFixed(4)}</div>
+            <div>{userPosition.lng.toFixed(4)}</div>
+          </>
+        )}
+      </div>
     </div>
   )
 })
