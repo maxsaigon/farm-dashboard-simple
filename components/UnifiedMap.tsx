@@ -445,6 +445,7 @@ const UnifiedMap = memo(({
 
   // GPS state management
   const [gpsEnabled, setGpsEnabled] = useState(false)
+  const [permissionStatus, setPermissionStatus] = useState<string>('unknown')
 
   // Check GPS permissions and capabilities on mount
   useEffect(() => {
@@ -462,10 +463,20 @@ const UnifiedMap = memo(({
       navigator.permissions.query({ name: 'geolocation' })
         .then(permission => {
           console.log('📋 Initial GPS Permission:', permission.state)
+          setPermissionStatus(permission.state)
+
+          // Listen for permission changes
+          permission.addEventListener('change', () => {
+            console.log('📋 GPS Permission changed to:', permission.state)
+            setPermissionStatus(permission.state)
+          })
         })
         .catch(err => {
           console.log('📋 Could not check GPS permission:', err)
+          setPermissionStatus('error')
         })
+    } else {
+      setPermissionStatus('not-supported')
     }
   }, [])
 
@@ -867,7 +878,7 @@ const UnifiedMap = memo(({
       <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 space-y-2">
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => {
+            onClick={async () => {
               console.log('🖱️ GPS Button Clicked:', {
                 currentState: gpsEnabled,
                 newState: !gpsEnabled,
@@ -877,7 +888,49 @@ const UnifiedMap = memo(({
                 permissions: navigator.permissions ? 'available' : 'not available',
                 buttonVisible: true
               })
-              setGpsEnabled(!gpsEnabled)
+
+              if (!gpsEnabled) {
+                // When enabling GPS, first request permission
+                console.log('🔐 Requesting location permission...')
+
+                if (navigator.geolocation) {
+                  try {
+                    // This will trigger the permission prompt
+                    await new Promise<GeolocationPosition>((resolve, reject) => {
+                      navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 60000
+                      })
+                    })
+
+                    console.log('✅ Location permission granted')
+                    setGpsEnabled(true)
+                  } catch (error: any) {
+                    console.error('❌ Location permission denied:', {
+                      code: error.code,
+                      message: error.message
+                    })
+
+                    // Show user-friendly error message
+                    if (error.code === error.PERMISSION_DENIED) {
+                      alert('❌ Vui lòng cho phép truy cập vị trí để sử dụng GPS tracking')
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                      alert('❌ Không thể lấy vị trí GPS. Vui lòng kiểm tra GPS đã bật chưa.')
+                    } else if (error.code === error.TIMEOUT) {
+                      alert('❌ GPS timeout. Vui lòng thử lại.')
+                    } else {
+                      alert(`❌ Lỗi GPS: ${error.message}`)
+                    }
+                  }
+                } else {
+                  console.error('❌ Geolocation not supported')
+                  alert('❌ Trình duyệt không hỗ trợ GPS')
+                }
+              } else {
+                // When disabling GPS, just turn it off
+                setGpsEnabled(false)
+              }
             }}
             className={`p-3 rounded-lg font-medium transition-all active:scale-95 ${
               gpsEnabled
@@ -911,6 +964,7 @@ const UnifiedMap = memo(({
                 try {
                   const permission = await navigator.permissions.query({ name: 'geolocation' })
                   console.log('📋 GPS Permission status:', permission.state)
+                  setPermissionStatus(permission.state)
                 } catch (e) {
                   console.log('📋 Could not check permissions:', e)
                 }
@@ -961,10 +1015,59 @@ const UnifiedMap = memo(({
           <div>Geolocation: <span className={navigator.geolocation ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
             {navigator.geolocation ? 'YES' : 'NO'}
           </span></div>
-          <div>Permission: <span className={navigator.permissions ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
-            {navigator.permissions ? 'YES' : 'NO'}
+          <div>Permission: <span className={
+            permissionStatus === 'granted' ? 'text-green-600 font-bold' :
+            permissionStatus === 'denied' ? 'text-red-600 font-bold' :
+            permissionStatus === 'prompt' ? 'text-yellow-600 font-bold' :
+            'text-gray-600 font-bold'
+          }>
+            {permissionStatus === 'granted' ? 'GRANTED' :
+             permissionStatus === 'denied' ? 'DENIED' :
+             permissionStatus === 'prompt' ? 'PROMPT' :
+             permissionStatus}
           </span></div>
         </div>
+
+        {/* Permission Request Button */}
+        <button
+          onClick={async () => {
+            console.log('🔐 Requesting location permission only...')
+
+            if (!navigator.geolocation) {
+              alert('❌ Geolocation không được hỗ trợ')
+              return
+            }
+
+            try {
+              await new Promise<GeolocationPosition>((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                  enableHighAccuracy: true,
+                  timeout: 10000,
+                  maximumAge: 60000
+                })
+              })
+
+              console.log('✅ Permission granted successfully')
+              alert('✅ Quyền truy cập vị trí đã được cấp! Bây giờ bạn có thể bật GPS tracking.')
+
+              // Check permission status
+              if (navigator.permissions) {
+                const permission = await navigator.permissions.query({ name: 'geolocation' })
+                console.log('📋 Permission status after grant:', permission.state)
+              }
+            } catch (error: any) {
+              console.error('❌ Permission request failed:', error)
+              if (error.code === error.PERMISSION_DENIED) {
+                alert('❌ Bạn đã từ chối cấp quyền vị trí. Vui lòng cho phép trong cài đặt trình duyệt.')
+              } else {
+                alert(`❌ Không thể lấy vị trí: ${error.message}`)
+              }
+            }
+          }}
+          className="w-full p-2 bg-yellow-600 text-white rounded-lg text-xs font-medium hover:bg-yellow-700 active:bg-yellow-800 mb-2"
+        >
+          🔐 Request Permission
+        </button>
 
         {/* Force Enable GPS Button */}
         <button
@@ -1081,14 +1184,16 @@ const UnifiedMap = memo(({
         <div className="absolute bottom-4 left-4 bg-blue-50 border border-blue-200 rounded-lg shadow-lg p-3 text-sm max-w-xs">
           <div className="font-bold text-blue-600 mb-1">💡 Hướng dẫn GPS</div>
           <div className="text-xs text-blue-700 space-y-1">
-            <div>• Nhấn nút "GPS" để bật theo dõi vị trí</div>
-            <div>• Cho phép truy cập vị trí khi được hỏi</div>
-            <div>• Vị trí của bạn sẽ hiển thị bằng chấm đỏ</div>
-            <div>• Phát hiện cây và vùng gần vị trí hiện tại</div>
+            <div className="font-bold text-blue-800">📋 Các bước:</div>
+            <div>1. Nhấn nút "GPS" để bắt đầu</div>
+            <div>2. Cho phép truy cập vị trí khi được hỏi</div>
+            <div>3. Vị trí của bạn sẽ hiển thị bằng chấm đỏ</div>
+            <div>4. Phát hiện cây và vùng gần vị trí hiện tại</div>
             <div className="mt-2 pt-2 border-t border-blue-200">
-              <div className="font-bold text-blue-800">🔧 Debug Panel:</div>
-              <div>• Sử dụng nút tím để test GPS nhanh</div>
-              <div>• Nhấn "Force Enable GPS" để bật trực tiếp</div>
+              <div className="font-bold text-blue-800">🔧 Debug Tools:</div>
+              <div>• Nút tím: Test GPS permissions</div>
+              <div>• Nút vàng: Chỉ request permission</div>
+              <div>• Nút xanh: Force enable GPS</div>
               <div>• Xem tọa độ ở góc phải màn hình</div>
             </div>
           </div>
@@ -1105,6 +1210,19 @@ const UnifiedMap = memo(({
             <div>• Hãy cho phép truy cập vị trí nếu được hỏi</div>
             <div>• Đảm bảo GPS/Location services đã bật</div>
             <div>• Kiểm tra kết nối internet</div>
+          </div>
+        </div>
+      )}
+
+      {/* Permission Denied Helper */}
+      {permissionStatus === 'denied' && (
+        <div className="absolute bottom-4 left-4 bg-red-50 border border-red-200 rounded-lg shadow-lg p-3 text-sm max-w-xs">
+          <div className="font-bold text-red-600 mb-1">❌ Quyền GPS bị từ chối</div>
+          <div className="text-xs text-red-700 space-y-1">
+            <div>• Quyền truy cập vị trí đã bị từ chối</div>
+            <div>• Vui lòng cấp quyền trong cài đặt trình duyệt:</div>
+            <div className="font-bold">Chrome: Menu → Cài đặt → Quyền riêng tư → Vị trí</div>
+            <div>• Sau đó nhấn nút vàng "Request Permission"</div>
           </div>
         </div>
       )}
@@ -1128,10 +1246,23 @@ const UnifiedMap = memo(({
         <div>Pos: <span className={userPosition ? 'text-green-400' : 'text-red-400'}>
           {userPosition ? 'YES' : 'NO'}
         </span></div>
+        <div>Perm: <span className={
+          permissionStatus === 'granted' ? 'text-green-400' :
+          permissionStatus === 'denied' ? 'text-red-400' :
+          permissionStatus === 'prompt' ? 'text-yellow-400' :
+          'text-gray-400'
+        }>
+          {permissionStatus === 'granted' ? 'GRANTED' :
+           permissionStatus === 'denied' ? 'DENIED' :
+           permissionStatus === 'prompt' ? 'PROMPT' :
+           permissionStatus}
+        </span></div>
         {userPosition && (
           <>
-            <div>{userPosition.lat.toFixed(4)}</div>
-            <div>{userPosition.lng.toFixed(4)}</div>
+            <div className="mt-1 pt-1 border-t border-gray-600">
+              <div>{userPosition.lat.toFixed(4)}</div>
+              <div>{userPosition.lng.toFixed(4)}</div>
+            </div>
           </>
         )}
       </div>
