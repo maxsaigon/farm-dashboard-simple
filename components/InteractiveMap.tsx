@@ -86,7 +86,7 @@ export default function InteractiveMap() {
   const [isMapReady, setIsMapReady] = useState(false)
   const [selectedTree, setSelectedTree] = useState<TreeMarker | null>(null)
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null)
-  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null)
   const [isTracking, setIsTracking] = useState(false)
   
   // Map controls
@@ -136,10 +136,11 @@ export default function InteractiveMap() {
         (position) => {
           const newLocation = {
             lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
           }
           setCurrentLocation(newLocation)
-          
+
           // Update user marker on map
           updateUserLocationMarker(newLocation)
         },
@@ -155,6 +156,16 @@ export default function InteractiveMap() {
       )
 
       return () => navigator.geolocation.clearWatch(watchId)
+    } else {
+      // Clear location when tracking is stopped
+      setCurrentLocation(null)
+      // Remove user marker from map
+      if ((window as any).userLocationMarker) {
+        (window as any).userLocationMarker.setMap(null)
+      }
+      if ((window as any).userLocationCircle) {
+        (window as any).userLocationCircle.setMap(null)
+      }
     }
   }, [isTracking])
 
@@ -536,15 +547,83 @@ export default function InteractiveMap() {
   }
 
   const updateUserLocationMarker = (location: { lat: number; lng: number }) => {
-    // Implementation for user location marker
+    if (!mapRef.current) return
+
+    // Remove existing user marker if it exists
+    if ((window as any).userLocationMarker) {
+      (window as any).userLocationMarker.setMap(null)
+    }
+
+    // Remove existing accuracy circle if it exists
+    if ((window as any).userLocationCircle) {
+      (window as any).userLocationCircle.setMap(null)
+    }
+
+    // Create new user location marker
+    const markerConfig = {
+      position: { lat: location.lat, lng: location.lng },
+      map: mapRef.current!,
+      title: 'Vị trí của bạn',
+      icon: {
+        path: (window as any).google.maps.SymbolPath.CIRCLE,
+        fillColor: '#3b82f6',
+        fillOpacity: 1.0,
+        strokeColor: '#ffffff',
+        strokeWeight: 3,
+        scale: 12
+      },
+      zIndex: 9999 // Ensure it's on top
+    }
+
+    // For demo purposes, add a 20m accuracy circle
+    const circleConfig = {
+      center: { lat: location.lat, lng: location.lng },
+      radius: 20, // 20 meters accuracy
+      map: mapRef.current!,
+      fillColor: '#3b82f6',
+      fillOpacity: 0.1,
+      strokeColor: '#3b82f6',
+      strokeOpacity: 0.3,
+      strokeWeight: 1
+    }
+
+    // Create markers and circles with proper typing
+    const userMarker = (window as any).google.maps.Marker(markerConfig) as any
+    const accuracyCircle = (window as any).google.maps.Circle(circleConfig) as any
+
+    // Store references for cleanup
+    (window as any).userLocationMarker = userMarker
+    (window as any).userLocationCircle = accuracyCircle
   }
 
   const centerOnUser = () => {
     if (currentLocation && mapRef.current) {
-      mapRef.current.setCenter(currentLocation)
+      mapRef.current.setCenter({ lat: currentLocation.lat, lng: currentLocation.lng })
       mapRef.current.setZoom(18)
-    } else {
-      setIsTracking(true)
+    } else if (mapRef.current) {
+      // If no current location, try to get current position once
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          }
+          setCurrentLocation(location)
+          mapRef.current!.setCenter({ lat: location.lat, lng: location.lng })
+          mapRef.current!.setZoom(18)
+          updateUserLocationMarker(location)
+        },
+        (error) => {
+          console.error('Error getting current position:', error)
+          alert('Không thể lấy vị trí hiện tại. Vui lòng kiểm tra quyền truy cập GPS.')
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        }
+      )
     }
   }
 
@@ -628,14 +707,32 @@ export default function InteractiveMap() {
           >
             <AdjustmentsHorizontalIcon className="h-5 w-5 text-gray-700" />
           </button>
-          
+
           <button
-            onClick={centerOnUser}
-            className="bg-white shadow-lg rounded-lg p-3 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
+            onClick={() => setIsTracking(!isTracking)}
+            className={`shadow-lg rounded-lg p-3 hover:bg-opacity-90 active:bg-opacity-80 transition-colors touch-manipulation ${
+              isTracking
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={isTracking ? 'Tắt GPS tracking' : 'Bật GPS tracking'}
           >
-            <MapPinIcon className="h-5 w-5 text-blue-600" />
+            <MapPinIcon className={`h-5 w-5 ${isTracking ? 'animate-pulse' : ''}`} />
           </button>
-          
+
+          <button
+              onClick={centerOnUser}
+              className={`shadow-lg rounded-lg p-3 transition-colors touch-manipulation ${
+                currentLocation
+                  ? 'bg-white hover:bg-gray-50 active:bg-gray-100 text-blue-600'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+              disabled={!currentLocation}
+              title={currentLocation ? 'Về vị trí hiện tại' : 'Không có vị trí GPS'}
+            >
+              <MapPinIcon className={`h-5 w-5 ${currentLocation ? 'text-blue-600' : 'text-gray-400'}`} />
+            </button>
+
           <button
             onClick={fitAllMarkers}
             className="bg-white shadow-lg rounded-lg p-3 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
@@ -662,12 +759,27 @@ export default function InteractiveMap() {
           </div>
         </div>
 
-        {/* Connection Status */}
-        {isTracking && (
-          <div className="absolute top-20 right-4 bg-blue-600 text-white px-3 py-2 rounded-lg shadow-lg z-10">
+        {/* GPS Status */}
+        {isTracking && currentLocation && (
+          <div className="absolute top-20 right-4 bg-green-600 text-white px-3 py-2 rounded-lg shadow-lg z-10">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              <span className="text-sm">Đang theo dõi vị trí</span>
+              <div className="text-sm">
+                <div className="font-medium">GPS Active</div>
+                <div className="text-xs opacity-90">±{Math.round(currentLocation.accuracy || 0)}m</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* GPS Location Info */}
+        {currentLocation && (
+          <div className="absolute bottom-20 left-4 bg-white rounded-lg shadow-lg p-3 text-sm z-10 max-w-xs">
+            <div className="font-bold text-blue-600 mb-1">📍 Vị trí hiện tại</div>
+            <div className="font-mono text-xs space-y-1">
+              <div>Vĩ độ: {currentLocation.lat.toFixed(6)}</div>
+              <div>Kinh độ: {currentLocation.lng.toFixed(6)}</div>
+              <div className="text-gray-500">Độ chính xác: ±{Math.round(currentLocation.accuracy || 0)}m</div>
             </div>
           </div>
         )}
