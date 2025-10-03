@@ -126,7 +126,7 @@ export default function FarmManagement() {
   const [farmStats, setFarmStats] = useState<{[key: string]: FarmStatistics}>({})
 
   useEffect(() => {
-    if (hasPermission('farms:read')) {
+    if (hasPermission('read')) {
       loadFarmStatistics()
     }
     setLoading(false)
@@ -135,7 +135,7 @@ export default function FarmManagement() {
   const loadFarmStatistics = async () => {
     try {
       // Check permission before loading data
-      if (!hasPermission('farms:read')) {
+      if (!hasPermission('read')) {
         setFarmStats({})
         return
       }
@@ -143,7 +143,7 @@ export default function FarmManagement() {
       // TODO: Implement Firebase queries to load real farm statistics
       const statsPromises = farms.map(async (farm) => {
         // Check individual farm permission
-        if (!hasPermission('farms:read', farm.id)) {
+        if (!hasPermission('read', farm.id)) {
           return { [farm.id]: null }
         }
 
@@ -229,7 +229,7 @@ export default function FarmManagement() {
     }).format(amount)
   }
 
-  if (!hasPermission('farms:read')) {
+  if (!hasPermission('read')) {
     return (
       <div className="text-center py-8">
         <ExclamationTriangleIconSolid className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -364,7 +364,7 @@ function FarmsTab({
   return (
     <div className="space-y-6">
       {/* Create Farm Button */}
-      {hasPermission('farms:create') && (
+      {hasPermission('write') && (
         <div className="flex justify-end">
           <button
             onClick={onCreateFarm}
@@ -384,7 +384,7 @@ function FarmsTab({
           <p className="text-gray-500 mb-4">
             Bạn chưa có quyền truy cập trang trại nào hoặc chưa có trang trại được tạo.
           </p>
-          {hasPermission('farms:create') && (
+          {hasPermission('write') && (
             <button
               onClick={onCreateFarm}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
@@ -425,7 +425,7 @@ function OrganizationsTab({
   return (
     <div className="space-y-6">
       {/* Create Organization Button */}
-      {hasPermission('organizations:create' as any) && (
+      {hasPermission('manage_settings' as any) && (
         <div className="flex justify-end">
           <button
             onClick={onCreateOrganization}
@@ -445,7 +445,7 @@ function OrganizationsTab({
           <p className="text-gray-500 mb-4">
             Bạn chưa thuộc tổ chức nào hoặc chưa có tổ chức được tạo.
           </p>
-          {hasPermission('organizations:create' as any) && (
+          {hasPermission('manage_settings' as any) && (
             <button
               onClick={onCreateOrganization}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
@@ -504,7 +504,7 @@ function SettingsTab({ currentFarm }: { currentFarm: EnhancedFarm | null }) {
                 </label>
                 <select 
                   value={settings?.timezone || 'Asia/Ho_Chi_Minh'}
-                  disabled={!hasPermission('farms:write')}
+                  disabled={!hasPermission('write')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                   <option value="Asia/Ho_Chi_Minh">Việt Nam (UTC+7)</option>
@@ -518,7 +518,7 @@ function SettingsTab({ currentFarm }: { currentFarm: EnhancedFarm | null }) {
                 </label>
                 <select 
                   value={settings?.currency || 'VND'}
-                  disabled={!hasPermission('farms:write')}
+                  disabled={!hasPermission('write')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                   <option value="VND">Việt Nam Đồng (VND)</option>
@@ -532,7 +532,7 @@ function SettingsTab({ currentFarm }: { currentFarm: EnhancedFarm | null }) {
                 </label>
                 <select 
                   value={settings?.units || 'metric'}
-                  disabled={!hasPermission('farms:write')}
+                  disabled={!hasPermission('write')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                   <option value="metric">Mét (Metric)</option>
@@ -545,7 +545,7 @@ function SettingsTab({ currentFarm }: { currentFarm: EnhancedFarm | null }) {
                 </label>
                 <select 
                   value={settings?.language || 'vi-VN'}
-                  disabled={!hasPermission('farms:write')}
+                  disabled={!hasPermission('write')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                   <option value="vi-VN">Tiếng Việt</option>
@@ -564,7 +564,7 @@ function SettingsTab({ currentFarm }: { currentFarm: EnhancedFarm | null }) {
                 <input
                   type="checkbox"
                   checked={settings?.enableGPSTracking ?? true}
-                  disabled={!hasPermission('farms:write')}
+                  disabled={!hasPermission('write')}
                   className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 disabled:bg-gray-100"
                 />
                 <span className="ml-2 text-sm text-gray-700">Bật định vị GPS cho cây trồng</span>
@@ -573,7 +573,7 @@ function SettingsTab({ currentFarm }: { currentFarm: EnhancedFarm | null }) {
                 <input
                   type="checkbox"
                   checked={settings?.enablePhotoGeotagging ?? true}
-                  disabled={!hasPermission('farms:write')}
+                  disabled={!hasPermission('write')}
                   className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 disabled:bg-gray-100"
                 />
                 <span className="ml-2 text-sm text-gray-700">Tự động gắn vị trí cho ảnh</span>
@@ -592,7 +592,7 @@ function SettingsTab({ currentFarm }: { currentFarm: EnhancedFarm | null }) {
                 <input
                   type="number"
                   value={settings?.dataRetentionDays || 365}
-                  disabled={!hasPermission('farms:write')}
+                  disabled={!hasPermission('write')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 />
               </div>
@@ -602,7 +602,7 @@ function SettingsTab({ currentFarm }: { currentFarm: EnhancedFarm | null }) {
                 </label>
                 <select 
                   value={settings?.backupFrequency || 'daily'}
-                  disabled={!hasPermission('farms:write')}
+                  disabled={!hasPermission('write')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                   <option value="daily">Hàng ngày</option>
@@ -614,7 +614,7 @@ function SettingsTab({ currentFarm }: { currentFarm: EnhancedFarm | null }) {
           </div>
 
           {/* Save Button */}
-          {hasPermission('farms:write') && (
+          {hasPermission('write') && (
             <div className="pt-4 border-t border-gray-200">
               <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
                 <CheckCircleIcon className="h-4 w-4 mr-2" />
@@ -666,7 +666,7 @@ function FarmCard({
             {farm.status === 'active' ? 'Hoạt động' :
              farm.status === 'inactive' ? 'Tạm ngưng' : 'Lưu trữ'}
           </span>
-          {hasPermission('farms:write') && (
+          {hasPermission('write') && (
             <button
               onClick={onEdit}
               className="p-1 text-gray-400 hover:text-blue-600"
@@ -782,7 +782,7 @@ function OrganizationCard({
             {organization.subscriptionStatus === 'active' ? 'Hoạt động' :
              organization.subscriptionStatus === 'suspended' ? 'Tạm ngưng' : 'Đã hủy'}
           </span>
-          {hasPermission('organizations:write' as any) && (
+          {hasPermission('manage_settings' as any) && (
             <button
               onClick={onEdit}
               className="p-1 text-gray-400 hover:text-blue-600"

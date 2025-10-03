@@ -53,6 +53,7 @@ export interface SimpleFarm {
   centerLatitude?: number
   centerLongitude?: number
   isActive: boolean
+  organizationId?: string
 }
 
 export interface SimpleUser {
@@ -93,34 +94,40 @@ interface SimpleAuthContextType {
   user: SimpleUser | null
   firebaseUser: FirebaseUser | null
   loading: boolean
-  
+
   // Farm management
   farms: SimpleFarm[]
   currentFarm: SimpleFarm | null
   farmAccess: FarmAccess[]
-  
+  organizations: any[] // For compatibility with enhanced components
+
+  // Roles and permissions
+  roles: FarmRole[]
+  permissions: Permission[]
+
   // Auth actions
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, displayName: string) => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
-  
+
   // User management
   updateUserProfile: (updates: Partial<SimpleUser>) => Promise<void>
   sendEmailVerification: () => Promise<void>
-  
+
   // Farm access
   setCurrentFarm: (farm: SimpleFarm | null) => void
   getUserRole: (farmId: string) => FarmRole | null
   hasPermission: (permission: Permission, farmId?: string) => boolean
   canAccessFarm: (farmId: string) => boolean
-  
+
   // Admin functions
   isAdmin: () => boolean
   isFarmAdmin: () => boolean
   isFarmOwner: (farmId?: string) => boolean
   isFarmManager: (farmId?: string) => boolean
-  
+  isOrganizationAdmin: () => boolean
+
   // Utility
   refreshUserData: () => Promise<void>
 }
@@ -680,39 +687,51 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     }
   }
 
+  // Compute roles and permissions
+  const roles: FarmRole[] = Array.from(new Set(farmAccess.filter(a => a.isActive).map(a => a.role)))
+  const permissions: Permission[] = Array.from(new Set(
+    roles.flatMap(role => ROLE_PERMISSIONS[role] || [])
+  ))
+
   const contextValue: SimpleAuthContextType = {
     // Authentication state
     user,
     firebaseUser,
     loading,
-    
+
     // Farm management
     farms,
     currentFarm,
     farmAccess,
-    
+    organizations: [],
+
+    // Roles and permissions
+    roles,
+    permissions,
+
     // Auth actions
     signIn,
     signUp,
     signOut,
     resetPassword,
-    
+
     // User management
     updateUserProfile,
     sendEmailVerification: sendEmailVerificationAction,
-    
+
     // Farm access
     setCurrentFarm,
     getUserRole,
     hasPermission,
     canAccessFarm,
-    
+
     // Admin functions
     isAdmin,
     isFarmAdmin,
     isFarmOwner,
     isFarmManager,
-    
+    isOrganizationAdmin: () => false, // Not implemented in simple auth
+
     // Utility
     refreshUserData
   }

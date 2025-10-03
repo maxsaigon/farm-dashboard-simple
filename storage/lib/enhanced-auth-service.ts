@@ -1,5 +1,5 @@
 // Enhanced authentication service with multi-tenant support
-import { auth, db } from './firebase'
+import { auth, db } from '@/lib/firebase'
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
@@ -35,7 +35,7 @@ import {
   NotificationSettings,
   DashboardSettings,
   PrivacySettings
-} from './types-enhanced'
+} from '@/lib/types-enhanced'
 
 export class EnhancedAuthService {
   private currentUser: EnhancedUser | null = null

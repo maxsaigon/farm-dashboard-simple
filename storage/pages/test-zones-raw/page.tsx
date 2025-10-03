@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
-import { db } from '../../lib/firebase'
+import { db } from '@/lib/firebase'
 
 export default function TestZonesRaw() {
   const [status, setStatus] = useState('Initializing...')

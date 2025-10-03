@@ -17,7 +17,7 @@ interface Zone {
 }
 
 // Lazy load the unified map component with no SSR
-const UnifiedMap = lazy(() => import('./UnifiedMap'))
+const UnifiedMap = lazy(() => import('@/components/UnifiedMap'))
 
 const MapLoadingFallback = () => (
   <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">

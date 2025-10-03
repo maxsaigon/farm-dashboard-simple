@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
-import { MobileStatsCard, MobileActionButton } from './MobileCards'
-import MobileLayout from './MobileLayout'
+import { MobileStatsCard, MobileActionButton } from '@/components/MobileCards'
+import MobileLayout from '@/components/MobileLayout'
 import { 
   ViewfinderCircleIcon,
   CameraIcon,
@@ -90,7 +90,7 @@ export default function MobileDashboard() {
   }, [])
 
   const loadDashboardData = async () => {
-    if (!currentFarm || !hasPermission('farms:read', currentFarm.id)) return
+    if (!currentFarm || !hasPermission('read', currentFarm.id)) return
 
     try {
       // Load real dashboard data from Firebase

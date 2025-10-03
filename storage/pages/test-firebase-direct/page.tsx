@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore'
-import { db } from '../../lib/firebase'
+import { db } from '@/lib/firebase'
 
 export default function TestFirebaseDirect() {
   const [results, setResults] = useState<string[]>([])

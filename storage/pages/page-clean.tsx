@@ -22,7 +22,7 @@ interface Zone {
   createdAt: Date
 }
 
-const MapWrapperNoSSR = dynamic(() => import('@/components/MapWrapper').then(mod => ({ default: mod.MapWrapper })), {
+const MapWrapperNoSSR = dynamic(() => import('@/storage/components/MapWrapper').then(mod => ({ default: mod.MapWrapper })), {
   ssr: false,
   loading: () => (
     <div className="h-full flex items-center justify-center">

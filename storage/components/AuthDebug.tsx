@@ -10,7 +10,7 @@ export default function AuthDebug() {
   useEffect(() => {
     const loadDebugInfo = async () => {
       try {
-        const { enhancedAuthService } = await import('@/lib/enhanced-auth-service')
+        const { enhancedAuthService } = await import('@/storage/lib/enhanced-auth-service')
         const { collection, query, where, getDocs } = await import('firebase/firestore')
         const { db } = await import('@/lib/firebase')
 
@@ -81,8 +81,7 @@ export default function AuthDebug() {
             {user ? JSON.stringify({
               uid: user.uid,
               email: user.email,
-              displayName: user.displayName,
-              accountStatus: user.accountStatus
+              displayName: user.displayName
             }, null, 2) : 'No enhanced user data'}
           </pre>
         </div>

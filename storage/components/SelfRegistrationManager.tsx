@@ -70,7 +70,7 @@ export default function SelfRegistrationManager() {
       setLoading(true)
       const { doc, setDoc, updateDoc, deleteDoc, serverTimestamp } = await import('firebase/firestore')
       const { db } = await import('@/lib/firebase')
-      const { enhancedAuthService } = await import('@/lib/enhanced-auth-service')
+      const { enhancedAuthService } = await import('@/storage/lib/enhanced-auth-service')
 
       // Create user in main users collection
       const approvedUser: EnhancedUser = {
