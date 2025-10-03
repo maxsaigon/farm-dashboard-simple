@@ -79,6 +79,16 @@ function MapPageContent() {
   const [proximityRadius, setProximityRadius] = useState(30)
   const [showUserPath, setShowUserPath] = useState(false)
 
+  // Debug GPS props
+  useEffect(() => {
+    console.log('🔧 [MapPage] GPS Settings changed:', {
+      showUserPath,
+      backgroundTrackingEnabled,
+      proximityRadius,
+      timestamp: new Date().toISOString()
+    })
+  }, [showUserPath, backgroundTrackingEnabled, proximityRadius])
+
 
   // Debug farm ID for testing
   const debugFarmId = "F210C3FC-F191-4926-9C15-58D6550A716A"
@@ -86,6 +96,12 @@ function MapPageContent() {
   const displayFarm = currentFarm || debugFarm
 
   useEffect(() => {
+    console.log('🗺️ [MapPage] Farm changed, loading data:', {
+      farmId: displayFarm.id,
+      farmName: displayFarm.name,
+      timestamp: new Date().toISOString()
+    })
+    
     if (displayFarm.id) {
       loadData()
     }
@@ -93,15 +109,23 @@ function MapPageContent() {
 
   const loadData = async () => {
     const farmId = displayFarm.id
+    console.log('📊 [MapPage] loadData called for farmId:', farmId)
+    
     if (!farmId) return
 
     setLoading(true)
     setError(null)
     try {
+      console.log('🔄 [MapPage] Loading trees and zones...')
       const [treesData, zonesData] = await Promise.all([
         loadTrees(farmId),
         loadZones(farmId)
       ])
+      
+      console.log('✅ [MapPage] Data loaded:', {
+        treesCount: treesData.length,
+        zonesCount: zonesData.length
+      })
 
       // Map zone IDs/codes to human-friendly names
       const codeToName = new Map<string, string>()
@@ -115,8 +139,14 @@ function MapPageContent() {
         zoneName: t.zoneName || (t.zoneCode ? codeToName.get(String(t.zoneCode)) : undefined)
       }))
 
+      console.log('📝 [MapPage] Setting trees and zones state')
       setTrees(treesWithNames)
       setZones(zonesData)
+      
+      console.log('✅ [MapPage] State updated:', {
+        trees: treesWithNames.length,
+        zones: zonesData.length
+      })
       
       // Handle zone focus if zone ID is in URL
       if (focusZoneId && zonesData.length > 0) {
@@ -529,7 +559,10 @@ function MapPageContent() {
 
                    {!backgroundTrackingEnabled ? (
                      <button
-                       onClick={() => setBackgroundTrackingEnabled(true)}
+                       onClick={() => {
+                         console.log('🖱️ [MapPage] Enabling background GPS tracking')
+                         setBackgroundTrackingEnabled(true)
+                       }}
                        className="w-full bg-purple-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors active:bg-purple-800 min-touch"
                      >
                        Bật GPS theo dõi
@@ -541,7 +574,10 @@ function MapPageContent() {
                          <span className="text-sm font-medium text-purple-700">GPS đang bật</span>
                        </div>
                        <button
-                         onClick={() => setBackgroundTrackingEnabled(false)}
+                         onClick={() => {
+                           console.log('🖱️ [MapPage] Disabling background GPS tracking')
+                           setBackgroundTrackingEnabled(false)
+                         }}
                          className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 active:bg-red-800 min-touch"
                        >
                          Tắt
@@ -683,6 +719,9 @@ function MapPageContent() {
                 enableRealTime={true}
                 farmId={displayFarm.id}
                 className="w-full h-full"
+                showUserPath={showUserPath}
+                backgroundTrackingEnabled={backgroundTrackingEnabled}
+                proximityRadius={proximityRadius}
               />
               {/* Debug info removed for cleaner mobile UI */}
             </>
