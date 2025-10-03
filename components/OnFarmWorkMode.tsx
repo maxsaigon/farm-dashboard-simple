@@ -9,6 +9,10 @@ import { useIOSOptimizedGPS, IOSGPSPosition } from '@/lib/ios-optimized-gps'
 import { PlusCircleIcon, XMarkIcon, MapPinIcon, ArrowPathIcon, CameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { createTree } from '@/lib/firestore'
+import { compressImageSmart } from '@/lib/photo-compression'
+import { uploadFile } from '@/lib/storage'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 
 // Fix Leaflet icons
 if (typeof window !== 'undefined') {
@@ -299,7 +303,7 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
     }
   }, [])
 
-  // Handle create new tree
+  // Handle create new tree with photo upload
   const handleCreateTree = useCallback(async () => {
     if (!user || !userPosition || !newTreeData.variety || !newTreeData.zoneName) {
       alert('Vui lòng chọn giống cây và khu vực')
@@ -308,14 +312,15 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
 
     setCreating(true)
     try {
-      // Auto-generate name if not provided
+      // Step 1: Create tree in Firestore
+      console.log('📝 [OnFarmWorkMode] Step 1: Creating tree...')
       const autoName = newTreeData.name || `${newTreeData.variety} ${new Date().toLocaleDateString('vi-VN')}`
       
       const newTree: Partial<Tree> = {
         name: autoName,
         variety: newTreeData.variety,
         zoneName: newTreeData.zoneName,
-        zoneCode: newTreeData.zoneName, // Also set zoneCode for compatibility
+        zoneCode: newTreeData.zoneName,
         latitude: userPosition.lat,
         longitude: userPosition.lng,
         gpsAccuracy: userPosition.accuracy,
@@ -329,28 +334,95 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
       }
 
       const treeId = await createTree(farmId, user.uid, newTree as Omit<Tree, 'id' | 'farmId'>)
+      console.log('✅ [OnFarmWorkMode] Tree created with ID:', treeId)
       
+      // Step 2: Upload photos if any
+      if (capturedPhotos.length > 0) {
+        console.log(`📸 [OnFarmWorkMode] Step 2: Uploading ${capturedPhotos.length} photos...`)
+        
+        for (let i = 0; i < capturedPhotos.length; i++) {
+          const photoUrl = capturedPhotos[i]
+          console.log(`  Processing photo ${i + 1}/${capturedPhotos.length}`)
+          
+          try {
+            // Convert blob URL to File
+            const response = await fetch(photoUrl)
+            const blob = await response.blob()
+            const file = new File([blob], `photo_${Date.now()}_${i}.jpg`, { type: 'image/jpeg' })
+            
+            // Compress photo
+            console.log(`  Compressing photo ${i + 1}...`)
+            const compressedFile = await compressImageSmart(file, 'general')
+            console.log(`  Compressed: ${(file.size / 1024).toFixed(0)}KB → ${(compressedFile.size / 1024).toFixed(0)}KB`)
+            
+            // Upload to Firebase Storage
+            // Path: farms/{farmId}/trees/{treeId}/photos/{photoId}/compressed.jpg
+            const photoId = `photo_${Date.now()}_${i}`
+            const storagePath = `farms/${farmId}/trees/${treeId}/photos/${photoId}/compressed.jpg`
+            console.log(`  Uploading to: ${storagePath}`)
+            
+            const downloadURL = await uploadFile(compressedFile, storagePath)
+            console.log(`  ✅ Uploaded, URL: ${downloadURL}`)
+            
+            // Create photo document in Firestore
+            const photoDoc = {
+              treeId,
+              farmId,
+              filename: `photo_${i + 1}.jpg`,
+              photoType: 'general',
+              timestamp: serverTimestamp(),
+              latitude: userPosition.lat,
+              longitude: userPosition.lng,
+              uploadedToServer: true,
+              serverProcessed: false,
+              needsAIAnalysis: false,
+              compressedPath: storagePath,
+              originalPath: storagePath,
+              localPath: downloadURL,
+              createdAt: serverTimestamp()
+            }
+            
+            await setDoc(doc(db, 'farms', farmId, 'photos', photoId), photoDoc)
+            console.log(`  ✅ Photo document created: ${photoId}`)
+            
+          } catch (photoError) {
+            console.error(`  ❌ Error uploading photo ${i + 1}:`, photoError)
+            // Continue with other photos even if one fails
+          }
+        }
+        
+        console.log('✅ [OnFarmWorkMode] All photos processed')
+      }
+      
+      // Step 3: Create final tree object and notify parent
       const createdTree: Tree = {
         ...newTree,
         id: treeId,
         farmId
       } as Tree
 
+      console.log('✅ [OnFarmWorkMode] Notifying parent component...')
       onTreeCreated?.(createdTree)
       
-      // Reset form
+      // Step 4: Reset form and cleanup
+      console.log('🧹 [OnFarmWorkMode] Cleaning up...')
       setNewTreeData({ name: '', variety: 'Monthong', zoneName: '' })
+      
+      // Cleanup photo URLs
+      capturedPhotos.forEach(url => URL.revokeObjectURL(url))
       setCapturedPhotos([])
       setShowCreateForm(false)
       
-      alert(`✅ Đã tạo cây "${newTreeData.name}" tại vị trí hiện tại!`)
+      alert(`✅ Đã tạo cây "${autoName}" với ${capturedPhotos.length} ảnh!`)
+      console.log('🎉 [OnFarmWorkMode] Tree creation completed successfully!')
+      
     } catch (error) {
-      console.error('Error creating tree:', error)
+      console.error('❌ [OnFarmWorkMode] Error creating tree:', error)
       alert('❌ Không thể tạo cây. Vui lòng thử lại.')
     } finally {
       setCreating(false)
     }
-  }, [user, userPosition, newTreeData, farmId, onTreeCreated])
+  }, [user, userPosition, newTreeData, farmId, capturedPhotos, onTreeCreated])
 
   // Get tree marker icon
   const getTreeMarkerIcon = (tree: NearbyTree) => {
