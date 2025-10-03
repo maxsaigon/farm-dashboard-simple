@@ -643,13 +643,13 @@ const UnifiedMap = memo(({
     }
   }, [proximityData, proximityRadius])
 
-  // Tree marker styling - Simplified without treeStatus filtering
+  // Tree marker styling - Color-based classification by treeStatus
   const getTreeMarkerIcon = useCallback((tree: Tree) => {
     const isSelected = selectedTree?.id === tree.id
     const isNearby = proximityData.trees.some(t => t.id === tree.id)
     const nearbyTree = proximityData.trees.find(t => t.id === tree.id)
 
-    // Simplified color logic - all trees use same base color
+    // Color classification based on treeStatus
     let color = '#22c55e' // default green for all trees
     let size = 16
 
@@ -657,15 +657,24 @@ const UnifiedMap = memo(({
       color = '#ef4444' // red for selected (highest priority)
       size = 24
     } else if (isNearby) {
-      color = '#22c55e' // green for nearby trees
+      // Check treeStatus for nearby trees
+      if (tree.treeStatus === 'Cây Non') {
+        color = '#eab308' // yellow for "Cây Non"
+      } else {
+        color = '##147237' // green for other statuses
+      }
       size = 20
     } else if (tree.needsAttention) {
-      color = '#f59e0b' // amber for attention needed
+      color = '#b40ca1' // amber for attention needed
       size = 18
+    } else {
+      // Check treeStatus for regular trees
+      if (tree.treeStatus === 'Cây Non') {
+        color = '#eab308' // yellow for "Cây Non"
+      } else {
+        color = '#147237' // green for other statuses
+      }
     }
-
-    // Simple emoji for all trees
-    const statusEmoji = '🌳'
 
     return L.divIcon({
       className: 'tree-marker-unified',
@@ -675,7 +684,7 @@ const UnifiedMap = memo(({
           width: ${size}px;
           height: ${size}px;
           border-radius: 50%;
-          border: 3px solid white;
+          border: 1px solid white;
           box-shadow: 0 2px 6px rgba(0,0,0,0.3);
           display: flex;
           align-items: center;
@@ -684,11 +693,11 @@ const UnifiedMap = memo(({
           font-size: 10px;
           font-weight: bold;
         ">
-          ${nearbyTree ? Math.round(nearbyTree.distance) : statusEmoji}
+          ${nearbyTree ? Math.round(nearbyTree.distance) : ''}
         </div>
       `,
-      iconSize: [size + 6, size + 6],
-      iconAnchor: [(size + 6) / 2, (size + 6) / 2]
+      iconSize: [size + 2, size + 2],
+      iconAnchor: [(size + 2) / 2, (size + 2) / 2]
     })
   }, [selectedTree, proximityData])
 
