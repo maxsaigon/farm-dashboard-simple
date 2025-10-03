@@ -81,11 +81,23 @@ const useIOSGPSTracking = (enabled: boolean = true) => {
   const [permissionState, setPermissionState] = useState<string>('unknown')
 
   useEffect(() => {
+    console.log('🔄 [UnifiedMap] useIOSGPSTracking effect triggered', {
+      enabled,
+      timestamp: new Date().toISOString()
+    })
+
     if (enabled) {
-      console.log('🚀 Starting iOS-Optimized GPS tracking...')
+      console.log('🚀 [UnifiedMap] Starting iOS-Optimized GPS tracking...')
       
       gps.startTracking({
         onSuccess: (position: IOSGPSPosition) => {
+          console.log('✅ [UnifiedMap] onSuccess callback received', {
+            lat: position.latitude,
+            lng: position.longitude,
+            accuracy: position.accuracy,
+            timestamp: position.timestamp
+          })
+
           const newPos = {
             lat: position.latitude,
             lng: position.longitude,
@@ -95,26 +107,32 @@ const useIOSGPSTracking = (enabled: boolean = true) => {
             timestamp: position.timestamp
           }
           
+          console.log('📝 [UnifiedMap] Setting userPosition state')
           setUserPosition(newPos)
           
           // Keep tracking history (last 20 points for path visualization)
-          setTrackingHistory(prev =>
-            [...prev, {
+          setTrackingHistory(prev => {
+            const newHistory = [...prev, {
               lat: newPos.lat,
               lng: newPos.lng,
               timestamp: newPos.timestamp
             }].slice(-20)
-          )
+            console.log('📝 [UnifiedMap] Updated tracking history, length:', newHistory.length)
+            return newHistory
+          })
         },
         onError: (error) => {
-          console.error('❌ GPS Error:', error)
+          console.error('❌ [UnifiedMap] onError callback received:', {
+            code: error.code,
+            message: error.message
+          })
         },
         onPermissionGranted: () => {
-          console.log('✅ GPS Permission granted')
+          console.log('✅ [UnifiedMap] onPermissionGranted callback')
           setPermissionState('granted')
         },
         onPermissionDenied: () => {
-          console.log('❌ GPS Permission denied')
+          console.log('❌ [UnifiedMap] onPermissionDenied callback')
           setPermissionState('denied')
         }
       }, {
@@ -123,16 +141,17 @@ const useIOSGPSTracking = (enabled: boolean = true) => {
         maximumAge: 0,
         distanceFilter: 5 // Only update if moved 5 meters
       }).catch(error => {
-        console.error('Failed to start GPS tracking:', error)
+        console.error('❌ [UnifiedMap] Failed to start GPS tracking:', error)
       })
     } else {
-      console.log('🛑 Stopping GPS tracking...')
+      console.log('🛑 [UnifiedMap] Stopping GPS tracking...')
       gps.stopTracking()
       setUserPosition(null)
       setTrackingHistory([])
     }
 
     return () => {
+      console.log('🧹 [UnifiedMap] Cleanup: stopping GPS')
       gps.stopTracking()
     }
   }, [enabled])
@@ -813,30 +832,48 @@ const UnifiedMap = memo(({
       </MapContainer>
 
 
-      {/* Map Controls */}
-      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 space-y-2">
+      {/* Map Controls - Enhanced with Visual Indicator */}
+      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 space-y-2 border-4" style={{
+        borderColor: gpsEnabled ? (userPosition ? '#10b981' : '#f59e0b') : '#6b7280'
+      }}>
+        {/* Visual Status Banner */}
+        <div className={`text-center py-1 px-2 rounded text-xs font-bold ${
+          gpsEnabled
+            ? (userPosition ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800')
+            : 'bg-gray-100 text-gray-600'
+        }`}>
+          {gpsEnabled
+            ? (userPosition ? '✅ GPS HOẠT ĐỘNG' : '⏳ ĐANG CHỜ GPS...')
+            : '⭕ GPS TẮT'}
+        </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={async () => {
-              console.log('🖱️ GPS Button Clicked:', {
+              console.log('🖱️ [UnifiedMap] GPS Button Clicked:', {
                 currentState: gpsEnabled,
                 newState: !gpsEnabled,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                isSecureContext: window.isSecureContext
               })
 
               if (!gpsEnabled) {
+                console.log('🔐 [UnifiedMap] Checking permission before enabling...')
                 // Check permission first
                 const permission = await gps.checkPermission()
-                console.log('📋 Current permission:', permission)
+                console.log('📋 [UnifiedMap] Current permission:', permission)
 
                 if (permission === 'denied') {
+                  console.error('❌ [UnifiedMap] Permission denied, showing alert')
                   alert('❌ Quyền GPS bị từ chối. Vui lòng cấp quyền trong Settings của trình duyệt.')
                   return
                 }
 
+                console.log('✅ [UnifiedMap] Enabling GPS...')
                 // Enable GPS (permission will be requested automatically by iOS-Optimized GPS)
                 setGpsEnabled(true)
               } else {
+                console.log('🛑 [UnifiedMap] Disabling GPS...')
                 // Disable GPS
                 setGpsEnabled(false)
               }
@@ -861,7 +898,7 @@ const UnifiedMap = memo(({
           {/* Quick GPS Test Button */}
           <button
             onClick={async () => {
-              console.log('🧪 Testing GPS with iOS-Optimized service...')
+              console.log('🧪 [UnifiedMap] Testing GPS with iOS-Optimized service...')
 
               try {
                 const position = await gps.getCurrentPosition({
@@ -869,10 +906,10 @@ const UnifiedMap = memo(({
                   timeout: 10000
                 })
                 
-                console.log('✅ GPS test successful:', position)
+                console.log('✅ [UnifiedMap] GPS test successful:', position)
                 alert(`✅ GPS hoạt động!\nVị trí: ${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)}\nĐộ chính xác: ±${position.accuracy.toFixed(0)}m`)
               } catch (error: any) {
-                console.error('❌ GPS test failed:', error)
+                console.error('❌ [UnifiedMap] GPS test failed:', error)
                 alert(`❌ GPS lỗi: ${error.message}`)
               }
             }}
