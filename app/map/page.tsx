@@ -79,6 +79,17 @@ function MapPageContent() {
   const [proximityRadius, setProximityRadius] = useState(30)
   const [showUserPath, setShowUserPath] = useState(false)
   const [highlightedTreeId, setHighlightedTreeId] = useState<string | null>(null)
+  
+  // Tree status filters
+  const [filterByStatus, setFilterByStatus] = useState<{
+    youngTree: boolean
+    mature: boolean
+    old: boolean
+  }>({
+    youngTree: true,
+    mature: true,
+    old: true
+  })
 
   // Debug GPS props
   useEffect(() => {
@@ -285,9 +296,25 @@ function MapPageContent() {
     }
   }
 
-  // Helper function to filter trees - simplified to show all trees
+  // Helper function to filter trees by status
   const getFilteredTrees = (trees: Tree[]): Tree[] => {
-    return trees // Show all trees without filtering
+    return trees.filter(tree => {
+      // If no status is set, show the tree
+      if (!tree.treeStatus) return true
+      
+      // Map status to filter keys
+      const status = tree.treeStatus.toLowerCase()
+      if (status.includes('non') || status.includes('young')) {
+        return filterByStatus.youngTree
+      } else if (status.includes('trưởng thành') || status.includes('mature')) {
+        return filterByStatus.mature
+      } else if (status.includes('già') || status.includes('old')) {
+        return filterByStatus.old
+      }
+      
+      // Default: show tree if status doesn't match known categories
+      return true
+    })
   }
 
   const handleTreeSelect = (tree: Tree) => {
@@ -572,6 +599,45 @@ function MapPageContent() {
                      </label>
                    </div>
 
+                   {/* Tree Status Filter */}
+                   <div className="bg-gray-50 rounded-lg p-3">
+                     <h4 className="text-sm font-semibold text-gray-700 mb-3">Lọc theo trạng thái cây</h4>
+                     <div className="space-y-2">
+                       <label className="flex items-center justify-between cursor-pointer">
+                         <div className="flex items-center space-x-3">
+                           <input
+                             type="checkbox"
+                             checked={filterByStatus.youngTree}
+                             onChange={(e) => setFilterByStatus(prev => ({ ...prev, youngTree: e.target.checked }))}
+                             className="w-4 h-4 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                           />
+                           <span className="text-sm text-gray-700">🌱 Cây Non</span>
+                         </div>
+                       </label>
+                       <label className="flex items-center justify-between cursor-pointer">
+                         <div className="flex items-center space-x-3">
+                           <input
+                             type="checkbox"
+                             checked={filterByStatus.mature}
+                             onChange={(e) => setFilterByStatus(prev => ({ ...prev, mature: e.target.checked }))}
+                             className="w-4 h-4 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                           />
+                           <span className="text-sm text-gray-700">🌳 Cây Trưởng Thành</span>
+                         </div>
+                       </label>
+                       <label className="flex items-center justify-between cursor-pointer">
+                         <div className="flex items-center space-x-3">
+                           <input
+                             type="checkbox"
+                             checked={filterByStatus.old}
+                             onChange={(e) => setFilterByStatus(prev => ({ ...prev, old: e.target.checked }))}
+                             className="w-4 h-4 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                           />
+                           <span className="text-sm text-gray-700">🌲 Cây Già</span>
+                         </div>
+                       </label>
+                     </div>
+                   </div>
 
                  </div>
 
@@ -731,7 +797,7 @@ function MapPageContent() {
           ) : (
             <>
               <UnifiedMapNoSSR
-                trees={showTrees ? (focusedZone ? getTreesForZone(trees, focusedZone) : trees) : []}
+                trees={showTrees ? getFilteredTrees(focusedZone ? getTreesForZone(trees, focusedZone) : trees) : []}
                 zones={showZones ? (focusedZone ? [focusedZone] : zones) : []}
                 selectedTree={selectedTree}
                 selectedZone={selectedZone}
