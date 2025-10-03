@@ -403,14 +403,20 @@ const UnifiedMap = memo(({
 
   // Update local state when external props change
   useEffect(() => {
+    console.log('🔄 [UnifiedMap] showUserPath prop changed:', externalShowUserPath)
     setShowUserPath(externalShowUserPath)
   }, [externalShowUserPath])
 
   useEffect(() => {
+    console.log('🔄 [UnifiedMap] proximityRadius prop changed:', externalProximityRadius)
     setProximityRadius(externalProximityRadius)
   }, [externalProximityRadius])
 
   useEffect(() => {
+    console.log('🔄 [UnifiedMap] backgroundTrackingEnabled prop received:', {
+      externalBackgroundTrackingEnabled,
+      timestamp: new Date().toISOString()
+    })
     setBackgroundTrackingEnabled(externalBackgroundTrackingEnabled)
   }, [externalBackgroundTrackingEnabled])
 
@@ -436,6 +442,25 @@ const UnifiedMap = memo(({
   const [gpsEnabled, setGpsEnabled] = useState(false)
   const { userPosition, trackingHistory, permissionState: gpsPermissionState, gps } = useIOSGPSTracking(gpsEnabled)
   const [permissionStatus, setPermissionStatus] = useState<string>('unknown')
+
+  // Auto-enable GPS when backgroundTrackingEnabled prop is true
+  useEffect(() => {
+    console.log('🔄 [UnifiedMap] Auto-enable effect triggered:', {
+      externalBackgroundTrackingEnabled,
+      currentGpsEnabled: gpsEnabled,
+      willEnable: externalBackgroundTrackingEnabled && !gpsEnabled,
+      willDisable: !externalBackgroundTrackingEnabled && gpsEnabled,
+      timestamp: new Date().toISOString()
+    })
+
+    if (externalBackgroundTrackingEnabled && !gpsEnabled) {
+      console.log('🚀 [UnifiedMap] Auto-enabling GPS from backgroundTrackingEnabled prop')
+      setGpsEnabled(true)
+    } else if (!externalBackgroundTrackingEnabled && gpsEnabled) {
+      console.log('🛑 [UnifiedMap] Auto-disabling GPS from backgroundTrackingEnabled prop')
+      setGpsEnabled(false)
+    }
+  }, [externalBackgroundTrackingEnabled, gpsEnabled])
 
   // Sync permission status from GPS service
   useEffect(() => {
