@@ -28,7 +28,7 @@ import {
   ROLE_PERMISSIONS
 } from './types-enhanced'
 import { Tree, Photo, FarmZone, Investment, ManualEntry } from './types'
-import { enhancedAuthService } from './enhanced-auth-service'
+import { enhancedAuthService } from '../storage/lib/enhanced-auth-service'
 
 export class SuperAdminService {
   

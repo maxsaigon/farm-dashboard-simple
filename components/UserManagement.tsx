@@ -55,7 +55,7 @@ export default function UserManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
   useEffect(() => {
-    if (hasPermission('users:read')) {
+    if (hasPermission('read')) {
       loadUsers()
     }
   }, [hasPermission])
@@ -152,7 +152,7 @@ export default function UserManagement() {
     }
   }
 
-  if (!hasPermission('users:read')) {
+  if (!hasPermission('read')) {
     return (
       <div className="text-center py-8">
         <ExclamationTriangleIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -170,7 +170,7 @@ export default function UserManagement() {
           <h2 className="text-2xl font-bold text-gray-900">Quản lý người dùng</h2>
           <p className="text-gray-600">Quản lý thành viên và phân quyền trong hệ thống</p>
         </div>
-        {hasPermission('users:invite') && (
+        {hasPermission('manage_users') && (
           <button
             onClick={() => setShowUserModal(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
@@ -281,7 +281,7 @@ export default function UserManagement() {
                       >
                         <ShieldCheckIcon className="h-4 w-4" />
                       </button>
-                      {hasPermission('users:manage') && (
+                      {hasPermission('manage_users') && (
                         <button
                           onClick={() => {
                             setSelectedUser(user)
@@ -293,7 +293,7 @@ export default function UserManagement() {
                           <PencilIcon className="h-4 w-4" />
                         </button>
                       )}
-                      {hasPermission('users:remove') && user.uid !== user.uid && (
+                      {hasPermission('delete') && user.uid !== user.uid && (
                         <button
                           onClick={() => handleUserAction('delete', user.uid)}
                           className="p-2 text-gray-400 hover:text-red-600"
@@ -520,7 +520,7 @@ function RoleManagementModal({
                     <span className="text-sm font-medium">{getRoleDisplayName(role.roleType)}</span>
                     <span className="text-xs text-gray-500 ml-2">({role.scopeType})</span>
                   </div>
-                  {hasPermission('roles:revoke' as any) && (
+                  {hasPermission('manage_users') && (
                     <button
                       onClick={() => handleRevokeRole(role.id)}
                       className="text-red-600 hover:text-red-800 text-sm"
@@ -535,7 +535,7 @@ function RoleManagementModal({
         </div>
 
         {/* Grant New Role */}
-        {hasPermission('roles:assign' as any) && (
+        {hasPermission('manage_users') && (
           <div className="mb-6">
             <h4 className="text-sm font-medium text-gray-700 mb-2">Cấp vai trò mới</h4>
             <div className="space-y-3">

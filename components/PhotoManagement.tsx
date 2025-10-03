@@ -98,7 +98,7 @@ export default function PhotoManagement() {
   ]
 
   useEffect(() => {
-    if (hasPermission('photos:read')) {
+    if (hasPermission('read')) {
       loadPhotos()
       loadTrees()
     }
@@ -191,7 +191,7 @@ export default function PhotoManagement() {
   }
 
   const handlePhotoUpload = async (files: FileList) => {
-    if (!hasPermission('photos:write')) return
+    if (!hasPermission('write')) return
 
     try {
       for (let i = 0; i < files.length; i++) {
@@ -299,7 +299,7 @@ export default function PhotoManagement() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
-  if (!hasPermission('photos:read')) {
+  if (!hasPermission('read')) {
     return (
       <div className="text-center py-8">
         <ExclamationTriangleIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -338,7 +338,7 @@ export default function PhotoManagement() {
               Thao tác hàng loạt ({bulkSelection.size})
             </button>
           )}
-          {hasPermission('photos:write') && (
+          {hasPermission('write') && (
             <>
               <input
                 ref={fileInputRef}
@@ -549,7 +549,7 @@ export default function PhotoManagement() {
               : 'Chưa có ảnh nào được tải lên.'
             }
           </p>
-          {hasPermission('photos:write') && (
+          {hasPermission('write') && (
             <button
               onClick={() => fileInputRef.current?.click()}
               className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
