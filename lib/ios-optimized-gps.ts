@@ -157,33 +157,50 @@ class IOSOptimizedGPS {
 
   // Start tracking with watchPosition (iOS-optimized)
   async startTracking(callbacks: IOSGPSCallbacks, options: IOSGPSOptions = {}): Promise<void> {
+    console.log('🎯 [iOS-GPS] startTracking called', {
+      isSupported: this.isSupported(),
+      isTracking: this.isTracking,
+      isIOS: this.isIOS(),
+      isStandalone: this.isStandalone(),
+      timestamp: new Date().toISOString()
+    })
+
     if (!this.isSupported()) {
+      console.error('❌ [iOS-GPS] Geolocation not supported')
       throw new Error('Geolocation is not supported')
     }
 
     if (this.isTracking) {
-      console.log('⚠️ Already tracking, stopping previous session')
+      console.log('⚠️ [iOS-GPS] Already tracking, stopping previous session')
       this.stopTracking()
     }
 
     this.callbacks = callbacks
     this.options = options
 
+    console.log('🔐 [iOS-GPS] Requesting permission...')
     // Request permission first
     const permission = await this.requestPermission()
+    console.log('📋 [iOS-GPS] Permission result:', permission)
     
     if (permission === 'denied') {
+      console.error('❌ [iOS-GPS] Permission denied')
       callbacks.onPermissionDenied?.()
       throw new Error('Location permission denied')
     }
 
     if (permission === 'granted') {
+      console.log('✅ [iOS-GPS] Permission granted')
       callbacks.onPermissionGranted?.()
     }
 
     const positionOptions = this.getOptimizedOptions(options)
 
-    console.log('🚀 Starting GPS tracking with options:', positionOptions)
+    console.log('🚀 [iOS-GPS] Starting GPS tracking with options:', {
+      ...positionOptions,
+      distanceFilter: options.distanceFilter,
+      isIOS: this.isIOS()
+    })
 
     // Use watchPosition for continuous tracking
     this.watchId = navigator.geolocation.watchPosition(
@@ -193,24 +210,44 @@ class IOSOptimizedGPS {
     )
 
     this.isTracking = true
-    console.log('✅ GPS tracking started, watchId:', this.watchId)
+    console.log('✅ [iOS-GPS] GPS tracking started successfully', {
+      watchId: this.watchId,
+      isTracking: this.isTracking,
+      timestamp: new Date().toISOString()
+    })
   }
 
   // Stop tracking
   stopTracking(): void {
+    console.log('🛑 [iOS-GPS] stopTracking called', {
+      watchId: this.watchId,
+      isTracking: this.isTracking,
+      timestamp: new Date().toISOString()
+    })
+
     if (this.watchId !== null) {
       navigator.geolocation.clearWatch(this.watchId)
       this.watchId = null
-      console.log('🛑 GPS tracking stopped')
+      console.log('✅ [iOS-GPS] Watch cleared')
     }
     
     this.isTracking = false
     this.callbacks = null
     this.lastPosition = null
+    console.log('✅ [iOS-GPS] GPS tracking stopped completely')
   }
 
   // Handle successful position update
   private handleSuccess(position: GeolocationPosition): void {
+    console.log('📍 [iOS-GPS] handleSuccess called', {
+      timestamp: position.timestamp,
+      coords: {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: position.coords.accuracy
+      }
+    })
+
     const newPosition: IOSGPSPosition = {
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
@@ -225,38 +262,56 @@ class IOSOptimizedGPS {
     // Apply distance filter if specified
     if (this.options.distanceFilter && this.lastPosition) {
       const distance = this.calculateDistance(this.lastPosition, newPosition)
+      console.log(`📏 [iOS-GPS] Distance check: ${distance.toFixed(1)}m (filter: ${this.options.distanceFilter}m)`)
+      
       if (distance < this.options.distanceFilter) {
-        console.log(`📍 Position update skipped (distance: ${distance.toFixed(1)}m < ${this.options.distanceFilter}m)`)
+        console.log(`⏭️ [iOS-GPS] Position update skipped (distance too small)`)
         return
       }
     }
 
-    console.log('📍 GPS Position updated:', {
+    console.log('✅ [iOS-GPS] GPS Position updated and accepted:', {
       lat: newPosition.latitude.toFixed(6),
       lng: newPosition.longitude.toFixed(6),
-      accuracy: newPosition.accuracy.toFixed(1) + 'm'
+      accuracy: newPosition.accuracy.toFixed(1) + 'm',
+      hasCallback: !!this.callbacks?.onSuccess
     })
 
     this.lastPosition = newPosition
-    this.callbacks?.onSuccess(newPosition)
+    
+    if (this.callbacks?.onSuccess) {
+      console.log('📤 [iOS-GPS] Calling onSuccess callback')
+      this.callbacks.onSuccess(newPosition)
+    } else {
+      console.warn('⚠️ [iOS-GPS] No onSuccess callback registered!')
+    }
   }
 
   // Handle position error
   private handleError(error: GeolocationPositionError): void {
-    console.error('❌ GPS Error:', {
+    const errorType = error.code === 1 ? 'PERMISSION_DENIED' :
+                      error.code === 2 ? 'POSITION_UNAVAILABLE' :
+                      error.code === 3 ? 'TIMEOUT' : 'UNKNOWN'
+
+    console.error('❌ [iOS-GPS] handleError called:', {
       code: error.code,
       message: error.message,
-      type: error.code === 1 ? 'PERMISSION_DENIED' :
-            error.code === 2 ? 'POSITION_UNAVAILABLE' :
-            error.code === 3 ? 'TIMEOUT' : 'UNKNOWN'
+      type: errorType,
+      timestamp: new Date().toISOString()
     })
 
     if (error.code === 1) {
+      console.error('🚫 [iOS-GPS] Permission denied by user')
       this.permissionState = 'denied'
       this.callbacks?.onPermissionDenied?.()
     }
 
-    this.callbacks?.onError(error)
+    if (this.callbacks?.onError) {
+      console.log('📤 [iOS-GPS] Calling onError callback')
+      this.callbacks.onError(error)
+    } else {
+      console.warn('⚠️ [iOS-GPS] No onError callback registered!')
+    }
   }
 
   // Calculate distance between two positions (Haversine formula)
