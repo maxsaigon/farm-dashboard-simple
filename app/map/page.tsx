@@ -10,7 +10,8 @@ import dynamic from 'next/dynamic'
 import { TreeDetail } from '@/components/TreeDetail'
 import TreeShowcase from '@/components/TreeShowcase'
 import FullscreenTreeShowcase from '@/components/FullscreenTreeShowcase'
-import { EyeIcon } from '@heroicons/react/24/outline'
+import OnFarmWorkMode from '@/components/OnFarmWorkMode'
+import { EyeIcon, BriefcaseIcon } from '@heroicons/react/24/outline'
 import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
 import BottomSheet from '@/components/ui/BottomSheet'
 import AuthGuard from '@/components/AuthGuard'
@@ -79,6 +80,7 @@ function MapPageContent() {
   const [proximityRadius, setProximityRadius] = useState(30)
   const [showUserPath, setShowUserPath] = useState(false)
   const [highlightedTreeId, setHighlightedTreeId] = useState<string | null>(null)
+  const [workModeActive, setWorkModeActive] = useState(false)
   
   // Tree status filters
   const [filterByStatus, setFilterByStatus] = useState<{
@@ -448,6 +450,22 @@ function MapPageContent() {
     )
   }
 
+  // If work mode is active, show OnFarmWorkMode component
+  if (workModeActive) {
+    return (
+      <OnFarmWorkMode
+        trees={trees}
+        onClose={() => setWorkModeActive(false)}
+        onTreeSelect={handleTreeSelect}
+        onTreeCreated={(newTree) => {
+          setTrees(prev => [...prev, newTree])
+          loadData() // Reload to get fresh data
+        }}
+        farmId={displayFarm.id}
+      />
+    )
+  }
+
   <style jsx>{`
     .slider::-webkit-slider-thumb {
       appearance: none;
@@ -478,9 +496,18 @@ function MapPageContent() {
 
          {/* Enhanced Controls Header */}
          <div className="space-y-4">
-           {/* Top Row: Title and Real-time Status */}
-           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3 px-4">
+           {/* Top Row: Work Mode Button, Title and Real-time Status */}
+            <div className="flex items-center justify-between">
+             <div className="flex items-center space-x-3 px-4">
+               {/* Work Mode Toggle Button */}
+               <button
+                 onClick={() => setWorkModeActive(true)}
+                 className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-green-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all"
+                 title="Chế độ làm việc on-farm"
+               >
+                 <BriefcaseIcon className="h-5 w-5" />
+                 <span className="hidden sm:inline">Làm việc</span>
+               </button>
               {/* Trees Toggle - Always show total tree count */}
              <button
                onClick={() => setShowTrees(!showTrees)}
