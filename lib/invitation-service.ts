@@ -22,7 +22,7 @@ import {
   EnhancedUser,
   EnhancedFarm
 } from './types-enhanced'
-import { enhancedAuthService } from './enhanced-auth-service'
+import { enhancedAuthService } from '../storage/lib/enhanced-auth-service'
 
 export class InvitationService {
   

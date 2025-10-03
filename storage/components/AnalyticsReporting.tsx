@@ -111,7 +111,7 @@ export default function AnalyticsReporting() {
   ]
 
   useEffect(() => {
-    if (hasPermission('analytics:view')) {
+    if (hasPermission('read')) {
       loadAnalyticsData()
       loadAvailableZones()
     }
@@ -122,7 +122,7 @@ export default function AnalyticsReporting() {
       setLoading(true)
       
       // Check permission before loading data
-      if (!hasPermission('farms:read', currentFarm?.id)) {
+      if (!hasPermission('read', currentFarm?.id)) {
         setReportData(null)
         return
       }
@@ -202,7 +202,7 @@ export default function AnalyticsReporting() {
   const loadAvailableZones = async () => {
     try {
       // Check permission before loading data
-      if (!hasPermission('farms:read', currentFarm?.id)) {
+      if (!hasPermission('read', currentFarm?.id)) {
         setAvailableZones([])
         return
       }
@@ -228,7 +228,7 @@ export default function AnalyticsReporting() {
   }
 
   const generateReport = async (format: 'pdf' | 'excel' | 'csv') => {
-    if (!hasPermission('analytics:export')) return
+    if (!hasPermission('write')) return
 
     try {
       setGeneratingReport(true)
@@ -265,7 +265,7 @@ export default function AnalyticsReporting() {
     return 'text-red-600'
   }
 
-  if (!hasPermission('analytics:view')) {
+  if (!hasPermission('read')) {
     return (
       <div className="text-center py-8">
         <ExclamationTriangleIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -302,7 +302,7 @@ export default function AnalyticsReporting() {
             <FunnelIcon className="h-4 w-4 mr-2" />
             Bộ lọc
           </button>
-          {hasPermission('analytics:export') && (
+          {hasPermission('write') && (
             <div className="relative inline-block text-left">
               <select
                 onChange={(e) => {

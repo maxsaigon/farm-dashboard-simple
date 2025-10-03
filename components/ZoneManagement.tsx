@@ -122,7 +122,7 @@ export default function ZoneManagement() {
   ]
 
   useEffect(() => {
-    if (hasPermission('zones:read')) {
+    if (hasPermission('read')) {
       loadZones()
     }
   }, [hasPermission, currentFarm])
@@ -137,7 +137,7 @@ export default function ZoneManagement() {
       setLoading(true)
       
       // Check permission before loading data
-      if (!hasPermission('farms:read', currentFarm?.id)) {
+      if (!hasPermission('read', currentFarm?.id)) {
         setZones([])
         return
       }
@@ -352,7 +352,7 @@ export default function ZoneManagement() {
     console.log('Exporting zones:', csvData)
   }
 
-  if (!hasPermission('zones:read')) {
+  if (!hasPermission('read')) {
     return (
       <div className="text-center py-8">
         <ExclamationTriangleIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -389,7 +389,7 @@ export default function ZoneManagement() {
             <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
             Xuất dữ liệu
           </button>
-          {hasPermission('zones:create' as any) && (
+          {hasPermission('write') && (
             <button
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
@@ -612,7 +612,7 @@ export default function ZoneManagement() {
               : 'Chưa có khu vực nào được tạo trong trang trại.'
             }
           </p>
-          {hasPermission('zones:create' as any) && (
+          {hasPermission('write') && (
             <button
               onClick={() => setShowAddModal(true)}
               className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
@@ -799,7 +799,7 @@ function ZoneCard({
           >
             <MapIcon className="h-4 w-4" />
           </button>
-          {hasPermission('zones:write') && (
+          {hasPermission('write') && (
             <button
               onClick={() => onAction('inspect', zone.id)}
               className="p-1.5 text-gray-400 hover:text-green-600"

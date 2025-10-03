@@ -87,7 +87,7 @@ export default function TreeManagement() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
-    if (hasPermission('trees:read')) {
+    if (hasPermission('read')) {
       loadTrees()
     }
   }, [hasPermission, currentFarm])
@@ -101,7 +101,7 @@ export default function TreeManagement() {
       setLoading(true)
       
       // Check permission before loading data
-      if (!hasPermission('farms:read', currentFarm?.id)) {
+      if (!hasPermission('read', currentFarm?.id)) {
         setTrees([])
         return
       }
@@ -269,7 +269,7 @@ export default function TreeManagement() {
     }))
   }
 
-  if (!hasPermission('trees:read')) {
+  if (!hasPermission('read')) {
     return (
       <div className="text-center py-8">
         <ExclamationTriangleIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -306,7 +306,7 @@ export default function TreeManagement() {
             <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
             Xuất dữ liệu
           </button>
-          {hasPermission('trees:write') && (
+          {hasPermission('write') && (
             <button
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
@@ -456,7 +456,7 @@ export default function TreeManagement() {
               : 'Chưa có cây nào được thêm vào trang trại.'
             }
           </p>
-          {hasPermission('trees:write') && (
+          {hasPermission('write') && (
             <button
               onClick={() => setShowAddModal(true)}
               className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
@@ -603,7 +603,7 @@ function TreeCard({
           >
             <MapPinIcon className="h-4 w-4" />
           </button>
-          {hasPermission('photos:write') && (
+          {hasPermission('write') && (
             <button
               onClick={() => onAction('take_photo', tree.id)}
               className="p-1.5 text-gray-400 hover:text-green-600"
@@ -683,7 +683,7 @@ function TreeListItem({
           >
             <MapPinIcon className="h-4 w-4" />
           </button>
-          {hasPermission('photos:write') && (
+          {hasPermission('write') && (
             <button
               onClick={() => onAction('take_photo', tree.id)}
               className="p-2 text-gray-400 hover:text-green-600"
