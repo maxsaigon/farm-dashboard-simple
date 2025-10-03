@@ -1,12 +1,12 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Tree } from '@/lib/types'
 import { MapContainer, TileLayer, Marker, Circle, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import * as turf from '@turf/turf'
 import { useIOSOptimizedGPS, IOSGPSPosition } from '@/lib/ios-optimized-gps'
-import { PlusCircleIcon, XMarkIcon, MapPinIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { PlusCircleIcon, XMarkIcon, MapPinIcon, ArrowPathIcon, CameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { createTree } from '@/lib/firestore'
 
@@ -21,8 +21,17 @@ if (typeof window !== 'undefined') {
   })
 }
 
+interface Zone {
+  id: string
+  name: string
+  code?: string
+  boundaries: Array<{ latitude: number; longitude: number }>
+  color?: string
+}
+
 interface OnFarmWorkModeProps {
   trees: Tree[]
+  zones: Zone[]
   onClose: () => void
   onTreeSelect: (tree: Tree) => void
   onTreeCreated?: (tree: Tree) => void
@@ -46,7 +55,7 @@ function AutoCenterMap({ userPosition }: { userPosition: { lat: number, lng: num
   return null
 }
 
-export default function OnFarmWorkMode({ trees, onClose, onTreeSelect, onTreeCreated, farmId }: OnFarmWorkModeProps) {
+export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, onTreeCreated, farmId }: OnFarmWorkModeProps) {
   const { user } = useSimpleAuth()
   const gps = useIOSOptimizedGPS()
   
@@ -64,6 +73,61 @@ export default function OnFarmWorkMode({ trees, onClose, onTreeSelect, onTreeCre
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [creating, setCreating] = useState(false)
   const [gpsStatus, setGpsStatus] = useState<'initializing' | 'active' | 'error'>('initializing')
+  const [capturedPhotos, setCapturedPhotos] = useState<string[]>([])
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [cameraActive, setCameraActive] = useState(false)
+  const [nearestZone, setNearestZone] = useState<Zone | null>(null)
+  const [selectedZone, setSelectedZone] = useState<string>('')
+  
+  // Find nearest zone when user position changes
+  useEffect(() => {
+    if (!userPosition || zones.length === 0) {
+      setNearestZone(null)
+      return
+    }
+
+    const userPoint = turf.point([userPosition.lng, userPosition.lat])
+    
+    // Find zones that contain the user or are closest
+    const zonesWithDistance = zones
+      .filter(zone => zone.boundaries && zone.boundaries.length >= 3)
+      .map(zone => {
+        try {
+          const coordinates = zone.boundaries.map(b => [b.longitude, b.latitude])
+          // Close the polygon
+          if (coordinates.length > 0) {
+            const first = coordinates[0]
+            const last = coordinates[coordinates.length - 1]
+            if (first[0] !== last[0] || first[1] !== last[1]) {
+              coordinates.push(first)
+            }
+          }
+          
+          const polygon = turf.polygon([coordinates])
+          const isInside = turf.booleanPointInPolygon(userPoint, polygon)
+          const distance = isInside ? 0 : turf.distance(userPoint, turf.centroid(polygon), { units: 'meters' })
+          
+          return { zone, distance, isInside }
+        } catch (error) {
+          return { zone, distance: Infinity, isInside: false }
+        }
+      })
+      .sort((a, b) => a.distance - b.distance)
+
+    if (zonesWithDistance.length > 0) {
+      const nearest = zonesWithDistance[0]
+      setNearestZone(nearest.zone)
+      setSelectedZone(nearest.zone.name)
+      
+      // Update form data with nearest zone name
+      setNewTreeData(prev => ({
+        ...prev,
+        zoneName: nearest.zone.name
+      }))
+    }
+  }, [userPosition, zones])
   
   // Hide bottom navigation when component mounts
   useEffect(() => {
@@ -80,7 +144,7 @@ export default function OnFarmWorkMode({ trees, onClose, onTreeSelect, onTreeCre
   const [newTreeData, setNewTreeData] = useState({
     name: '',
     variety: 'Monthong',
-    zoneCode: ''
+    zoneName: ''
   })
 
   // Start GPS tracking on mount
@@ -158,19 +222,100 @@ export default function OnFarmWorkMode({ trees, onClose, onTreeSelect, onTreeCre
     setNearbyTrees(nearby)
   }, [userPosition, trees])
 
+  // Camera functions
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      })
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+        setCameraActive(true)
+      }
+    } catch (error) {
+      console.error('Camera error:', error)
+      alert('❌ Không thể mở camera. Vui lòng kiểm tra quyền truy cập.')
+    }
+  }
+
+  const stopCamera = () => {
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream
+      stream.getTracks().forEach(track => track.stop())
+      videoRef.current.srcObject = null
+      setCameraActive(false)
+    }
+  }
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return
+
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    const context = canvas.getContext('2d')
+    if (!context) return
+
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob)
+        setCapturedPhotos(prev => [...prev, url])
+        stopCamera()
+      }
+    }, 'image/jpeg', 0.9)
+  }
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const url = URL.createObjectURL(file)
+      setCapturedPhotos(prev => [...prev, url])
+    }
+  }
+
+  const removePhoto = (index: number) => {
+    setCapturedPhotos(prev => {
+      const newPhotos = [...prev]
+      URL.revokeObjectURL(newPhotos[index])
+      newPhotos.splice(index, 1)
+      return newPhotos
+    })
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera()
+      capturedPhotos.forEach(url => URL.revokeObjectURL(url))
+    }
+  }, [])
+
   // Handle create new tree
   const handleCreateTree = useCallback(async () => {
-    if (!user || !userPosition || !newTreeData.name || !newTreeData.variety) {
-      alert('Vui lòng điền đầy đủ thông tin cây')
+    if (!user || !userPosition || !newTreeData.variety || !newTreeData.zoneName) {
+      alert('Vui lòng chọn giống cây và khu vực')
       return
     }
 
     setCreating(true)
     try {
+      // Auto-generate name if not provided
+      const autoName = newTreeData.name || `${newTreeData.variety} ${new Date().toLocaleDateString('vi-VN')}`
+      
       const newTree: Partial<Tree> = {
-        name: newTreeData.name,
+        name: autoName,
         variety: newTreeData.variety,
-        zoneCode: newTreeData.zoneCode || 'FIELD',
+        zoneName: newTreeData.zoneName,
+        zoneCode: newTreeData.zoneName, // Also set zoneCode for compatibility
         latitude: userPosition.lat,
         longitude: userPosition.lng,
         gpsAccuracy: userPosition.accuracy,
@@ -194,7 +339,8 @@ export default function OnFarmWorkMode({ trees, onClose, onTreeSelect, onTreeCre
       onTreeCreated?.(createdTree)
       
       // Reset form
-      setNewTreeData({ name: '', variety: 'Monthong', zoneCode: '' })
+      setNewTreeData({ name: '', variety: 'Monthong', zoneName: '' })
+      setCapturedPhotos([])
       setShowCreateForm(false)
       
       alert(`✅ Đã tạo cây "${newTreeData.name}" tại vị trí hiện tại!`)
@@ -240,11 +386,15 @@ export default function OnFarmWorkMode({ trees, onClose, onTreeSelect, onTreeCre
 
   return (
     <>
-      {/* Global styles to hide bottom nav */}
+      {/* Global styles to hide bottom nav - target the specific BottomTabBar */}
       <style jsx global>{`
-        body.work-mode-active nav.lg\\:hidden,
-        body.work-mode-active nav.fixed.bottom-0 {
+        body.work-mode-active nav[class*="lg:hidden"],
+        body.work-mode-active nav[class*="fixed bottom-0"],
+        body.work-mode-active nav[class*="z-[9999]"] {
           display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
         }
       `}</style>
       
@@ -426,57 +576,203 @@ export default function OnFarmWorkMode({ trees, onClose, onTreeSelect, onTreeCre
           </div>
         )}
 
-        {/* Create New Tree Form */}
+        {/* Create New Tree Form - 75vh Modal */}
         {showCreateForm && (
-          <div className="p-4 overflow-y-auto" style={{ maxHeight: '35vh' }}>
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-              <PlusCircleIcon className="h-5 w-5 mr-2 text-green-600" />
-              Tạo cây mới tại vị trí hiện tại
-            </h3>
-            
+          <div
+            className="fixed inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl overflow-hidden"
+            style={{ height: '75vh', zIndex: 10001 }}
+          >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white p-4 flex items-center justify-between">
+              <h3 className="text-xl font-bold flex items-center">
+                <PlusCircleIcon className="h-6 w-6 mr-2" />
+                Tạo cây mới
+              </h3>
+              <button
+                onClick={() => {
+                  setShowCreateForm(false)
+                  stopCamera()
+                }}
+                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="overflow-y-auto p-4 space-y-4" style={{ height: 'calc(75vh - 64px)' }}>
+            {/* Camera Section */}
+            <div className="bg-gray-50 rounded-xl p-4 border-2 border-dashed border-gray-300">
+              <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                <CameraIcon className="h-5 w-5 mr-2 text-blue-600" />
+                Chụp ảnh cây
+              </h4>
+              
+              {cameraActive ? (
+                <div className="space-y-3">
+                  <div className="relative rounded-lg overflow-hidden bg-black" style={{ height: '200px' }}>
+                    <video
+                      ref={videoRef}
+                      className="w-full h-full object-cover"
+                      playsInline
+                      muted
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-32 h-32 border-2 border-white border-opacity-50 rounded-lg"></div>
+                    </div>
+                  </div>
+                  <canvas ref={canvasRef} className="hidden" />
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={capturePhoto}
+                      className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:scale-98 transition-all flex items-center justify-center space-x-2"
+                    >
+                      <CameraIcon className="h-5 w-5" />
+                      <span>Chụp</span>
+                    </button>
+                    <button
+                      onClick={stopCamera}
+                      className="px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {capturedPhotos.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      {capturedPhotos.map((photo, index) => (
+                        <div key={index} className="relative">
+                          <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-20 object-cover rounded-lg" />
+                          <button
+                            onClick={() => removePhoto(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={startCamera}
+                      className="bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:scale-98 transition-all flex items-center justify-center space-x-2"
+                    >
+                      <CameraIcon className="h-5 w-5" />
+                      <span>Mở camera</span>
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 active:scale-98 transition-all flex items-center justify-center space-x-2"
+                    >
+                      <PhotoIcon className="h-5 w-5" />
+                      <span>Chọn ảnh</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Tree Information Form */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Tên cây *
+                <label className="block text-lg font-semibold text-gray-800 mb-2">
+                  🌳 Tên cây (tùy chọn)
                 </label>
                 <input
                   type="text"
                   value={newTreeData.name}
                   onChange={(e) => setNewTreeData({ ...newTreeData, name: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200"
-                  placeholder="Ví dụ: Cây sầu riêng số 1"
+                  className="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-4 focus:ring-green-100 bg-white shadow-sm"
+                  placeholder="Để trống sẽ tự động đặt tên"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Nếu để trống: "{newTreeData.variety} {new Date().toLocaleDateString('vi-VN')}"
+                </p>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Giống cây *
+                <label className="block text-lg font-semibold text-gray-800 mb-2 flex items-center">
+                  🌱 Giống cây
+                  <span className="text-red-500 ml-2">*</span>
                 </label>
-                <select
-                  value={newTreeData.variety}
-                  onChange={(e) => setNewTreeData({ ...newTreeData, variety: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200"
-                >
-                  <option value="Monthong">Monthong</option>
-                  <option value="Musang King">Musang King</option>
-                  <option value="Kan Yao">Kan Yao</option>
-                  <option value="Ri6">Ri6</option>
-                  <option value="Black Thorn">Black Thorn</option>
-                  <option value="Red Prawn">Red Prawn</option>
-                </select>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { value: 'Monthong', label: 'Monthong' },
+                    { value: 'Musang King', label: 'Musang King' },
+                    { value: 'Kan Yao', label: 'Kan Yao' },
+                    { value: 'Ri6', label: 'Ri6' },
+                    { value: 'Black Thorn', label: 'Black Thorn' },
+                    { value: 'Red Prawn', label: 'Red Prawn' },
+                  ].map((variety) => (
+                    <button
+                      key={variety.value}
+                      type="button"
+                      onClick={() => setNewTreeData({ ...newTreeData, variety: variety.value })}
+                      className={`p-4 border-2 rounded-xl text-center transition-all min-touch active:scale-95 ${
+                        newTreeData.variety === variety.value
+                          ? 'border-green-500 bg-green-50 text-green-800 shadow-md'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      }`}
+                    >
+                      <div className="font-semibold text-lg">{variety.value}</div>
+                      <div className="text-sm text-gray-500">{variety.label}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Khu vực (tùy chọn)
+                <label className="block text-lg font-semibold text-gray-800 mb-2 flex items-center">
+                  📍 Khu vực
+                  <span className="text-red-500 ml-2">*</span>
+                  {nearestZone && (
+                    <span className="ml-2 text-xs text-green-600 font-normal">
+                      (⭐ Gần nhất)
+                    </span>
+                  )}
                 </label>
-                <input
-                  type="text"
-                  value={newTreeData.zoneCode}
-                  onChange={(e) => setNewTreeData({ ...newTreeData, zoneCode: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200"
-                  placeholder="Ví dụ: A01, B05..."
-                />
+                {zones.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {zones.map((zone) => (
+                      <button
+                        key={zone.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedZone(zone.name)
+                          setNewTreeData({ ...newTreeData, zoneName: zone.name })
+                        }}
+                        className={`p-4 border-2 rounded-xl text-center transition-all min-touch active:scale-95 ${
+                          newTreeData.zoneName === zone.name
+                            ? 'border-green-500 bg-green-50 shadow-md'
+                            : nearestZone?.id === zone.id
+                            ? 'border-blue-400 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-center space-x-1 mb-1">
+                          {nearestZone?.id === zone.id && <span className="text-lg">⭐</span>}
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: zone.color || '#3b82f6' }}
+                          />
+                        </div>
+                        <div className="font-semibold text-base">{zone.name}</div>
+                        {zone.code && (
+                          <div className="text-xs text-gray-500 mt-1">{zone.code}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                    <p className="text-sm text-yellow-700">
+                      Chưa có khu vực nào. Vui lòng tạo khu vực trước.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {userPosition && (
@@ -491,22 +787,28 @@ export default function OnFarmWorkMode({ trees, onClose, onTreeSelect, onTreeCre
                 </div>
               )}
 
-              <div className="flex space-x-3 pt-2">
+              {/* Action Buttons */}
+              <div className="flex space-x-3 pt-4 sticky bottom-0 bg-white pb-4">
                 <button
-                  onClick={() => setShowCreateForm(false)}
-                  className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 active:scale-98 transition-all"
+                  onClick={() => {
+                    setShowCreateForm(false)
+                    stopCamera()
+                    setCapturedPhotos([])
+                  }}
+                  className="flex-1 px-4 py-4 bg-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-300 active:scale-98 transition-all"
                 >
                   Hủy
                 </button>
                 <button
                   onClick={handleCreateTree}
-                  disabled={creating || !newTreeData.name || !newTreeData.variety}
-                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 active:scale-98 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={creating || !newTreeData.variety || !newTreeData.zoneName}
+                  className="flex-1 px-4 py-4 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-xl font-bold text-lg hover:shadow-xl active:scale-98 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creating ? 'Đang tạo...' : 'Tạo cây'}
                 </button>
               </div>
             </div>
+          </div>
           </div>
         )}
 
@@ -524,6 +826,16 @@ export default function OnFarmWorkMode({ trees, onClose, onTreeSelect, onTreeCre
           </div>
         )}
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
     </div>
     </>
   )
