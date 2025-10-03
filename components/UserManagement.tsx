@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { 
   UserIcon, 
   PencilIcon, 
@@ -44,7 +44,7 @@ interface UserRole {
 }
 
 export default function UserManagement() {
-  const { user, hasPermission } = useEnhancedAuth()
+  const { user, hasPermission } = useSimpleAuth()
   const [users, setUsers] = useState<UnifiedUser[]>([])
   const [userRoles, setUserRoles] = useState<{[key: string]: UserRole[]}>({})
   const [loading, setLoading] = useState(true)
@@ -464,7 +464,7 @@ function RoleManagementModal({
   onClose: () => void
   onSave: () => void
 }) {
-  const { hasPermission } = useEnhancedAuth()
+  const { hasPermission } = useSimpleAuth()
   const [selectedRole, setSelectedRole] = useState('')
   const [selectedScope, setSelectedScope] = useState('')
 

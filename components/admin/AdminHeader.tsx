@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { 
   MagnifyingGlassIcon,
   BellIcon,
@@ -23,7 +23,7 @@ interface AdminHeaderProps {
 }
 
 export default function AdminHeader({ currentView, onRefresh, stats }: AdminHeaderProps) {
-  const { user, signOut } = useEnhancedAuth()
+  const { user, signOut } = useSimpleAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [showNotifications, setShowNotifications] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)

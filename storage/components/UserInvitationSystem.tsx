@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { FarmInvitation, RoleType, ROLE_PERMISSIONS, InvitationStatus } from '@/lib/types-enhanced'
 import { 
   EnvelopeIcon, 
@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export default function UserInvitationSystem() {
-  const { user, isSuperAdmin, isOrganizationAdmin, isFarmOwner, currentFarm } = useEnhancedAuth()
+  const { user, isAdmin, isOrganizationAdmin, isFarmOwner, currentFarm } = useSimpleAuth()
   const [invitations, setInvitations] = useState<FarmInvitation[]>([])
   const [loading, setLoading] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -188,7 +188,7 @@ export default function UserInvitationSystem() {
     }
   }
 
-  const canManageInvitations = isSuperAdmin() || isOrganizationAdmin() || isFarmOwner()
+  const canManageInvitations = isAdmin() || isOrganizationAdmin() || isFarmOwner()
 
   if (!canManageInvitations) {
     return (
@@ -362,7 +362,7 @@ export default function UserInvitationSystem() {
                   <option value="farm_viewer">Farm Viewer (Read-only)</option>
                   <option value="farm_manager">Farm Manager</option>
                   <option value="seasonal_worker">Seasonal Worker</option>
-                  {(isSuperAdmin() || isOrganizationAdmin()) && (
+                  {(isAdmin() || isOrganizationAdmin()) && (
                     <option value="farm_owner">Farm Owner</option>
                   )}
                 </select>

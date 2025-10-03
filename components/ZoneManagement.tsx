@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import {
   MapIcon,
   PlusIcon,
@@ -81,7 +81,7 @@ interface ZoneStatistics {
 }
 
 export default function ZoneManagement() {
-  const { user, hasPermission, currentFarm } = useEnhancedAuth()
+  const { user, hasPermission, currentFarm } = useSimpleAuth()
   const [zones, setZones] = useState<Zone[]>([])
   const [filteredZones, setFilteredZones] = useState<Zone[]>([])
   const [statistics, setStatistics] = useState<ZoneStatistics | null>(null)
@@ -699,7 +699,7 @@ function ZoneCard({
   onAction: (action: string, zoneId: string) => void
   onViewDetails: (zone: Zone) => void
 }) {
-  const { hasPermission } = useEnhancedAuth()
+  const { hasPermission } = useSimpleAuth()
   const drainageInfo = drainageOptions.find(d => d.value === zone.drainage) || drainageOptions[1]
   
   const needsAttention = !zone.lastInspectionDate || 
@@ -824,7 +824,7 @@ function ZoneListItem({
   onAction: (action: string, zoneId: string) => void
   onViewDetails: (zone: Zone) => void
 }) {
-  const { hasPermission } = useEnhancedAuth()
+  const { hasPermission } = useSimpleAuth()
   const drainageInfo = drainageOptions.find(d => d.value === zone.drainage) || drainageOptions[1]
   
   const needsAttention = !zone.lastInspectionDate || 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { AdminService } from '@/lib/admin-service'
 import { Tree } from '@/lib/types'
 import { 
@@ -30,7 +30,7 @@ interface TreeStats {
 }
 
 export default function TreeManagement() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [trees, setTrees] = useState<Tree[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTree, setSelectedTree] = useState<Tree | null>(null)

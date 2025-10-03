@@ -13,7 +13,7 @@ interface MobileAdminLayoutProps {
   children: React.ReactNode
   currentSection: AdminSection
   onSectionChange: (section: AdminSection) => void
-  isSuperAdmin: boolean
+  isAdmin: boolean
 }
 
 const navigationItems: Array<{ id: AdminSection; name: string; icon: any; emoji: string }> = [
@@ -28,7 +28,7 @@ export default function MobileAdminLayout({
   children,
   currentSection,
   onSectionChange,
-  isSuperAdmin
+  isAdmin
 }: MobileAdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 

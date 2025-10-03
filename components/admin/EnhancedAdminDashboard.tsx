@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { AdminService } from '@/lib/admin-service'
 import { AnalyticsService } from '@/lib/analytics-service'
 import { SystemMonitoringService } from '@/lib/system-monitoring-service'
@@ -50,7 +50,7 @@ interface QuickAction {
 }
 
 export default function EnhancedAdminDashboard() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     activeUsers: 0,

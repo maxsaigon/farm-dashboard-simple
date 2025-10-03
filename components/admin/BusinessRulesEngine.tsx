@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { BusinessRulesService, BusinessRule, RuleTemplate } from '@/lib/business-rules-service'
 import { 
   CogIcon,
@@ -32,7 +32,7 @@ interface RuleStats {
 }
 
 export default function BusinessRulesEngine() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [rules, setRules] = useState<BusinessRule[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedRule, setSelectedRule] = useState<BusinessRule | null>(null)

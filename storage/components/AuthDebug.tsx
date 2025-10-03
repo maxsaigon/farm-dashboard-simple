@@ -1,10 +1,10 @@
 'use client'
 
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { useEffect, useState } from 'react'
 
 export default function AuthDebug() {
-  const { user, firebaseUser, loading, roles, permissions, isSuperAdmin } = useEnhancedAuth()
+  const { user, firebaseUser, loading, roles, permissions, isAdmin } = useSimpleAuth()
   const [debugInfo, setDebugInfo] = useState<any>(null)
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function AuthDebug() {
             rolesFromContext: roles,
             rolesFromDB: dbRoles,
             permissions: permissions,
-            isSuperAdmin: isSuperAdmin(),
+            isAdmin: isAdmin(),
             adminConfig: adminConfig
           })
         }
@@ -49,7 +49,7 @@ export default function AuthDebug() {
     if (!loading) {
       loadDebugInfo()
     }
-  }, [user, firebaseUser, loading, roles, permissions, isSuperAdmin])
+  }, [user, firebaseUser, loading, roles, permissions, isAdmin])
 
   if (loading) {
     return (
@@ -93,7 +93,7 @@ export default function AuthDebug() {
             {JSON.stringify({
               roles: roles.length,
               permissions: permissions.length,
-              isSuperAdmin: isSuperAdmin()
+              isAdmin: isAdmin()
             }, null, 2)}
           </pre>
         </div>

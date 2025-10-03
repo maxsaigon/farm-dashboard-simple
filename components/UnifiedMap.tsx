@@ -8,6 +8,7 @@ import { Tree } from '@/lib/types'
 import { useRealTimeUpdates } from '@/lib/websocket-service'
 import { useBackgroundGeolocation } from '@/lib/background-geolocation'
 import { useMobileGestures, triggerHapticFeedback } from '@/lib/use-mobile-gestures'
+import { useIOSOptimizedGPS, IOSGPSPosition } from '@/lib/ios-optimized-gps'
 
 // Import CSS files
 if (typeof window !== 'undefined') {
@@ -65,8 +66,9 @@ interface UnifiedMapProps {
   proximityRadius?: number
 }
 
-// Optimized GPS tracking with configurable frequency
-const useOptimizedPositioning = (enabled: boolean = true, updateInterval: number = 2000) => {
+// iOS-Optimized GPS tracking hook (replaces old useOptimizedPositioning)
+const useIOSGPSTracking = (enabled: boolean = true) => {
+  const gps = useIOSOptimizedGPS()
   const [userPosition, setUserPosition] = useState<{
     lat: number
     lng: number
@@ -76,54 +78,25 @@ const useOptimizedPositioning = (enabled: boolean = true, updateInterval: number
     timestamp: number
   } | null>(null)
   const [trackingHistory, setTrackingHistory] = useState<Array<{lat: number, lng: number, timestamp: number}>>([])
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [permissionState, setPermissionState] = useState<string>('unknown')
 
   useEffect(() => {
-    console.log('🔄 useOptimizedPositioning Effect:', {
-      enabled,
-      updateInterval,
-      hasNavigatorGeolocation: !!navigator.geolocation,
-      timestamp: new Date().toISOString()
-    })
-
-    if (!enabled) {
-      console.log('⏹️ GPS disabled, clearing interval')
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
-      return
-    }
-
-    if (!navigator.geolocation) {
-      console.error('❌ navigator.geolocation not available')
-      return
-    }
-
-    const updatePosition = () => {
-      console.log('📍 Requesting GPS position...')
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          console.log('✅ GPS position received:', {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            timestamp: position.timestamp,
-            coords: position.coords
-          })
-
+    if (enabled) {
+      console.log('🚀 Starting iOS-Optimized GPS tracking...')
+      
+      gps.startTracking({
+        onSuccess: (position: IOSGPSPosition) => {
           const newPos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            heading: position.coords.heading || undefined,
-            speed: position.coords.speed || undefined,
-            timestamp: Date.now()
+            lat: position.latitude,
+            lng: position.longitude,
+            accuracy: position.accuracy,
+            heading: position.heading || undefined,
+            speed: position.speed || undefined,
+            timestamp: position.timestamp
           }
-
+          
           setUserPosition(newPos)
-
+          
           // Keep tracking history (last 20 points for path visualization)
           setTrackingHistory(prev =>
             [...prev, {
@@ -133,41 +106,38 @@ const useOptimizedPositioning = (enabled: boolean = true, updateInterval: number
             }].slice(-20)
           )
         },
-        (error) => {
-          console.error('❌ GPS positioning error:', {
-            code: error.code,
-            message: error.message,
-            PERMISSION_DENIED: error.PERMISSION_DENIED,
-            POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
-            TIMEOUT: error.TIMEOUT
-          })
+        onError: (error) => {
+          console.error('❌ GPS Error:', error)
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: updateInterval
+        onPermissionGranted: () => {
+          console.log('✅ GPS Permission granted')
+          setPermissionState('granted')
+        },
+        onPermissionDenied: () => {
+          console.log('❌ GPS Permission denied')
+          setPermissionState('denied')
         }
-      )
+      }, {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0,
+        distanceFilter: 5 // Only update if moved 5 meters
+      }).catch(error => {
+        console.error('Failed to start GPS tracking:', error)
+      })
+    } else {
+      console.log('🛑 Stopping GPS tracking...')
+      gps.stopTracking()
+      setUserPosition(null)
+      setTrackingHistory([])
     }
-
-    // Initial position
-    console.log('🚀 Starting GPS positioning...')
-    updatePosition()
-
-    // Set up interval for updates
-    console.log(`⏰ Setting up GPS interval: ${updateInterval}ms`)
-    intervalRef.current = setInterval(updatePosition, updateInterval)
 
     return () => {
-      console.log('🛑 Cleaning up GPS interval')
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
+      gps.stopTracking()
     }
-  }, [enabled, updateInterval])
+  }, [enabled])
 
-  return { userPosition, trackingHistory }
+  return { userPosition, trackingHistory, permissionState, gps }
 }
 
 // Proximity detection hook
@@ -443,65 +413,34 @@ const UnifiedMap = memo(({
     return calculateMapBounds(trees, zones)
   }, [trees, zones, center, zoom])
 
-  // GPS state management
+  // GPS state management with iOS-Optimized GPS
   const [gpsEnabled, setGpsEnabled] = useState(false)
+  const { userPosition, trackingHistory, permissionState: gpsPermissionState, gps } = useIOSGPSTracking(gpsEnabled)
   const [permissionStatus, setPermissionStatus] = useState<string>('unknown')
 
-  // Check GPS permissions and capabilities on mount
+  // Sync permission status from GPS service
+  useEffect(() => {
+    if (gpsPermissionState !== 'unknown') {
+      setPermissionStatus(gpsPermissionState)
+    }
+  }, [gpsPermissionState])
+
+  // Check GPS status on mount
   useEffect(() => {
     console.log('🚀 UnifiedMap Mounted - GPS Debug Info:', {
       hasGeolocation: !!navigator.geolocation,
-      hasPermissions: !!navigator.permissions,
       isSecureContext: window.isSecureContext,
       userAgent: navigator.userAgent,
       timestamp: new Date().toISOString(),
       location: window.location.href
     })
 
-    // Check geolocation permission if available
-    if (navigator.permissions && navigator.geolocation) {
-      navigator.permissions.query({ name: 'geolocation' })
-        .then(permission => {
-          console.log('📋 Initial GPS Permission:', permission.state)
-          setPermissionStatus(permission.state)
-
-          // Listen for permission changes
-          permission.addEventListener('change', () => {
-            console.log('📋 GPS Permission changed to:', permission.state)
-            setPermissionStatus(permission.state)
-          })
-        })
-        .catch(err => {
-          console.log('📋 Could not check GPS permission:', err)
-          setPermissionStatus('error')
-        })
-    } else {
-      setPermissionStatus('not-supported')
-    }
+    // Check initial permission
+    gps.checkPermission().then(state => {
+      console.log('📋 Initial GPS Permission:', state)
+      setPermissionStatus(state)
+    })
   }, [])
-
-  // Optimized positioning (only when GPS is enabled)
-  const { userPosition, trackingHistory } = useOptimizedPositioning(gpsEnabled, 2000)
-
-  // Debug GPS state changes
-  useEffect(() => {
-    console.log('🔄 GPS State Changed:', {
-      gpsEnabled,
-      hasUserPosition: !!userPosition,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent
-    })
-  }, [gpsEnabled, userPosition])
-
-  // Debug userPosition changes
-  useEffect(() => {
-    console.log('📍 UserPosition Updated:', {
-      hasPosition: !!userPosition,
-      position: userPosition,
-      gpsEnabled,
-      timestamp: new Date().toISOString()
-    })
-  }, [userPosition, gpsEnabled])
 
   const proximityData = useProximityDetection(trees, zones, gpsEnabled ? userPosition : null, proximityRadius)
 
@@ -882,53 +821,23 @@ const UnifiedMap = memo(({
               console.log('🖱️ GPS Button Clicked:', {
                 currentState: gpsEnabled,
                 newState: !gpsEnabled,
-                timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent,
-                isSecureContext: window.isSecureContext,
-                permissions: navigator.permissions ? 'available' : 'not available',
-                buttonVisible: true
+                timestamp: new Date().toISOString()
               })
 
               if (!gpsEnabled) {
-                // When enabling GPS, first request permission
-                console.log('🔐 Requesting location permission...')
+                // Check permission first
+                const permission = await gps.checkPermission()
+                console.log('📋 Current permission:', permission)
 
-                if (navigator.geolocation) {
-                  try {
-                    // This will trigger the permission prompt
-                    await new Promise<GeolocationPosition>((resolve, reject) => {
-                      navigator.geolocation.getCurrentPosition(resolve, reject, {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 60000
-                      })
-                    })
-
-                    console.log('✅ Location permission granted')
-                    setGpsEnabled(true)
-                  } catch (error: any) {
-                    console.error('❌ Location permission denied:', {
-                      code: error.code,
-                      message: error.message
-                    })
-
-                    // Show user-friendly error message
-                    if (error.code === error.PERMISSION_DENIED) {
-                      alert('❌ Vui lòng cho phép truy cập vị trí để sử dụng GPS tracking')
-                    } else if (error.code === error.POSITION_UNAVAILABLE) {
-                      alert('❌ Không thể lấy vị trí GPS. Vui lòng kiểm tra GPS đã bật chưa.')
-                    } else if (error.code === error.TIMEOUT) {
-                      alert('❌ GPS timeout. Vui lòng thử lại.')
-                    } else {
-                      alert(`❌ Lỗi GPS: ${error.message}`)
-                    }
-                  }
-                } else {
-                  console.error('❌ Geolocation not supported')
-                  alert('❌ Trình duyệt không hỗ trợ GPS')
+                if (permission === 'denied') {
+                  alert('❌ Quyền GPS bị từ chối. Vui lòng cấp quyền trong Settings của trình duyệt.')
+                  return
                 }
+
+                // Enable GPS (permission will be requested automatically by iOS-Optimized GPS)
+                setGpsEnabled(true)
               } else {
-                // When disabling GPS, just turn it off
+                // Disable GPS
                 setGpsEnabled(false)
               }
             }}
@@ -952,47 +861,20 @@ const UnifiedMap = memo(({
           {/* Quick GPS Test Button */}
           <button
             onClick={async () => {
-              console.log('🧪 Testing GPS permissions and location...')
+              console.log('🧪 Testing GPS with iOS-Optimized service...')
 
-              if (!navigator.geolocation) {
-                console.error('❌ Geolocation not supported')
-                alert('Geolocation không được hỗ trợ trên trình duyệt này')
-                return
-              }
-
-              if (navigator.permissions) {
-                try {
-                  const permission = await navigator.permissions.query({ name: 'geolocation' })
-                  console.log('📋 GPS Permission status:', permission.state)
-                  setPermissionStatus(permission.state)
-                } catch (e) {
-                  console.log('📋 Could not check permissions:', e)
-                }
-              }
-
-              // Try to get current position once
-              navigator.geolocation.getCurrentPosition(
-                (position) => {
-                  console.log('✅ Manual GPS test successful:', {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                    accuracy: position.coords.accuracy
-                  })
-                  alert(`✅ GPS hoạt động! Vị trí: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`)
-                },
-                (error) => {
-                  console.error('❌ Manual GPS test failed:', {
-                    code: error.code,
-                    message: error.message
-                  })
-                  alert(`❌ GPS lỗi: ${error.message} (Code: ${error.code})`)
-                },
-                {
+              try {
+                const position = await gps.getCurrentPosition({
                   enableHighAccuracy: true,
-                  timeout: 10000,
-                  maximumAge: 60000
-                }
-              )
+                  timeout: 10000
+                })
+                
+                console.log('✅ GPS test successful:', position)
+                alert(`✅ GPS hoạt động!\nVị trí: ${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)}\nĐộ chính xác: ±${position.accuracy.toFixed(0)}m`)
+              } catch (error: any) {
+                console.error('❌ GPS test failed:', error)
+                alert(`❌ GPS lỗi: ${error.message}`)
+              }
             }}
             className="p-2 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 border border-purple-300"
             title="Test GPS nhanh"
@@ -1005,15 +887,15 @@ const UnifiedMap = memo(({
 
         {/* Debug Info Panel */}
         <div className="bg-gray-50 p-2 rounded text-xs space-y-1">
-          <div className="font-bold text-gray-700">🔧 GPS Debug:</div>
+          <div className="font-bold text-gray-700">🔧 GPS Debug (iOS-Optimized):</div>
           <div>GPS: <span className={gpsEnabled ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
             {gpsEnabled ? 'ON' : 'OFF'}
           </span></div>
           <div>Position: <span className={userPosition ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
             {userPosition ? 'YES' : 'NO'}
           </span></div>
-          <div>Geolocation: <span className={navigator.geolocation ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
-            {navigator.geolocation ? 'YES' : 'NO'}
+          <div>iOS: <span className={gps.getStatus().isIOS ? 'text-blue-600 font-bold' : 'text-gray-600'}>
+            {gps.getStatus().isIOS ? 'YES' : 'NO'}
           </span></div>
           <div>Permission: <span className={
             permissionStatus === 'granted' ? 'text-green-600 font-bold' :
@@ -1031,37 +913,22 @@ const UnifiedMap = memo(({
         {/* Permission Request Button */}
         <button
           onClick={async () => {
-            console.log('🔐 Requesting location permission only...')
-
-            if (!navigator.geolocation) {
-              alert('❌ Geolocation không được hỗ trợ')
-              return
-            }
+            console.log('🔐 Requesting location permission...')
 
             try {
-              await new Promise<GeolocationPosition>((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
-                  enableHighAccuracy: true,
-                  timeout: 10000,
-                  maximumAge: 60000
-                })
-              })
+              const permission = await gps.requestPermission()
+              console.log('📋 Permission result:', permission)
 
-              console.log('✅ Permission granted successfully')
-              alert('✅ Quyền truy cập vị trí đã được cấp! Bây giờ bạn có thể bật GPS tracking.')
-
-              // Check permission status
-              if (navigator.permissions) {
-                const permission = await navigator.permissions.query({ name: 'geolocation' })
-                console.log('📋 Permission status after grant:', permission.state)
+              if (permission === 'granted') {
+                alert('✅ Quyền truy cập vị trí đã được cấp! Bây giờ bạn có thể bật GPS tracking.')
+                setPermissionStatus('granted')
+              } else if (permission === 'denied') {
+                alert('❌ Bạn đã từ chối cấp quyền vị trí. Vui lòng cho phép trong cài đặt trình duyệt.')
+                setPermissionStatus('denied')
               }
             } catch (error: any) {
               console.error('❌ Permission request failed:', error)
-              if (error.code === error.PERMISSION_DENIED) {
-                alert('❌ Bạn đã từ chối cấp quyền vị trí. Vui lòng cho phép trong cài đặt trình duyệt.')
-              } else {
-                alert(`❌ Không thể lấy vị trí: ${error.message}`)
-              }
+              alert(`❌ Không thể lấy quyền: ${error.message}`)
             }
           }}
           className="w-full p-2 bg-yellow-600 text-white rounded-lg text-xs font-medium hover:bg-yellow-700 active:bg-yellow-800 mb-2"

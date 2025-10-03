@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, ReactNode } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { useRouter } from 'next/navigation'
 import {
   Bars3Icon,
@@ -43,7 +43,8 @@ interface NavigationItem {
 }
 
 export default function ModernAdminLayout({ children, currentView, onViewChange }: ModernAdminLayoutProps) {
-  const { user, isSuperAdmin } = useEnhancedAuth()
+  const { user, isAdmin: isAdminFn } = useSimpleAuth()
+  const isAdmin = isAdminFn()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')

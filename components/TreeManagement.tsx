@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import {
   BeakerIcon,
   MapPinIcon,
@@ -72,7 +72,7 @@ interface TreeFilters {
 }
 
 export default function TreeManagement() {
-  const { user, hasPermission, currentFarm } = useEnhancedAuth()
+  const { user, hasPermission, currentFarm } = useSimpleAuth()
   const [trees, setTrees] = useState<Tree[]>([])
   const [filteredTrees, setFilteredTrees] = useState<Tree[]>([])
   const [loading, setLoading] = useState(true)
@@ -531,7 +531,7 @@ function TreeCard({
   onAction: (action: string, treeId: string) => void
   onViewDetails: (tree: Tree) => void
 }) {
-  const { hasPermission } = useEnhancedAuth()
+  const { hasPermission } = useSimpleAuth()
 
   return (
     <div className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6">
@@ -637,7 +637,7 @@ function TreeListItem({
   onAction: (action: string, treeId: string) => void
   onViewDetails: (tree: Tree) => void
 }) {
-  const { hasPermission } = useEnhancedAuth()
+  const { hasPermission } = useSimpleAuth()
 
   return (
     <li className="px-6 py-4 hover:bg-gray-50">

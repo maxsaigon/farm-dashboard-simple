@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { AuditService, AuditLog, ComplianceRule, AuditStats } from '@/lib/audit-service'
 import { 
   ShieldCheckIcon,
@@ -22,7 +22,7 @@ import {
 // Types are now imported from audit-service
 
 export default function AuditCompliance() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [complianceRules, setComplianceRules] = useState<ComplianceRule[]>([])
   const [loading, setLoading] = useState(true)

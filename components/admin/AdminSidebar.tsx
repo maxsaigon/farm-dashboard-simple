@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { 
   HomeIcon,
   UsersIcon,
@@ -33,7 +33,7 @@ interface AdminSidebarProps {
 }
 
 export default function AdminSidebar({ currentView, onViewChange, stats }: AdminSidebarProps) {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [expandedSections, setExpandedSections] = useState<string[]>(['dashboard', 'users', 'content'])
 
   const toggleSection = (section: string) => {

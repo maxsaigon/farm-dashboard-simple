@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { MobileStatsCard, MobileActionButton } from './MobileCards'
 import MobileLayout from './MobileLayout'
 import { 
@@ -45,7 +45,7 @@ interface WeatherInfo {
 }
 
 export default function MobileDashboard() {
-  const { user, currentFarm, hasPermission } = useEnhancedAuth()
+  const { user, currentFarm, hasPermission } = useSimpleAuth()
   const [stats, setStats] = useState<DashboardStats>({
     totalTrees: 0,
     healthyTrees: 0,

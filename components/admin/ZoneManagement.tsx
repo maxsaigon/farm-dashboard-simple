@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { AdminService } from '@/lib/admin-service'
 import { Zone } from '@/lib/gps-tracking-service'
 import { 
@@ -28,7 +28,7 @@ interface ZoneStats {
 }
 
 export default function ZoneManagement() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [zones, setZones] = useState<Zone[]>([])
   const [trees, setTrees] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

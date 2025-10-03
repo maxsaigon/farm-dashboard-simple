@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { EnhancedUser, EnhancedFarm, UserRole } from '@/lib/types-enhanced'
 import { 
   UsersIcon, 
@@ -41,7 +41,7 @@ interface AssignmentStats {
 }
 
 export default function FarmAssignmentSystem() {
-  const { user: currentUser } = useEnhancedAuth()
+  const { user: currentUser } = useSimpleAuth()
   const [assignments, setAssignments] = useState<FarmAssignment[]>([])
   const [users, setUsers] = useState<EnhancedUser[]>([])
   const [farms, setFarms] = useState<EnhancedFarm[]>([])

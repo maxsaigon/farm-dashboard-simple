@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { 
   Cog6ToothIcon,
   ShieldCheckIcon,
@@ -73,7 +73,7 @@ interface ConfigSection {
 }
 
 export default function SystemConfiguration() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [settings, setSettings] = useState<SystemSettings>({
     general: {
       siteName: 'Farm Management System',
