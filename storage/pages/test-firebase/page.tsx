@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { collection, getDocs, query, limit } from 'firebase/firestore'
-import { signIn } from '../../lib/auth'
-import { db } from '../../lib/firebase'
+import { signIn } from '@/lib/auth'
+import { db } from '@/lib/firebase'
 
 export default function TestFirebasePage() {
   const [email, setEmail] = useState('')

@@ -1,6 +1,6 @@
 import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, Timestamp, serverTimestamp } from 'firebase/firestore'
-import { db } from './firebase'
-import type { FertilizerCalculation } from './types'
+import { db } from '@/lib/firebase'
+import type { FertilizerCalculation } from '@/lib/types'
 
 function toDate(value: any): Date | null {
   if (!value) return null

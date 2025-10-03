@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { EnhancedUser, UserRole, RoleType, ROLE_PERMISSIONS, Permission } from '@/lib/types-enhanced'
-import { enhancedAuthService } from '@/lib/enhanced-auth-service'
+import { enhancedAuthService } from '@/storage/lib/enhanced-auth-service'
 import { 
   UserIcon, 
   ShieldCheckIcon, 

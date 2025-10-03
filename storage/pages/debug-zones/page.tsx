@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
-import { db } from '../../lib/firebase'
+import { db } from '@/lib/firebase'
 
 export default function DebugZonesPage() {
   const [farmId, setFarmId] = useState('')

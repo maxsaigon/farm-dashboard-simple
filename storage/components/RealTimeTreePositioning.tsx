@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { gpsTrackingService, LocationUpdate, TrackingSession, GeofenceEvent } from '@/lib/gps-tracking-service'
-import { MobileInput } from './MobileCards'
+import { MobileInput } from '@/components/MobileCards'
 import { 
   MapPinIcon,
   PlayIcon,

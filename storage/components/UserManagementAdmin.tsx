@@ -60,7 +60,7 @@ export default function UserManagementAdmin() {
       setLoading(true)
       const { collection, getDocs } = await import('firebase/firestore')
       const { db } = await import('@/lib/firebase')
-      const { enhancedAuthService } = await import('@/lib/enhanced-auth-service')
+      const { enhancedAuthService } = await import('@/storage/lib/enhanced-auth-service')
 
       const usersSnapshot = await getDocs(collection(db, 'users'))
       const usersData: UserWithRoles[] = []
@@ -99,7 +99,7 @@ export default function UserManagementAdmin() {
     if (!selectedUser || !currentUser) return
 
     try {
-      const { enhancedAuthService } = await import('@/lib/enhanced-auth-service')
+      const { enhancedAuthService } = await import('@/storage/lib/enhanced-auth-service')
       
       await enhancedAuthService.grantUserRole(
         selectedUser.uid,
@@ -122,7 +122,7 @@ export default function UserManagementAdmin() {
     if (!currentUser || !confirm('Are you sure you want to revoke this role?')) return
 
     try {
-      const { enhancedAuthService } = await import('@/lib/enhanced-auth-service')
+      const { enhancedAuthService } = await import('@/storage/lib/enhanced-auth-service')
       await enhancedAuthService.revokeUserRole(roleId, currentUser.uid)
       await loadUsers()
       alert('Role revoked successfully!')

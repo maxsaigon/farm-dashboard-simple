@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth'
-import { auth } from './firebase'
+import { auth } from '@/lib/firebase'
 import { 
   EnhancedUser, 
   UserRole, 
@@ -10,7 +10,7 @@ import {
   Organization, 
   Permission,
   RoleType
-} from './types-enhanced'
+} from '@/lib/types-enhanced'
 import { enhancedAuthService } from './enhanced-auth-service'
 
 interface EnhancedAuthContextType {
@@ -213,7 +213,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       const farmsPromises = farmIds.map(async (farmId) => {
         try {
           const { getDoc, doc } = await import('firebase/firestore')
-          const { db } = await import('./firebase')
+          const { db } = await import('@/lib/firebase')
 
           const farmDoc = await getDoc(doc(db, 'farms', farmId))
 
@@ -257,7 +257,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       const orgsPromises = orgIds.map(async (orgId) => {
         try {
           const { getDoc, doc } = await import('firebase/firestore')
-          const { db } = await import('./firebase')
+          const { db } = await import('@/lib/firebase')
           
           const orgDoc = await getDoc(doc(db, 'organizations', orgId))
           
@@ -382,7 +382,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     
     // Update in Firestore
     const { updateDoc, doc, serverTimestamp } = await import('firebase/firestore')
-    const { db } = await import('./firebase')
+    const { db } = await import('@/lib/firebase')
     
     await updateDoc(doc(db, 'users', user.uid), {
       ...updates,

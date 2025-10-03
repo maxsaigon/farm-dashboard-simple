@@ -37,7 +37,7 @@ interface Zone {
   createdAt: Date
 }
 
-const MapWrapperNoSSR = dynamic(() => import('@/components/MapWrapper'), {
+const MapWrapperNoSSR = dynamic(() => import('@/storage/components/MapWrapper'), {
   ssr: false,
   loading: () => (
     <div className="h-full flex items-center justify-center bg-green-50">

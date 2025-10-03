@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
-import { useGoogleMaps } from '@/lib/google-maps-loader'
+import { useGoogleMaps } from '@/storage/lib/google-maps-loader'
 import { subscribeToTrees } from '@/lib/firestore'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { MobileInput, MobileSelect } from './MobileCards'
+import { MobileInput, MobileSelect } from '@/components/MobileCards'
 import { 
   MapPinIcon,
   ViewfinderCircleIcon,
