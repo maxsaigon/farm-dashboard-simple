@@ -76,7 +76,7 @@ export default function AdminPage() {
     <MobileAdminLayout
       currentSection={currentSection}
       onSectionChange={setCurrentSection}
-      isSuperAdmin={isSuperAdmin}
+      isAdmin={isSuperAdmin}
     >
       {renderCurrentSection()}
     </MobileAdminLayout>

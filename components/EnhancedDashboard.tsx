@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { 
   HomeIcon,
   CameraIcon,
@@ -49,7 +49,7 @@ interface QuickStats {
 }
 
 export default function EnhancedDashboard() {
-  const { user, hasPermission, currentFarm } = useEnhancedAuth()
+  const { user, hasPermission, currentFarm } = useSimpleAuth()
   const [treeStats, setTreeStats] = useState<TreeStats>({
     total: 0,
     healthy: 0,
@@ -395,7 +395,7 @@ function QuickActionCard({
   href: string
   permission?: string
 }) {
-  const { hasPermission } = useEnhancedAuth()
+  const { hasPermission } = useSimpleAuth()
 
   if (permission && !hasPermission(permission as any)) {
     return null

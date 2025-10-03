@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { EnhancedFarm } from '@/lib/types-enhanced'
 import { 
   MapIcon, 
@@ -28,7 +28,7 @@ interface FarmStats {
 }
 
 export default function EnhancedFarmManagement() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [farms, setFarms] = useState<EnhancedFarm[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedFarm, setSelectedFarm] = useState<EnhancedFarm | null>(null)

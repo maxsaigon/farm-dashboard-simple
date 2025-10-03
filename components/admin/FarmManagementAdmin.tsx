@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { EnhancedFarm, EnhancedUser } from '@/lib/types-enhanced'
 import { 
   MapIcon, 
@@ -19,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export default function FarmManagementAdmin() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [farms, setFarms] = useState<EnhancedFarm[]>([])
   const [users, setUsers] = useState<EnhancedUser[]>([])
   const [loading, setLoading] = useState(true)

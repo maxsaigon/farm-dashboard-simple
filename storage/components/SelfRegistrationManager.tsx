@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { EnhancedUser } from '@/lib/types-enhanced'
 import { 
   UserIcon, 
@@ -23,7 +23,7 @@ interface PendingRegistration extends EnhancedUser {
 }
 
 export default function SelfRegistrationManager() {
-  const { user, isSuperAdmin, isOrganizationAdmin } = useEnhancedAuth()
+  const { user, isAdmin, isOrganizationAdmin } = useSimpleAuth()
   const [pendingUsers, setPendingUsers] = useState<PendingRegistration[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<PendingRegistration | null>(null)
@@ -31,10 +31,10 @@ export default function SelfRegistrationManager() {
   const [rejectionReason, setRejectionReason] = useState('')
 
   useEffect(() => {
-    if (isSuperAdmin() || isOrganizationAdmin()) {
+    if (isAdmin() || isOrganizationAdmin()) {
       loadPendingRegistrations()
     }
-  }, [isSuperAdmin, isOrganizationAdmin])
+  }, [isAdmin, isOrganizationAdmin])
 
   const loadPendingRegistrations = async () => {
     try {
@@ -180,7 +180,7 @@ export default function SelfRegistrationManager() {
     }
   }
 
-  if (!isSuperAdmin() && !isOrganizationAdmin()) {
+  if (!isAdmin() && !isOrganizationAdmin()) {
     return (
       <div className="text-center py-8">
         <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />

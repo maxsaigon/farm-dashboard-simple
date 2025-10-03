@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import {
   ChartBarIcon,
   DocumentTextIcon,
@@ -88,7 +88,7 @@ interface ReportFilters {
 }
 
 export default function AnalyticsReporting() {
-  const { user, hasPermission, currentFarm } = useEnhancedAuth()
+  const { user, hasPermission, currentFarm } = useSimpleAuth()
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<ReportFilters>({

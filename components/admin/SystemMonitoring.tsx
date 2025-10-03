@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { SystemMonitoringService, SystemHealth } from '@/lib/system-monitoring-service'
 import { 
   CpuChipIcon,
@@ -75,7 +75,7 @@ interface SystemAlert {
 }
 
 export default function SystemMonitoring() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [systemHealth, setSystemHealth] = useState<LocalSystemHealth | null>(null)
   const [loading, setLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(true)

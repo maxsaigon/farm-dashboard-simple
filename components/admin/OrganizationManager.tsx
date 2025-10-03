@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { Organization, OrganizationSettings, EnhancedFarm } from '@/lib/types-enhanced'
 import { 
   BuildingOfficeIcon, 
@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export default function OrganizationManager() {
-  const { user, isSuperAdmin } = useEnhancedAuth()
+  const { user, isAdmin } = useSimpleAuth()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -30,10 +30,10 @@ export default function OrganizationManager() {
   })
 
   useEffect(() => {
-    if (isSuperAdmin()) {
+    if (isAdmin()) {
       loadOrganizations()
     }
-  }, [isSuperAdmin])
+  }, [isAdmin])
 
   const loadOrganizations = async () => {
     try {
@@ -200,7 +200,7 @@ export default function OrganizationManager() {
     }
   }
 
-  if (!isSuperAdmin()) {
+  if (!isAdmin()) {
     return (
       <div className="text-center py-8">
         <BuildingOfficeIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />

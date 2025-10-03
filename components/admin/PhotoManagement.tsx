@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { AdminService } from '@/lib/admin-service'
 import { Photo } from '@/lib/types'
 import { 
@@ -29,7 +29,7 @@ interface PhotoStats {
 }
 
 export default function PhotoManagement() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [photos, setPhotos] = useState<Photo[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)

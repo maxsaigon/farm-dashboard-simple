@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { BulkOperationsService, BulkOperation, BulkOperationTemplate } from '@/lib/bulk-operations-service'
 import { 
   CloudArrowUpIcon,
@@ -45,7 +45,7 @@ interface ComponentBulkOperation {
 }
 
 export default function BulkOperationsManager() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [operations, setOperations] = useState<ComponentBulkOperation[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedOperation, setSelectedOperation] = useState<ComponentBulkOperation | null>(null)

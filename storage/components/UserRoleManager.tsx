@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { EnhancedUser, UserRole, RoleType, ROLE_PERMISSIONS, Permission } from '@/lib/types-enhanced'
 import { enhancedAuthService } from '@/lib/enhanced-auth-service'
 import { 
@@ -18,7 +18,7 @@ interface UserWithRoles extends EnhancedUser {
 }
 
 export default function UserRoleManager() {
-  const { user: currentUser, isSuperAdmin } = useEnhancedAuth()
+  const { user: currentUser, isAdmin } = useSimpleAuth()
   const [users, setUsers] = useState<UserWithRoles[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null)
@@ -33,10 +33,10 @@ export default function UserRoleManager() {
   })
 
   useEffect(() => {
-    if (isSuperAdmin()) {
+    if (isAdmin()) {
       loadUsers()
     }
-  }, [isSuperAdmin])
+  }, [isAdmin])
 
   const loadUsers = async () => {
     try {
@@ -118,7 +118,7 @@ export default function UserRoleManager() {
     return colors[roleType] || 'bg-gray-100 text-gray-800'
   }
 
-  if (!isSuperAdmin()) {
+  if (!isAdmin()) {
     return (
       <div className="text-center py-8">
         <ShieldCheckIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />

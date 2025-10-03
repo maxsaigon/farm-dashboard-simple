@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { EnhancedUser, UserRole, RoleType, ROLE_PERMISSIONS } from '@/lib/types-enhanced'
 import { 
   UsersIcon, 
@@ -28,7 +28,7 @@ interface UserWithRoles extends EnhancedUser {
 }
 
 export default function UserManagementAdmin() {
-  const { user: currentUser } = useEnhancedAuth()
+  const { user: currentUser } = useSimpleAuth()
   const [users, setUsers] = useState<UserWithRoles[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null)

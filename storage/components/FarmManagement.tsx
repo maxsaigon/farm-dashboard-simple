@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import {
   BuildingOfficeIcon,
   MapIcon,
@@ -116,7 +116,7 @@ interface FarmStatistics {
 }
 
 export default function FarmManagement() {
-  const { user, hasPermission, farms, organizations, currentFarm } = useEnhancedAuth()
+  const { user, hasPermission, farms, organizations, currentFarm } = useSimpleAuth()
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'farms' | 'organizations' | 'settings'>('farms')
   const [showCreateFarmModal, setShowCreateFarmModal] = useState(false)
@@ -359,7 +359,7 @@ function FarmsTab({
   onCreateFarm: () => void
   onEditFarm: (farm: EnhancedFarm) => void
 }) {
-  const { hasPermission } = useEnhancedAuth()
+  const { hasPermission } = useSimpleAuth()
 
   return (
     <div className="space-y-6">
@@ -420,7 +420,7 @@ function OrganizationsTab({
   onCreateOrganization: () => void
   onEditOrganization: (org: Organization) => void
 }) {
-  const { hasPermission } = useEnhancedAuth()
+  const { hasPermission } = useSimpleAuth()
 
   return (
     <div className="space-y-6">
@@ -472,7 +472,7 @@ function OrganizationsTab({
 
 // Settings Tab Component
 function SettingsTab({ currentFarm }: { currentFarm: EnhancedFarm | null }) {
-  const { user, hasPermission } = useEnhancedAuth()
+  const { user, hasPermission } = useSimpleAuth()
   const [settings, setSettings] = useState(currentFarm?.settings || null)
 
   if (!currentFarm) {
@@ -638,7 +638,7 @@ function FarmCard({
   stats?: FarmStatistics
   onEdit: () => void
 }) {
-  const { hasPermission } = useEnhancedAuth()
+  const { hasPermission } = useSimpleAuth()
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -740,7 +740,7 @@ function OrganizationCard({
   organization: Organization
   onEdit: () => void
 }) {
-  const { hasPermission } = useEnhancedAuth()
+  const { hasPermission } = useSimpleAuth()
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

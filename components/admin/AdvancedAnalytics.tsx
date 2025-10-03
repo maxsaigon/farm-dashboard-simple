@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useEnhancedAuth } from '@/lib/enhanced-auth-context'
+import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { AnalyticsService, AnalyticsData as ServiceAnalyticsData } from '@/lib/analytics-service'
 import { 
   ChartBarIcon,
@@ -59,7 +59,7 @@ interface TimeRange {
 }
 
 export default function AdvancedAnalytics() {
-  const { user } = useEnhancedAuth()
+  const { user } = useSimpleAuth()
   const [analytics, setAnalytics] = useState<AdminAnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d')
