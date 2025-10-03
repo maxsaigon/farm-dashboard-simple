@@ -242,7 +242,8 @@ export default function OnFarmWorkMode({ trees, onClose, onTreeSelect, onTreeCre
     <>
       {/* Global styles to hide bottom nav */}
       <style jsx global>{`
-        body.work-mode-active nav.lg\\:hidden {
+        body.work-mode-active nav.lg\\:hidden,
+        body.work-mode-active nav.fixed.bottom-0 {
           display: none !important;
         }
       `}</style>
