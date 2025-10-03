@@ -10,12 +10,24 @@ import dynamic from 'next/dynamic'
 import { TreeDetail } from '@/components/TreeDetail'
 import TreeShowcase from '@/components/TreeShowcase'
 import FullscreenTreeShowcase from '@/components/FullscreenTreeShowcase'
-import OnFarmWorkMode from '@/components/OnFarmWorkMode'
 import { EyeIcon, BriefcaseIcon } from '@heroicons/react/24/outline'
 import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
 import BottomSheet from '@/components/ui/BottomSheet'
 import AuthGuard from '@/components/AuthGuard'
 import logger from '@/lib/logger'
+
+// Dynamic import OnFarmWorkMode to avoid SSR issues
+const OnFarmWorkMode = dynamic(() => import('@/components/OnFarmWorkMode'), {
+  ssr: false,
+  loading: () => (
+    <div className="fixed inset-0 bg-white flex items-center justify-center" style={{ zIndex: 9999 }}>
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Đang khởi động chế độ làm việc...</p>
+      </div>
+    </div>
+  )
+})
 
 interface Zone {
   id: string
