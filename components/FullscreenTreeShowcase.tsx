@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { Tree } from '@/lib/types'
-import { XMarkIcon, ShareIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, ShareIcon, CheckCircleIcon, ExclamationTriangleIcon, MapPinIcon } from '@heroicons/react/24/outline'
 import { ImageGallery } from './ImageGallery'
 import { useSimpleAuth } from '@/lib/simple-auth-context'
 import { updateTree } from '@/lib/firestore'
@@ -11,6 +11,7 @@ import ShareTreeModal from './ShareTreeModal'
 import TreeNoteSystem from './TreeNoteSystem'
 import { db } from '@/lib/firebase'
 import { collection, getDocs, orderBy, limit, query, where } from 'firebase/firestore'
+import { useRouter } from 'next/navigation'
 
 // Helper function to get season info from date
 function getSeasonFromDate(date: Date): { year: number, phase: string } {
@@ -328,6 +329,7 @@ interface Props {
 export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved }: Props) {
   const { user, currentFarm } = useSimpleAuth()
   const { showSuccess, showError, ToastContainer } = useToast()
+  const router = useRouter()
   const [showShareModal, setShowShareModal] = useState(false)
   const [count, setCount] = useState<number>(0)
   const [saving, setSaving] = useState(false)
@@ -487,6 +489,29 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
     }
   }
 
+  const handleShowOnMap = () => {
+    if (!tree || !tree.latitude || !tree.longitude) {
+      showError('Lỗi', 'Cây này chưa có tọa độ GPS')
+      return
+    }
+
+    // Store tree location in sessionStorage for the map to highlight
+    sessionStorage.setItem('highlightTree', JSON.stringify({
+      id: tree.id,
+      latitude: tree.latitude,
+      longitude: tree.longitude,
+      name: tree.name || tree.variety || 'Cây trồng'
+    }))
+
+    // Close the modal first
+    onClose()
+
+    // Navigate to map page after a short delay to ensure modal closes smoothly
+    setTimeout(() => {
+      router.push('/map')
+    }, 100)
+  }
+
   if (!isOpen || !tree) {
     return null
   }
@@ -518,14 +543,26 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
             </div>
           </div>
           
-          <button
-            onClick={() => setShowShareModal(true)}
-            className="flex-shrink-0 flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors active:scale-95"
-            title="Chia sẻ cây này"
-          >
-            <ShareIcon className="w-5 h-5" />
-            <span className="font-medium hidden sm:inline">Chia sẻ</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleShowOnMap}
+              disabled={!tree.latitude || !tree.longitude}
+              className="flex-shrink-0 flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors active:scale-95"
+              title={tree.latitude && tree.longitude ? "Xem vị trí trên bản đồ" : "Cây chưa có tọa độ GPS"}
+            >
+              <MapPinIcon className="w-5 h-5" />
+              <span className="font-medium hidden sm:inline">Vị trí</span>
+            </button>
+            
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="flex-shrink-0 flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors active:scale-95"
+              title="Chia sẻ cây này"
+            >
+              <ShareIcon className="w-5 h-5" />
+              <span className="font-medium hidden sm:inline">Chia sẻ</span>
+            </button>
+          </div>
         </div>
       </div>
 

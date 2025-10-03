@@ -78,6 +78,7 @@ function MapPageContent() {
   const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] = useState(false)
   const [proximityRadius, setProximityRadius] = useState(30)
   const [showUserPath, setShowUserPath] = useState(false)
+  const [highlightedTreeId, setHighlightedTreeId] = useState<string | null>(null)
 
   // Debug GPS props
   useEffect(() => {
@@ -147,6 +148,30 @@ function MapPageContent() {
         trees: treesWithNames.length,
         zones: zonesData.length
       })
+
+      // Check for highlighted tree from sessionStorage
+      const highlightTreeData = sessionStorage.getItem('highlightTree')
+      if (highlightTreeData) {
+        try {
+          const treeData = JSON.parse(highlightTreeData)
+          const treeToHighlight = treesWithNames.find(t => t.id === treeData.id)
+          
+          if (treeToHighlight) {
+            console.log('🎯 [MapPage] Highlighting tree from navigation:', treeToHighlight.name)
+            // Set selected tree to highlight it on map
+            setSelectedTree(treeToHighlight)
+            setHighlightedTreeId(treeToHighlight.id)
+            // Don't open fullscreen immediately - let user see the map first
+            setShowFullscreenTree(false)
+            
+            // Clear the sessionStorage after using it
+            sessionStorage.removeItem('highlightTree')
+          }
+        } catch (e) {
+          console.error('Error parsing highlight tree data:', e)
+          sessionStorage.removeItem('highlightTree')
+        }
+      }
       
       // Handle zone focus if zone ID is in URL
       if (focusZoneId && zonesData.length > 0) {
