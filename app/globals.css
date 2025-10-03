@@ -2,667 +2,339 @@
 @tailwind components;
 @tailwind utilities;
 
-/* iOS Design System Variables */
-:root {
-  --sat: env(safe-area-inset-top);
-  --sab: env(safe-area-inset-bottom);
-  --sal: env(safe-area-inset-left);
-  --sar: env(safe-area-inset-right);
-  
-  /* iOS Spacing System */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  
-  /* iOS Blur System */
-  --blur-light: blur(20px);
-  --blur-heavy: blur(40px);
-  
-  /* iOS Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
-  --shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.15);
-  
-  /* iOS Radius */
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-}
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  /* Prevent text size adjustment on iOS */
-  -webkit-text-size-adjust: 100%;
-  /* Improve touch performance */
-  touch-action: manipulation;
-}
-
-/* Mobile-first optimizations */
-@layer base {
-  /* Ensure proper viewport behavior */
-  html {
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-  }
-  
-  /* Allow text selection for input elements */
-  input, textarea, [contenteditable] {
-    -webkit-user-select: text;
-    user-select: text;
-  }
-  
-  /* Optimize scrolling on iOS */
-  * {
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  /* Better button touch targets */
-  button, [role="button"], input[type="submit"], input[type="button"] {
-    touch-action: manipulation;
-    -webkit-appearance: none;
-    appearance: none;
-  }
-  
-  /* Improve form inputs on mobile */
-  input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea, select {
-    -webkit-appearance: none;
-    appearance: none;
-    border-radius: 0;
-  }
-  
-  /* Prevent zoom on focus for iOS */
-  @media screen and (max-width: 768px) {
-    input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea, select {
-      font-size: 16px;
-    }
-  }
-}
+/* ============================================
+   FARM DASHBOARD - DESIGN SYSTEM
+   Professional UI/UX Components
+   ============================================ */
 
 @layer components {
-  /* Touch manipulation utility */
-  .touch-manipulation {
-    touch-action: manipulation;
-  }
+  /* ============================================
+     BUTTON SYSTEM - Unified Design
+     ============================================ */
   
-  /* Mobile contrast improvements - Enhanced for Outdoor Visibility */
-  @media screen and (max-width: 768px) {
-    /* Ensure minimum button size for touch - Enhanced for farmers */
-    button, [role="button"] {
-      min-height: 52px;
-      min-width: 52px;
-      font-weight: 700; /* Bold text for better visibility */
-    }
-    
-    /* Improve text contrast on mobile - Outdoor optimized */
-    .text-gray-600 {
-      @apply text-gray-800; /* Darker for outdoor visibility */
-    }
-    
-    .text-gray-500 {
-      @apply text-gray-700; /* Darker for outdoor visibility */
-    }
-    
-    .text-gray-400 {
-      @apply text-gray-600; /* Darker for outdoor visibility */
-    }
-    
-    /* White text should be more contrasted */
-    .text-white {
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    }
-    
-    /* Ensure buttons have sufficient contrast for sunlight */
-    .bg-gray-100 {
-      @apply bg-gray-300; /* Much higher contrast */
-    }
-    
-    .bg-gray-50 {
-      @apply bg-gray-200; /* Much higher contrast */
-    }
-    
-    /* Make green buttons more visible in sunlight */
-    .bg-green-600 {
-      @apply bg-green-800; /* Darker green for outdoor */
-    }
-    
-    .bg-green-500 {
-      @apply bg-green-700; /* Darker green for outdoor */
-    }
-    
-    .bg-green-700 {
-      @apply bg-green-900; /* Even darker for buttons */
-    }
-    
-    /* Blue buttons optimization */
-    .bg-blue-600 {
-      @apply bg-blue-800; /* Darker blue for outdoor */
-    }
-    
-    .bg-blue-500 {
-      @apply bg-blue-700; /* Darker blue for outdoor */
-    }
-    
-    /* Improve shadow visibility and depth on mobile */
-    .shadow-sm {
-      @apply shadow-lg; /* Much stronger shadow for outdoor */
-    }
-    
-    .shadow {
-      @apply shadow-xl; /* Much stronger shadow for outdoor */
-    }
-    
-    .shadow-md {
-      box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
-    }
-    
-    .shadow-lg {
-      box-shadow: 0 20px 40px -4px rgba(0, 0, 0, 0.25), 0 8px 16px -4px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Enhanced borders for better definition in bright light */
-    .border-gray-200 {
-      @apply border-gray-400;
-    }
-    
-    .border-gray-300 {
-      @apply border-gray-500;
-    }
-    
-    /* Card backgrounds should be more contrasted */
-    .bg-white {
-      background-color: #ffffff;
-      border: 1px solid rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Colored backgrounds should be more saturated for outdoor use */
-    .bg-green-50 {
-      @apply bg-green-200; /* More saturated for visibility */
-    }
-    
-    .bg-blue-50 {
-      @apply bg-blue-200; /* More saturated for visibility */
-    }
-    
-    .bg-red-50 {
-      @apply bg-red-200; /* More saturated for visibility */
-    }
-    
-    .bg-yellow-50 {
-      @apply bg-yellow-200; /* More saturated for visibility */
-    }
+  /* Primary Button - Main Actions */
+  .btn-primary {
+    @apply px-4 py-2.5 bg-blue-600 text-white rounded-lg font-semibold shadow-md;
+    @apply hover:bg-blue-700 hover:shadow-lg active:scale-95;
+    @apply transition-all duration-200 ease-in-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
   }
-  
-  /* Scale animation for button presses */
-  .active\:scale-98:active {
-    transform: scale(0.98);
-    transition-property: transform;
-    transition-duration: 100ms;
-    transition-timing-function: ease-in-out;
-  }
-  
-  /* Safe area utilities for devices with notches */
-  .safe-top {
-    padding-top: env(safe-area-inset-top);
-  }
-  
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  
-  .safe-left {
-    padding-left: env(safe-area-inset-left);
-  }
-  
-  .safe-right {
-    padding-right: env(safe-area-inset-right);
-  }
-  
-  /* Minimum touch target size (44px recommended by Apple/Google) */
-  .min-touch {
-    min-width: 44px;
-    min-height: 44px;
-  }
-  
-  /* Scrollable container optimizations */
-  .scroll-touch {
-    -webkit-overflow-scrolling: touch;
-    overflow-scrolling: touch;
-  }
-  
-  /* Hide scrollbar but maintain functionality */
-  .scrollbar-none {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
-  
-  /* Better text rendering on mobile */
-  .text-optimized {
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-  
-  /* Card with appropriate mobile touch feedback */
-  .card-mobile {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 touch-manipulation active:scale-98 transition-transform;
-  }
-  
-  /* Mobile-optimized button - Enhanced for farmers */
-  .btn-mobile {
-    @apply min-h-touch px-6 py-4 rounded-xl font-bold transition-all touch-manipulation shadow-md hover:shadow-lg active:scale-95;
-    min-height: 56px; /* Larger for better farm field usage */
-    font-size: 16px;
-    letter-spacing: 0.025em;
-  }
-  
-  /* Primary mobile button - Farmer optimized */
-  .btn-primary-mobile {
-    @apply btn-mobile bg-green-700 text-white hover:bg-green-800 active:bg-green-900 border-2 border-green-800;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  }
-  
-  /* Secondary mobile button - Farmer optimized */
-  .btn-secondary-mobile {
-    @apply btn-mobile border-2 border-gray-400 text-gray-800 hover:bg-gray-200 active:bg-gray-300 bg-white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-  
-  /* Mobile form input - Enhanced for outdoor use */
-  .input-mobile {
-    @apply w-full px-4 py-4 text-lg border-2 border-gray-400 rounded-xl focus:ring-4 focus:ring-green-400 focus:border-green-600 transition-all bg-white;
-    min-height: 56px;
-    font-weight: 500;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
-  
-  /* Farmer-specific utility classes */
-  .farmer-card {
-    @apply bg-white rounded-2xl shadow-lg border-2 border-gray-300 p-6 transition-all hover:shadow-xl active:scale-98;
-  }
-  
-  .farmer-header {
-    @apply text-2xl font-bold text-gray-900 mb-2;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  }
-  
-  .farmer-subheader {
-    @apply text-lg font-semibold text-gray-700 mb-4;
-  }
-  
-  .farmer-text {
-    @apply text-base text-gray-800 leading-relaxed;
-    font-weight: 500;
-  }
-  
-  .farmer-stat-card {
-    @apply bg-gradient-to-br from-white to-gray-50 p-4 rounded-xl shadow-md border border-gray-200;
-  }
-  
-  .farmer-stat-number {
-    @apply text-3xl font-bold mb-1;
-  }
-  
-  .farmer-stat-label {
-    @apply text-sm font-semibold text-gray-600;
-  }
-  
-  .farmer-action-button {
-    @apply btn-mobile bg-gradient-to-r text-white font-bold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95;
-    background-image: linear-gradient(135deg, #10b981, #059669);
-    border: 2px solid #047857;
-  }
-  
-  .farmer-secondary-button {
-    @apply btn-mobile bg-white text-gray-800 font-bold shadow-md hover:shadow-lg border-2 border-gray-400 hover:border-gray-500;
-  }
-}
 
-@layer utilities {
+  /* Secondary Button - Supporting Actions */
+  .btn-secondary {
+    @apply px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-semibold;
+    @apply hover:bg-gray-200 active:scale-95;
+    @apply transition-all duration-200 ease-in-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2;
+  }
+
+  /* Success Button - Positive Actions */
+  .btn-success {
+    @apply px-4 py-2.5 bg-green-600 text-white rounded-lg font-semibold shadow-md;
+    @apply hover:bg-green-700 hover:shadow-lg active:scale-95;
+    @apply transition-all duration-200 ease-in-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2;
+  }
+
+  /* Danger Button - Destructive Actions */
+  .btn-danger {
+    @apply px-4 py-2.5 bg-red-600 text-white rounded-lg font-semibold shadow-md;
+    @apply hover:bg-red-700 hover:shadow-lg active:scale-95;
+    @apply transition-all duration-200 ease-in-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+  }
+
+  /* Toggle Button - Active/Inactive States */
+  .btn-toggle {
+    @apply px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-toggle-active {
+    @apply bg-blue-600 text-white shadow-md;
+    @apply hover:bg-blue-700 focus:ring-blue-500;
+  }
+
+  .btn-toggle-inactive {
+    @apply bg-white text-blue-700 border-2 border-blue-200;
+    @apply hover:bg-blue-50 focus:ring-blue-400;
+  }
+
+  /* Icon Button - Compact Actions */
+  .btn-icon {
+    @apply p-2.5 rounded-lg transition-all duration-200;
+    @apply hover:bg-gray-100 active:scale-95;
+    @apply focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2;
+  }
+
+  /* Ghost Button - Minimal Style */
+  .btn-ghost {
+    @apply px-4 py-2 text-gray-700 rounded-lg font-medium;
+    @apply hover:bg-gray-100 active:scale-95;
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  /* ============================================
+     CARD SYSTEM
+     ============================================ */
+  
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100;
+    @apply transition-shadow duration-200;
+  }
+
+  .card-hover {
+    @apply hover:shadow-md;
+  }
+
+  .card-interactive {
+    @apply cursor-pointer hover:shadow-lg active:scale-[0.98];
+    @apply transition-all duration-200;
+  }
+
+  /* ============================================
+     BADGE SYSTEM
+     ============================================ */
+  
+  .badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-success {
+    @apply bg-green-100 text-green-800;
+  }
+
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+
+  .badge-danger {
+    @apply bg-red-100 text-red-800;
+  }
+
+  .badge-info {
+    @apply bg-blue-100 text-blue-800;
+  }
+
+  .badge-neutral {
+    @apply bg-gray-100 text-gray-800;
+  }
+
+  /* ============================================
+     INPUT SYSTEM
+     ============================================ */
+  
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg;
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    @apply transition-all duration-200;
+  }
+
+  .input-error {
+    @apply border-red-300 focus:ring-red-500 focus:border-red-500;
+  }
+
+  /* Checkbox Styling */
+  .checkbox {
+    @apply w-5 h-5 text-blue-600 border-2 border-gray-300 rounded;
+    @apply focus:ring-2 focus:ring-blue-500 focus:ring-offset-0;
+    @apply transition-all duration-200;
+  }
+
+  /* Range Slider */
+  .range-slider {
+    @apply w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer;
+    @apply accent-blue-600;
+  }
+
+  /* ============================================
+     PANEL SYSTEM
+     ============================================ */
+  
+  .panel {
+    @apply bg-white rounded-xl p-4 border border-gray-200 shadow-sm;
+  }
+
+  .panel-header {
+    @apply font-semibold text-gray-900 text-sm mb-3;
+  }
+
+  .panel-section {
+    @apply p-3 bg-gray-50 rounded-lg;
+  }
+
+  /* ============================================
+     STATUS INDICATORS
+     ============================================ */
+  
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-online {
+    @apply bg-green-500 animate-pulse;
+  }
+
+  .status-offline {
+    @apply bg-red-500;
+  }
+
+  .status-warning {
+    @apply bg-yellow-500;
+  }
+
+  /* ============================================
+     MOBILE OPTIMIZATIONS
+     ============================================ */
+  
+  .min-touch {
+    @apply min-h-[44px] min-w-[44px]; /* iOS minimum touch target */
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom); /* Safe area for iOS notch */
+  }
+
+  /* ============================================
+     ANIMATIONS
+     ============================================ */
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes pulse-soft {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+
+  /* ============================================
+     UTILITY CLASSES
+     ============================================ */
+  
   .text-balance {
     text-wrap: balance;
   }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Smooth scrolling */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+
+  /* ============================================
+     RESPONSIVE BREAKPOINTS
+     ============================================ */
   
-  /* Utility for better mobile tap targets */
-  .tap-highlight-none {
-    -webkit-tap-highlight-color: transparent;
-  }
+  /* Mobile First Approach */
+  /* sm: 640px - Small tablets */
+  /* md: 768px - Tablets */
+  /* lg: 1024px - Laptops */
+  /* xl: 1280px - Desktops */
+  /* 2xl: 1536px - Large screens */
+
+  /* ============================================
+     ACCESSIBILITY
+     ============================================ */
   
-  /* iOS-style momentum scrolling */
-  .momentum-scroll {
-    -webkit-overflow-scrolling: touch;
+  .focus-visible-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
   }
+
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============================================
+     DARK MODE SUPPORT (Future Enhancement)
+     ============================================ */
   
-  /* Prevent text selection (useful for buttons/cards) */
-  .select-none {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-  }
-  
-  /* Allow text selection */
-  .select-text {
-    -webkit-user-select: text;
-    -moz-user-select: text;
-    -ms-user-select: text;
-    user-select: text;
+  @media (prefers-color-scheme: dark) {
+    /* Dark mode styles can be added here */
   }
 }
 
-/* PWA-specific styles for fullscreen mode */
-@media all and (display-mode: standalone) {
-  body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+/* ============================================
+   GLOBAL STYLES
+   ============================================ */
+
+* {
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
 }
 
-/* Landscape orientation optimizations */
-@media screen and (orientation: landscape) and (max-height: 500px) {
-  .mobile-landscape-compact {
-    padding-top: 8px;
-    padding-bottom: 8px;
-  }
+html {
+  @apply scroll-smooth;
 }
 
-/* Custom Tree Popup Styles for Leaflet */
-.leaflet-popup-content-wrapper {
-  border-radius: 12px !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
-  border: 2px solid rgba(22, 163, 74, 0.2) !important;
-}
-
-.custom-tree-popup .leaflet-popup-content-wrapper {
-  background: #ffffff !important;
-  border-radius: 16px !important;
-  padding: 0 !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(22, 163, 74, 0.1) !important;
-}
-
-.custom-tree-popup .leaflet-popup-content {
-  margin: 16px !important;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-  line-height: 1.5 !important;
-  overflow: visible !important;
-}
-
-.custom-tree-popup .leaflet-popup-tip-container {
-  width: 40px !important;
-  height: 20px !important;
-  margin-left: -20px !important;
-}
-
-.custom-tree-popup .leaflet-popup-tip {
-  background: white !important;
-  border: 2px solid rgba(22, 163, 74, 0.2) !important;
-  border-top: none !important;
-  border-right: none !important;
-  box-shadow: -1px 1px 1px rgba(0, 0, 0, 0.1) !important;
-}
-
-.custom-tree-popup .leaflet-popup-close-button {
-  background: rgba(0, 0, 0, 0.05) !important;
-  color: #6b7280 !important;
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 50% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  font-size: 18px !important;
-  font-weight: bold !important;
-  line-height: 1 !important;
-  top: 8px !important;
-  right: 8px !important;
-  transition: all 0.2s ease !important;
-  border: none !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-}
-
-.custom-tree-popup .leaflet-popup-close-button:hover {
-  background: rgba(239, 68, 68, 0.1) !important;
-  color: #ef4444 !important;
-  transform: scale(1.05) !important;
-}
-
-.custom-tree-popup .leaflet-popup-close-button:active {
-  transform: scale(0.95) !important;
-}
-
-/* Mobile-specific popup optimizations */
-@media screen and (max-width: 768px) {
-  .custom-tree-popup .leaflet-popup-content-wrapper {
-    min-width: 300px !important;
-    max-width: 340px !important;
-  }
-  
-  .custom-tree-popup .leaflet-popup-content {
-    margin: 20px !important;
-  }
-  
-  .custom-tree-popup .leaflet-popup-close-button {
-    width: 36px !important;
-    height: 36px !important;
-    top: 12px !important;
-    right: 12px !important;
-  }
-}
-
-/* High contrast mode for outdoor use */
-@media (prefers-contrast: high) {
-  .custom-tree-popup .leaflet-popup-content-wrapper {
-    border: 3px solid #16a34a !important;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
-  }
-  
-  .custom-tree-popup .leaflet-popup-close-button {
-    background: rgba(0, 0, 0, 0.1) !important;
-    border: 2px solid #6b7280 !important;
-  }
-}
-
-/* Touch device optimizations */
-@media (hover: none) and (pointer: coarse) {
-  .custom-tree-popup .leaflet-popup-close-button {
-    min-width: 44px !important;
-    min-height: 44px !important;
-  }
-}
-
-/* Fullscreen map container styling */
-:fullscreen {
-  background: white !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  display: block !important;
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  z-index: 999999 !important;
-}
-
-:-webkit-full-screen {
-  background: white !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  display: block !important;
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  z-index: 999999 !important;
-}
-
-:-moz-full-screen {
-  background: white !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  display: block !important;
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  z-index: 999999 !important;
-}
-
-:-ms-fullscreen {
-  background: white !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  display: block !important;
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  z-index: 999999 !important;
-}
-
-/* Ensure child elements fill the fullscreen container */
-:fullscreen > * {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-:-webkit-full-screen > * {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-:-moz-full-screen > * {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-:-ms-fullscreen > * {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* Mobile-specific fullscreen support for iOS Safari and Chrome */
-@media screen and (max-width: 768px) {
-  :fullscreen,
-  :-webkit-full-screen,
-  :-moz-full-screen,
-  :-ms-fullscreen {
-    /* Force fullscreen on mobile */
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
-    /* Handle iOS Safari viewport issues */
-    -webkit-transform: translateZ(0) !important;
-    transform: translateZ(0) !important;
-    /* Disable iOS zoom and scrolling in fullscreen */
-    -webkit-touch-callout: none !important;
-    -webkit-user-select: none !important;
-    -khtml-user-select: none !important;
-    -moz-user-select: none !important;
-    -ms-user-select: none !important;
-    user-select: none !important;
-    /* Ensure proper rendering on mobile */
-    -webkit-backface-visibility: hidden !important;
-    backface-visibility: hidden !important;
-    overflow: hidden !important;
-  }
-
-  :fullscreen > *,
-  :-webkit-full-screen > *,
-  :-moz-full-screen > *,
-  :-ms-fullscreen > * {
-    /* Ensure child elements work properly on mobile */
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
-    position: relative !important;
-    /* Mobile touch handling */
-    touch-action: manipulation !important;
-    -webkit-overflow-scrolling: auto !important;
-  }
-}
-
-/* iOS Safari specific fullscreen fixes */
-@supports (-webkit-appearance: none) and (not (appearance: none)) {
-  :fullscreen,
-  :-webkit-full-screen {
-    /* iOS Safari specific viewport fixes */
-    width: 100vw !important;
-    height: 100vh !important;
-    /* Handle the iOS status bar in fullscreen */
-    padding-top: env(safe-area-inset-top, 0) !important;
-    padding-bottom: env(safe-area-inset-bottom, 0) !important;
-    padding-left: env(safe-area-inset-left, 0) !important;
-    padding-right: env(safe-area-inset-right, 0) !important;
-    /* Prevent iOS zoom */
-    -webkit-text-size-adjust: 100% !important;
-  }
-}
-
-/* iOS Font System */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  @apply bg-gray-50 text-gray-900;
+  @apply antialiased; /* Better font rendering */
 }
 
-/* Dynamic Type Support */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+/* ============================================
+   CUSTOM SCROLLBAR (Desktop)
+   ============================================ */
+
+@media (min-width: 1024px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
   }
-}
 
-/* iOS Blur Effects */
-.ios-blur {
-  backdrop-filter: var(--blur-light);
-  background: rgba(255, 255, 255, 0.8);
-}
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
 
-.ios-blur-heavy {
-  backdrop-filter: var(--blur-heavy);
-  background: rgba(255, 255, 255, 0.9);
-}
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
 
-/* iOS Safe Areas */
-.safe-top {
-  padding-top: max(var(--spacing-md), var(--sat));
-}
-
-.safe-bottom {
-  padding-bottom: max(var(--spacing-md), var(--sab));
-}
-
-.pb-safe-bottom {
-  padding-bottom: max(var(--spacing-md), var(--sab));
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
 }

@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic'
 import { TreeDetail } from '@/components/TreeDetail'
 import TreeShowcase from '@/components/TreeShowcase'
 import FullscreenTreeShowcase from '@/components/FullscreenTreeShowcase'
-import { EyeIcon, BriefcaseIcon } from '@heroicons/react/24/outline'
+import { EyeIcon, BriefcaseIcon, Cog6ToothIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
 import BottomSheet from '@/components/ui/BottomSheet'
 import AuthGuard from '@/components/AuthGuard'
@@ -183,13 +183,9 @@ function MapPageContent() {
           
           if (treeToHighlight) {
             console.log('🎯 [MapPage] Highlighting tree from navigation:', treeToHighlight.name)
-            // Set selected tree to highlight it on map
             setSelectedTree(treeToHighlight)
             setHighlightedTreeId(treeToHighlight.id)
-            // Don't open fullscreen immediately - let user see the map first
             setShowFullscreenTree(false)
-            
-            // Clear the sessionStorage after using it
             sessionStorage.removeItem('highlightTree')
           }
         } catch (e) {
@@ -202,7 +198,6 @@ function MapPageContent() {
       if (focusZoneId && zonesData.length > 0) {
         const targetZone = zonesData.find(zone => zone.id === focusZoneId)
         if (targetZone) {
-          // Debug: Show how trees relate to this zone
           const relatedTrees = treesData.filter(tree =>
             (tree.zoneName || tree.zoneCode) === targetZone.id ||
             (tree.zoneName || tree.zoneCode) === targetZone.name ||
@@ -212,9 +207,8 @@ function MapPageContent() {
 
           setFocusedZone(targetZone)
           setSelectedZone(targetZone)
-          // Ensure zones are visible for focusing
           setShowZones(true)
-          setShowTrees(true) // Keep trees visible but they'll be filtered to the zone
+          setShowTrees(true)
         } else {
           logger.warn('Zone not found:', focusZoneId)
           logger.warn('Available zones:', zonesData.map(z => ({ id: z.id, name: z.name })))
@@ -295,13 +289,11 @@ function MapPageContent() {
         }
       })
 
-      // For debugging, return all zones to see what we have
       const zonesWithBoundaries = zonesData.filter(zone => {
         const hasBoundaries = zone.boundaries && Array.isArray(zone.boundaries) && zone.boundaries.length >= 3
         return hasBoundaries
       })
       
-      // Return zones with boundaries, or first 3 zones if none have boundaries (for debugging)
       return zonesWithBoundaries.length > 0 ? zonesWithBoundaries : zonesData.slice(0, 3)
       
     } catch (error) {
@@ -313,10 +305,8 @@ function MapPageContent() {
   // Helper function to filter trees by status
   const getFilteredTrees = (trees: Tree[]): Tree[] => {
     return trees.filter(tree => {
-      // If no status is set, show the tree
       if (!tree.treeStatus) return true
       
-      // Map status to filter keys
       const status = tree.treeStatus.toLowerCase()
       if (status.includes('non') || status.includes('young')) {
         return filterByStatus.youngTree
@@ -326,7 +316,6 @@ function MapPageContent() {
         return filterByStatus.old
       }
       
-      // Default: show tree if status doesn't match known categories
       return true
     })
   }
@@ -359,20 +348,16 @@ function MapPageContent() {
 
   const handleCloseFullscreenTree = () => {
     setShowFullscreenTree(false)
-    // After closing fullscreen, clear the selected tree completely
-    // This prevents any duplicate displays
     setSelectedTree(null)
     setSelectedZone(null)
   }
 
   const handleTreeUpdate = (updatedTree: Tree) => {
-    // Update the tree in the trees array
     setTrees(prevTrees => 
       prevTrees.map(tree => 
         tree.id === updatedTree.id ? updatedTree : tree
       )
     )
-    // Update the selected tree if it's the same one
     if (selectedTree && selectedTree.id === updatedTree.id) {
       setSelectedTree(updatedTree)
     }
@@ -405,7 +390,6 @@ function MapPageContent() {
   const getTreesForZone = (trees: Tree[], zone: Zone): Tree[] => {
     if (!zone) return trees
 
-    // First try: exact matching by zone codes
     let filteredTrees = trees.filter(tree => {
       const zoneValue = tree.zoneName || tree.zoneCode
       const matches = [
@@ -413,7 +397,6 @@ function MapPageContent() {
         zoneValue === zone.name,
         (tree as any).zoneId === zone.id,
         (tree as any).zoneId === zone.name,
-        // Try case-insensitive matching
         zoneValue?.toLowerCase() === zone.id?.toLowerCase(),
         zoneValue?.toLowerCase() === zone.name?.toLowerCase()
       ].some(Boolean)
@@ -421,7 +404,6 @@ function MapPageContent() {
       return matches
     })
 
-    // Second try: if no trees found by zone code, try geographic containment
     if (filteredTrees.length === 0 && zone.boundaries && zone.boundaries.length >= 3) {
       filteredTrees = trees.filter(tree => {
         const treeLat = (tree as any).location?.latitude || (tree as any).latitude
@@ -442,7 +424,6 @@ function MapPageContent() {
     return filteredTrees
   }
 
-  // Calculate trees in focused zone for smart display
   const treesInFocusedZone = focusedZone ? getTreesForZone(trees, focusedZone).length : 0
 
   if (error) {
@@ -462,326 +443,240 @@ function MapPageContent() {
     )
   }
 
-  // If work mode is active, show OnFarmWorkMode component
   if (workModeActive) {
     return (
       <OnFarmWorkMode
         trees={trees}
+        zones={zones}
         onClose={() => setWorkModeActive(false)}
         onTreeSelect={handleTreeSelect}
         onTreeCreated={(newTree) => {
           setTrees(prev => [...prev, newTree])
-          loadData() // Reload to get fresh data
+          loadData()
         }}
         farmId={displayFarm.id}
       />
     )
   }
 
-  <style jsx>{`
-    .slider::-webkit-slider-thumb {
-      appearance: none;
-      height: 20px;
-      width: 20px;
-      border-radius: 50%;
-      background: #3b82f6;
-      cursor: pointer;
-      border: 2px solid #ffffff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-    .slider::-moz-range-thumb {
-      height: 20px;
-      width: 20px;
-      border-radius: 50%;
-      background: #3b82f6;
-      cursor: pointer;
-      border: 2px solid #ffffff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-  `}</style>
   return (
     <div className="min-h-screen bg-gray-50 safe-bottom">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-0 ">
-        <div className="flex flex-col space-y-4">
-          
+      {/* Professional Header - Single Row Layout */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="px-4 py-3">
+          {/* Single Row: All Controls */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            {/* Left: Work Mode Button */}
+            <button
+              onClick={() => setWorkModeActive(true)}
+              className="btn-primary flex items-center space-x-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-semibold shadow-md hover:bg-blue-700 hover:shadow-lg active:scale-95 transition-all"
+              title="Chế độ làm việc on-farm"
+            >
+              <BriefcaseIcon className="h-5 w-5" />
+              <span className="hidden sm:inline">Làm việc</span>
+            </button>
 
-         {/* Enhanced Controls Header */}
-         <div className="space-y-4">
-           {/* Top Row: Work Mode Button, Title and Real-time Status */}
-            <div className="flex items-center justify-between">
-             <div className="flex items-center space-x-3 px-4">
-               {/* Work Mode Toggle Button */}
-               <button
-                 onClick={() => setWorkModeActive(true)}
-                 className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-green-600 text-white rounded-lg font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all"
-                 title="Chế độ làm việc on-farm"
-               >
-                 <BriefcaseIcon className="h-5 w-5" />
-                 <span className="hidden sm:inline">Làm việc</span>
-               </button>
-              {/* Trees Toggle - Always show total tree count */}
-             <button
-               onClick={() => setShowTrees(!showTrees)}
-               className={`flex items-center space-x-1 px-2 py-1 rounded-sm text-sm font-semibold transition-colors min-touch ${
-                 showTrees
-                   ? 'bg-green-600 text-white shadow-lg'
-                   : 'bg-white text-green-700 border border-green-200 hover:bg-green-50'
-               }`}
-               style={{ WebkitTapHighlightColor: 'transparent' }}
-             >
-               <span className="text-xs">🌳</span>
-               <span>{loading ? '...' : `${trees.length} Cây`}</span>
-             </button>
-             {/* Zones Toggle - Smart display based on focus */}
-             {focusedZone ? (
-               // When focused on a zone, show trees in that zone
-               <div className="flex items-center space-x-2 bg-blue-100 text-blue-800 px-2 py-1 rounded-sm text-sm font-semibold">
-                 <div
-                   className="w-3 h-3 rounded-full"
-                   style={{ backgroundColor: focusedZone.color }}
-                 />
-                 <span className="text-lg">📍</span>
-                 <span>{treesInFocusedZone} Cây trong {focusedZone.name}</span>
-                 <button
-                   onClick={() => {
-                     setFocusedZone(null)
-                     setSelectedZone(null)
-                     window.history.pushState({}, '', '/map')
-                   }}
-                   className="ml-2 px-2 py-1 rounded-full bg-white hover:bg-gray-100 text-sm"
-                 >
-                   ✕
-                 </button>
-               </div>
-             ) : (
-               // When not focused, show total zones
-               <button
-                 onClick={() => setShowZones(!showZones)}
-                 className={`flex items-center space-x-1 px-2 py-1 rounded-sm text-sm font-semibold transition-colors min-touch ${
-                   showZones
-                     ? 'bg-blue-600 text-white shadow-lg'
-                     : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-50'
-                 }`}
-                 style={{ WebkitTapHighlightColor: 'transparent' }}
-               >
-                 <span className="text-lg">📍</span>
-                 <span>{loading ? '...' : `${zones.length} Khu`}</span>
-               </button>
-             )}
-             {/* GPS Background Toggle - Only show when enabled */}
-             {backgroundTrackingEnabled && (
-               <div className="flex items-center space-x-2 bg-purple-100 text-purple-800 px-1 py-1 rounded-sm text-sm font-semibold">
-                 <span className="text-lg">📍</span>
-                 <span>GPS ON</span>
-                 <button
-                   onClick={() => setBackgroundTrackingEnabled(false)}
-                   className="ml-1 px-2 py-1 rounded-sm bg-white hover:bg-gray-100 text-sm"
-                 >
-                   ✕
-                 </button>
-               </div>
-             )}
+            {/* Center: Display Toggles */}
+            <div className="flex items-center space-x-2 flex-1 justify-center">
+              {/* Trees Toggle */}
+              <button
+                onClick={() => setShowTrees(!showTrees)}
+                className={`btn-toggle flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  showTrees
+                    ? 'bg-green-600 text-white shadow-md'
+                    : 'bg-white text-green-700 border-2 border-green-200 hover:bg-green-50'
+                }`}
+              >
+                <span className="text-base">🌳</span>
+                <span>{loading ? '...' : `${trees.length} Cây`}</span>
+              </button>
+
+              {/* Zones Toggle or Focused Zone Display */}
+              {focusedZone ? (
+                <div className="flex items-center space-x-2 bg-blue-50 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold border-2 border-blue-200">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: focusedZone.color }}
+                  />
+                  <span className="text-base">📍</span>
+                  <span>{treesInFocusedZone} Cây trong {focusedZone.name}</span>
+                  <button
+                    onClick={() => {
+                      setFocusedZone(null)
+                      setSelectedZone(null)
+                      window.history.pushState({}, '', '/map')
+                    }}
+                    className="ml-1 p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowZones(!showZones)}
+                  className={`btn-toggle flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    showZones
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-white text-blue-700 border-2 border-blue-200 hover:bg-blue-50'
+                  }`}
+                >
+                  <span className="text-base">📍</span>
+                  <span>{loading ? '...' : `${zones.length} Khu`}</span>
+                </button>
+              )}
+
+              {/* GPS Status Indicator */}
+              {backgroundTrackingEnabled && (
+                <div className="flex items-center space-x-2 bg-purple-50 text-purple-800 px-3 py-2 rounded-lg text-sm font-semibold border-2 border-purple-200">
+                  <span className="text-base">📍</span>
+                  <span>GPS</span>
+                  <button
+                    onClick={() => setBackgroundTrackingEnabled(false)}
+                    className="ml-1 p-1 rounded-full bg-white hover:bg-gray-100 transition-colors"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
-             <div className="flex items-center space-x-3">
-               {/* Real-time Status */}
-               <div className="flex items-center space-x-2 text-sm">
-                 <div className={`w-2 h-2 rounded-full ${
-                   true ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-                 }`}></div>
-                 <span className={`font-medium ${
-                   true ? 'text-green-700' : 'text-red-700'
-                 }`}>
-                   {true ? 'LIVE' : 'OFFLINE'}
-                 </span>
-               </div>
 
-               {/* Settings Button */}
-               <button
-                 onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                 className={`p-2 rounded-lg transition-colors ${
-                   showAdvancedSettings
-                     ? 'bg-blue-100 text-blue-700'
-                     : 'text-gray-600 hover:bg-gray-100'
-                 }`}
-                 title="Cài đặt nâng cao"
-               >
-                 ⚙️
-               </button>
-             </div>
-           </div>
+            {/* Right: Settings Button */}
+            <button
+              onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+              className={`btn-secondary p-2.5 rounded-lg font-medium transition-all ${
+                showAdvancedSettings
+                  ? 'bg-gray-200 text-gray-900'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title="Cài đặt"
+            >
+              {showAdvancedSettings ? (
+                <XMarkIcon className="h-5 w-5" />
+              ) : (
+                <Cog6ToothIcon className="h-5 w-5" />
+              )}
+            </button>
+          </div>
 
-           
+          {/* Advanced Settings Panel */}
+          {showAdvancedSettings && (
+            <div className="mt-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
+              <div className="space-y-4">
+                {/* Display Options */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm mb-3">Hiển thị</h3>
+                  
+                  {/* GPS Path Toggle */}
+                  <label className="flex items-center justify-between p-3 bg-white rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        checked={showUserPath}
+                        onChange={(e) => setShowUserPath(e.target.checked)}
+                        className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Đường đi GPS</span>
+                    </div>
+                  </label>
 
-           {/* Advanced Settings Panel - Mobile Optimized */}
-           {showAdvancedSettings && (
-             <div className="bg-white rounded-xl p-4 mx-2 border border-gray-200 shadow-sm">
-               {/* Single Column Layout for Mobile */}
-               <div className="space-y-4">
-                 {/* Display Section */}
-                 <div className="space-y-4">
-                   <h3 className="font-semibold text-gray-800 text-base">Hiển thị</h3>
+                  {/* Tree Status Filters */}
+                  <div className="mt-3 p-3 bg-white rounded-lg">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Lọc theo trạng thái</h4>
+                    <div className="space-y-2">
+                      <label className="flex items-center space-x-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filterByStatus.youngTree}
+                          onChange={(e) => setFilterByStatus(prev => ({ ...prev, youngTree: e.target.checked }))}
+                          className="w-4 h-4 text-green-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                        />
+                        <span className="text-sm text-gray-700">🌱 Cây Non</span>
+                      </label>
+                      <label className="flex items-center space-x-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filterByStatus.mature}
+                          onChange={(e) => setFilterByStatus(prev => ({ ...prev, mature: e.target.checked }))}
+                          className="w-4 h-4 text-green-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                        />
+                        <span className="text-sm text-gray-700">🌳 Cây Trưởng Thành</span>
+                      </label>
+                      <label className="flex items-center space-x-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filterByStatus.old}
+                          onChange={(e) => setFilterByStatus(prev => ({ ...prev, old: e.target.checked }))}
+                          className="w-4 h-4 text-green-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                        />
+                        <span className="text-sm text-gray-700">🌲 Cây Già</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
 
-                   {/* GPS Path Toggle */}
-                   <div className="bg-gray-50 rounded-lg p-3">
-                     <label className="flex items-center justify-between cursor-pointer">
-                       <div className="flex items-center space-x-3">
-                         <input
-                           type="checkbox"
-                           checked={showUserPath}
-                           onChange={(e) => setShowUserPath(e.target.checked)}
-                           className="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
-                         />
-                         <span className="text-sm font-medium text-gray-700">Đường đi GPS</span>
-                       </div>
-                       <span className="text-xs text-gray-500">Hiện đường đi</span>
-                     </label>
-                   </div>
+                {/* GPS Controls */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center">
+                    <span className="mr-2">📍</span>
+                    GPS Tracking
+                  </h3>
+                  
+                  {!backgroundTrackingEnabled ? (
+                    <button
+                      onClick={() => setBackgroundTrackingEnabled(true)}
+                      className="w-full bg-purple-600 text-white px-4 py-3 rounded-lg text-sm font-semibold hover:bg-purple-700 active:bg-purple-800 transition-colors shadow-md"
+                    >
+                      Bật GPS Tracking
+                    </button>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border-2 border-purple-200">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-sm font-semibold text-purple-700">GPS đang hoạt động</span>
+                      </div>
+                      <button
+                        onClick={() => setBackgroundTrackingEnabled(false)}
+                        className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 active:bg-red-800 transition-colors"
+                      >
+                        Tắt
+                      </button>
+                    </div>
+                  )}
 
-                   {/* Tree Status Filter */}
-                   <div className="bg-gray-50 rounded-lg p-3">
-                     <h4 className="text-sm font-semibold text-gray-700 mb-3">Lọc theo trạng thái cây</h4>
-                     <div className="space-y-2">
-                       <label className="flex items-center justify-between cursor-pointer">
-                         <div className="flex items-center space-x-3">
-                           <input
-                             type="checkbox"
-                             checked={filterByStatus.youngTree}
-                             onChange={(e) => setFilterByStatus(prev => ({ ...prev, youngTree: e.target.checked }))}
-                             className="w-4 h-4 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
-                           />
-                           <span className="text-sm text-gray-700">🌱 Cây Non</span>
-                         </div>
-                       </label>
-                       <label className="flex items-center justify-between cursor-pointer">
-                         <div className="flex items-center space-x-3">
-                           <input
-                             type="checkbox"
-                             checked={filterByStatus.mature}
-                             onChange={(e) => setFilterByStatus(prev => ({ ...prev, mature: e.target.checked }))}
-                             className="w-4 h-4 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
-                           />
-                           <span className="text-sm text-gray-700">🌳 Cây Trưởng Thành</span>
-                         </div>
-                       </label>
-                       <label className="flex items-center justify-between cursor-pointer">
-                         <div className="flex items-center space-x-3">
-                           <input
-                             type="checkbox"
-                             checked={filterByStatus.old}
-                             onChange={(e) => setFilterByStatus(prev => ({ ...prev, old: e.target.checked }))}
-                             className="w-4 h-4 text-green-600 border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
-                           />
-                           <span className="text-sm text-gray-700">🌲 Cây Già</span>
-                         </div>
-                       </label>
-                     </div>
-                   </div>
+                  {/* Proximity Radius Slider */}
+                  <div className="mt-3 p-3 bg-white rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Bán kính phát hiện</span>
+                      <div className="bg-blue-100 px-3 py-1 rounded-full">
+                        <span className="text-sm font-bold text-blue-700">{proximityRadius}m</span>
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="100"
+                      step="5"
+                      value={proximityRadius}
+                      onChange={(e) => setProximityRadius(Number(e.target.value))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>10m</span>
+                      <span>100m</span>
+                    </div>
+                  </div>
+                </div>
 
-                 </div>
-
-                 {/* GPS Section */}
-                 <div className="bg-gray-50 rounded-lg p-4">
-                   <h3 className="font-semibold text-gray-800 text-base mb-3 flex items-center">
-                     <span className="mr-2">📍</span>
-                     GPS
-                   </h3>
-
-                   {!backgroundTrackingEnabled ? (
-                     <button
-                       onClick={() => {
-                         console.log('🖱️ [MapPage] Enabling background GPS tracking')
-                         setBackgroundTrackingEnabled(true)
-                       }}
-                       className="w-full bg-purple-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors active:bg-purple-800 min-touch"
-                     >
-                       Bật GPS theo dõi
-                     </button>
-                   ) : (
-                     <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                       <div className="flex items-center space-x-2">
-                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                         <span className="text-sm font-medium text-purple-700">GPS đang bật</span>
-                       </div>
-                       <button
-                         onClick={() => {
-                           console.log('🖱️ [MapPage] Disabling background GPS tracking')
-                           setBackgroundTrackingEnabled(false)
-                         }}
-                         className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 active:bg-red-800 min-touch"
-                       >
-                         Tắt
-                       </button>
-                     </div>
-                   )}
-                 </div>
-
-                 {/* Proximity Detection Section */}
-                 <div className="bg-gray-50 rounded-lg p-4">
-                   <h3 className="font-semibold text-gray-800 text-base mb-3 flex items-center">
-                     <span className="mr-2">🎯</span>
-                     Phát hiện
-                   </h3>
-
-                   <div className="space-y-3">
-                     <div className="flex items-center justify-between">
-                       <span className="text-sm font-medium text-gray-700">Bán kính phát hiện</span>
-                       <div className="bg-white px-3 py-1 rounded-full border border-gray-200">
-                         <span className="text-sm font-bold text-gray-900">{proximityRadius}m</span>
-                       </div>
-                     </div>
-                     <input
-                       type="range"
-                       min="10"
-                       max="100"
-                       step="5"
-                       value={proximityRadius}
-                       onChange={(e) => setProximityRadius(Number(e.target.value))}
-                       className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                     />
-                     <div className="flex justify-between text-xs text-gray-500">
-                       <span>10m</span>
-                       <span>100m</span>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-
-                 {/* Quick Actions - Mobile Optimized */}
-                 <div className="flex flex-col space-y-3 pt-4 mt-4 border-t border-gray-200">
-                   <div className="grid grid-cols-2 gap-3">
-                     <button
-                       onClick={() => {
-                         // Navigate to user location (would need to pass map ref or use callback)
-                       }}
-                       className="bg-blue-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-blue-700 active:bg-blue-800 transition-colors min-touch flex items-center justify-center space-x-2"
-                     >
-                       <span>📍</span>
-                       <span>Vị trí tôi</span>
-                     </button>
-                     <button
-                       onClick={() => {
-                         // Fit all markers (would need to pass map ref or use callback)
-                       }}
-                       className="bg-green-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-green-700 active:bg-green-800 transition-colors min-touch flex items-center justify-center space-x-2"
-                     >
-                       <span>🔍</span>
-                       <span>Phù hợp tất cả</span>
-                     </button>
-                   </div>
-                   <button
-                     onClick={() => setShowAdvancedSettings(false)}
-                     className="w-full bg-gray-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-gray-700 active:bg-gray-800 transition-colors min-touch"
-                   >
-                     Đóng cài đặt
-                   </button>
-                 </div>
-             </div>
-           )}
-         </div>
-          
-          {/* Large Action Buttons for Farmers - Enhanced */}
-          
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowAdvancedSettings(false)}
+                  className="w-full bg-gray-600 text-white px-4 py-3 rounded-lg text-sm font-semibold hover:bg-gray-700 active:bg-gray-800 transition-colors"
+                >
+                  Đóng cài đặt
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -822,11 +717,11 @@ function MapPageContent() {
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <button className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold transition-colors min-touch">
+                  <button className="btn-primary flex items-center justify-center space-x-2 px-6 py-3 rounded-xl font-bold">
                     <span className="text-xl">📱</span>
                     <span>Mở App Điện Thoại</span>
                   </button>
-                  <button className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-colors min-touch">
+                  <button className="btn-secondary flex items-center justify-center space-x-2 px-6 py-3 rounded-xl font-bold">
                     <span className="text-xl">❓</span>
                     <span>Hướng Dẫn Chi Tiết</span>
                   </button>
@@ -843,9 +738,9 @@ function MapPageContent() {
                 onTreeSelect={handleTreeSelect}
                 onZoneSelect={handleZoneSelect}
                 onZoneCreated={(zoneData: { boundaries: Array<{ latitude: number; longitude: number }> }) => {
-                  // TODO: Handle zone creation - save to Firebase and refresh zones
+                  // TODO: Handle zone creation
                 }}
-                enableDrawing={true} // Enable drawing tools for zone creation
+                enableDrawing={true}
                 enableRealTime={true}
                 farmId={displayFarm.id}
                 className="w-full h-full"
@@ -853,7 +748,6 @@ function MapPageContent() {
                 backgroundTrackingEnabled={backgroundTrackingEnabled}
                 proximityRadius={proximityRadius}
               />
-              {/* Debug info removed for cleaner mobile UI */}
             </>
           )}
         </div>
