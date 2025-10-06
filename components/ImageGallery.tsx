@@ -479,20 +479,16 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
               <div className="h-8 w-8 bg-gray-300 rounded-full"></div>
               <div className="h-6 bg-gray-300 rounded-lg w-48"></div>
             </div>
-            <div className="flex space-x-2">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-8 bg-gray-300 rounded-lg w-20"></div>
-              ))}
-            </div>
           </div>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl animate-pulse">
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="w-8 h-8 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 100}ms` }}></div>
-                </div>
+              <div
+                key={i}
+                className="aspect-square bg-gray-200 rounded-xl overflow-hidden"
+              >
+                <div className="w-full h-full bg-gradient-to-br from-gray-100 via-gray-200 to-gray-100 animate-pulse"></div>
               </div>
             ))}
           </div>
@@ -610,42 +606,23 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
               {filteredImages.map((image, index) => (
                 <div
                   key={index}
-                  className="group relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-200/50"
+                  className="group relative aspect-square bg-gray-100 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
                   onClick={() => setSelectedImage(index)}
-                  style={{ animationDelay: `${index * 50}ms` }}
                 >
                   {/* Image Container */}
-                  <div className="relative w-full h-full overflow-hidden">
+                  <div className="relative w-full h-full">
                     {image.imageUrl ? (
-                      <>
-                        {/* Lazy Loading Placeholder */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse">
-                          <div className="w-full h-full flex items-center justify-center">
-                            <div className="w-8 h-8 bg-gray-300 rounded-full animate-bounce"></div>
-                          </div>
-                        </div>
-                        
-                        {/* Actual Image */}
-                        <Image
-                          src={image.thumbnailUrl || image.imageUrl}
-                          alt={`Tree ${tree.name || tree.qrCode} photo ${index + 1}`}
-                          className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
-                          fill
-                          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                          onLoad={(e) => {
-                            // Hide placeholder when image loads
-                            const placeholder = e.currentTarget.previousElementSibling;
-                            if (placeholder) {
-                              (placeholder as HTMLElement).style.display = 'none';
-                            }
-                            e.currentTarget.style.opacity = '1';
-                          }}
-                          style={{ opacity: '0' }}
-                          unoptimized
-                        />
-                      </>
+                      <Image
+                        src={image.thumbnailUrl || image.imageUrl}
+                        alt={`Tree ${tree.name || tree.qrCode} photo ${index + 1}`}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        fill
+                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        loading="lazy"
+                        unoptimized
+                      />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                      <div className="w-full h-full flex items-center justify-center bg-gray-100">
                         <div className="text-center">
                           <PhotoIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                           <span className="text-xs text-gray-500">Không có ảnh</span>
@@ -655,10 +632,10 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                   </div>
 
                   {/* Enhanced Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 transform scale-75 group-hover:scale-100 transition-transform duration-300">
-                        <EyeIcon className="h-6 w-6 text-white drop-shadow-lg" />
+                      <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                        <EyeIcon className="h-6 w-6 text-white" />
                       </div>
                     </div>
 
@@ -699,12 +676,9 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                   )}
 
                   {/* Image number indicator */}
-                  <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-full">
+                  <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full">
                     {index + 1}
                   </div>
-
-                  {/* Shimmer effect on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out"></div>
                 </div>
               ))}
             </div>

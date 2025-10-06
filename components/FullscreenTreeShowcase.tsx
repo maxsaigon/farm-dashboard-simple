@@ -569,7 +569,7 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
       {/* Content - Scrollable */}
       <div className="pt-[73px] pb-6 h-full overflow-y-auto overscroll-behavior-contain">
         {/* Image Gallery */}
-        <div className="relative bg-black">
+        <div className="relative">
           <ImageGallery tree={tree} className="w-full aspect-[4/3] sm:aspect-[16/9] object-cover" />
         </div>
 
