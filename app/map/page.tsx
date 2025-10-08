@@ -123,8 +123,10 @@ function MapPageContent() {
       
       if (treeToHighlight) {
         console.log('🎯 [MapPage] Highlighting tree from URL:', treeToHighlight.name)
-        setSelectedTree(treeToHighlight)
+        // Only set highlightedTreeId, do NOT set selectedTree to avoid opening modals
         setHighlightedTreeId(treeToHighlight.id)
+        // Make sure no modals are open
+        setSelectedTree(null)
         setShowFullscreenTree(false)
       } else {
         console.warn('🎯 [MapPage] Tree not found:', highlightTreeParam)
