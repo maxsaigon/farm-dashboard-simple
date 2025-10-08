@@ -514,20 +514,12 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
       return
     }
 
-    // Store tree location in sessionStorage for the map to highlight
-    sessionStorage.setItem('highlightTree', JSON.stringify({
-      id: tree.id,
-      latitude: tree.latitude,
-      longitude: tree.longitude,
-      name: tree.name || tree.variety || 'Cây trồng'
-    }))
-
     // Close the modal first
     onClose()
 
-    // Navigate to map page after a short delay to ensure modal closes smoothly
+    // Navigate to map page with tree ID as query parameter
     setTimeout(() => {
-      router.push('/map')
+      router.push(`/map?highlightTree=${tree.id}`)
     }, 100)
   }
 

@@ -76,6 +76,7 @@ function MapPageContent() {
   const { currentFarm } = useSimpleAuth()
   const searchParams = useSearchParams()
   const focusZoneId = searchParams?.get('zone')
+  const highlightTreeParam = searchParams?.get('highlightTree')
   
   const [trees, setTrees] = useState<Tree[]>([])
   const [zones, setZones] = useState<Zone[]>([])
@@ -115,6 +116,24 @@ function MapPageContent() {
     })
   }, [showUserPath, backgroundTrackingEnabled, proximityRadius])
 
+  // Check for highlighted tree from URL parameter when trees change
+  useEffect(() => {
+    if (highlightTreeParam && trees.length > 0) {
+      const treeToHighlight = trees.find(t => t.id === highlightTreeParam)
+      
+      if (treeToHighlight) {
+        console.log('🎯 [MapPage] Highlighting tree from URL:', treeToHighlight.name)
+        setSelectedTree(treeToHighlight)
+        setHighlightedTreeId(treeToHighlight.id)
+        setShowFullscreenTree(false)
+      } else {
+        console.warn('🎯 [MapPage] Tree not found:', highlightTreeParam)
+      }
+    } else if (!highlightTreeParam) {
+      // Clear highlight when parameter is removed
+      setHighlightedTreeId(null)
+    }
+  }, [highlightTreeParam, trees])
 
   // Debug farm ID for testing
   const debugFarmId = "F210C3FC-F191-4926-9C15-58D6550A716A"
@@ -173,26 +192,6 @@ function MapPageContent() {
         trees: treesWithNames.length,
         zones: zonesData.length
       })
-
-      // Check for highlighted tree from sessionStorage
-      const highlightTreeData = sessionStorage.getItem('highlightTree')
-      if (highlightTreeData) {
-        try {
-          const treeData = JSON.parse(highlightTreeData)
-          const treeToHighlight = treesWithNames.find(t => t.id === treeData.id)
-          
-          if (treeToHighlight) {
-            console.log('🎯 [MapPage] Highlighting tree from navigation:', treeToHighlight.name)
-            setSelectedTree(treeToHighlight)
-            setHighlightedTreeId(treeToHighlight.id)
-            setShowFullscreenTree(false)
-            sessionStorage.removeItem('highlightTree')
-          }
-        } catch (e) {
-          console.error('Error parsing highlight tree data:', e)
-          sessionStorage.removeItem('highlightTree')
-        }
-      }
       
       // Handle zone focus if zone ID is in URL
       if (focusZoneId && zonesData.length > 0) {
@@ -325,6 +324,8 @@ function MapPageContent() {
     setSelectedTree(tree)
     setSelectedZone(null)
     setShowFullscreenTree(true)
+    // Clear highlight when user manually selects a different tree
+    setHighlightedTreeId(null)
   }
 
   const handleZoneSelect = (zone: Zone) => {
@@ -350,6 +351,8 @@ function MapPageContent() {
     setShowFullscreenTree(false)
     setSelectedTree(null)
     setSelectedZone(null)
+    // Clear highlight when closing fullscreen
+    setHighlightedTreeId(null)
   }
 
   const handleTreeUpdate = (updatedTree: Tree) => {
@@ -747,6 +750,7 @@ function MapPageContent() {
                 showUserPath={showUserPath}
                 backgroundTrackingEnabled={backgroundTrackingEnabled}
                 proximityRadius={proximityRadius}
+                highlightedTreeId={highlightedTreeId}
               />
             </>
           )}
