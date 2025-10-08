@@ -2,359 +2,123 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================
-   FARM DASHBOARD - DESIGN SYSTEM
-   Professional UI/UX Components
-   ============================================ */
-
-@layer components {
-  /* ============================================
-     BUTTON SYSTEM - Unified Design
-     ============================================ */
-  
-  /* Primary Button - Main Actions */
-  .btn-primary {
-    @apply px-4 py-2.5 bg-blue-600 text-white rounded-lg font-semibold shadow-md;
-    @apply hover:bg-blue-700 hover:shadow-lg active:scale-95;
-    @apply transition-all duration-200 ease-in-out;
-    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
-  }
-
-  /* Secondary Button - Supporting Actions */
-  .btn-secondary {
-    @apply px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-semibold;
-    @apply hover:bg-gray-200 active:scale-95;
-    @apply transition-all duration-200 ease-in-out;
-    @apply focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2;
-  }
-
-  /* Success Button - Positive Actions */
-  .btn-success {
-    @apply px-4 py-2.5 bg-green-600 text-white rounded-lg font-semibold shadow-md;
-    @apply hover:bg-green-700 hover:shadow-lg active:scale-95;
-    @apply transition-all duration-200 ease-in-out;
-    @apply focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2;
-  }
-
-  /* Danger Button - Destructive Actions */
-  .btn-danger {
-    @apply px-4 py-2.5 bg-red-600 text-white rounded-lg font-semibold shadow-md;
-    @apply hover:bg-red-700 hover:shadow-lg active:scale-95;
-    @apply transition-all duration-200 ease-in-out;
-    @apply focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
-  }
-
-  /* Toggle Button - Active/Inactive States */
-  .btn-toggle {
-    @apply px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200;
-    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
-  }
-
-  .btn-toggle-active {
-    @apply bg-blue-600 text-white shadow-md;
-    @apply hover:bg-blue-700 focus:ring-blue-500;
-  }
-
-  .btn-toggle-inactive {
-    @apply bg-white text-blue-700 border-2 border-blue-200;
-    @apply hover:bg-blue-50 focus:ring-blue-400;
-  }
-
-  /* Icon Button - Compact Actions */
-  .btn-icon {
-    @apply p-2.5 rounded-lg transition-all duration-200;
-    @apply hover:bg-gray-100 active:scale-95;
-    @apply focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2;
-  }
-
-  /* Ghost Button - Minimal Style */
-  .btn-ghost {
-    @apply px-4 py-2 text-gray-700 rounded-lg font-medium;
-    @apply hover:bg-gray-100 active:scale-95;
-    @apply transition-all duration-200 ease-in-out;
-  }
-
-  /* ============================================
-     CARD SYSTEM
-     ============================================ */
-  
-  .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100;
-    @apply transition-shadow duration-200;
-  }
-
-  .card-hover {
-    @apply hover:shadow-md;
-  }
-
-  .card-interactive {
-    @apply cursor-pointer hover:shadow-lg active:scale-[0.98];
-    @apply transition-all duration-200;
-  }
-
-  /* ============================================
-     BADGE SYSTEM
-     ============================================ */
-  
-  .badge {
-    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
-  }
-
-  .badge-success {
-    @apply bg-green-100 text-green-800;
-  }
-
-  .badge-warning {
-    @apply bg-yellow-100 text-yellow-800;
-  }
-
-  .badge-danger {
-    @apply bg-red-100 text-red-800;
-  }
-
-  .badge-info {
-    @apply bg-blue-100 text-blue-800;
-  }
-
-  .badge-neutral {
-    @apply bg-gray-100 text-gray-800;
-  }
-
-  /* ============================================
-     INPUT SYSTEM
-     ============================================ */
-  
-  .input-field {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-lg;
-    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
-    @apply transition-all duration-200;
-  }
-
-  .input-error {
-    @apply border-red-300 focus:ring-red-500 focus:border-red-500;
-  }
-
-  /* Checkbox Styling */
-  .checkbox {
-    @apply w-5 h-5 text-blue-600 border-2 border-gray-300 rounded;
-    @apply focus:ring-2 focus:ring-blue-500 focus:ring-offset-0;
-    @apply transition-all duration-200;
-  }
-
-  /* Range Slider */
-  .range-slider {
-    @apply w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer;
-    @apply accent-blue-600;
-  }
-
-  /* ============================================
-     PANEL SYSTEM
-     ============================================ */
-  
-  .panel {
-    @apply bg-white rounded-xl p-4 border border-gray-200 shadow-sm;
-  }
-
-  .panel-header {
-    @apply font-semibold text-gray-900 text-sm mb-3;
-  }
-
-  .panel-section {
-    @apply p-3 bg-gray-50 rounded-lg;
-  }
-
-  /* ============================================
-     STATUS INDICATORS
-     ============================================ */
-  
-  .status-dot {
-    @apply w-2 h-2 rounded-full;
-  }
-
-  .status-online {
-    @apply bg-green-500 animate-pulse;
-  }
-
-  .status-offline {
-    @apply bg-red-500;
-  }
-
-  .status-warning {
-    @apply bg-yellow-500;
-  }
-
-  /* ============================================
-     MOBILE OPTIMIZATIONS
-     ============================================ */
-  
-  .min-touch {
-    @apply min-h-[44px] min-w-[44px]; /* iOS minimum touch target */
-  }
-
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom); /* Safe area for iOS notch */
-  }
-
-  /* ============================================
-     ANIMATIONS
-     ============================================ */
-  
-  @keyframes slideUp {
-    from {
-      transform: translateY(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes pulse-soft {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.7;
-    }
-  }
-
-  @keyframes pulse-circle {
-    0% {
-      transform: scale(1);
-      opacity: 0.6;
-    }
-    50% {
-      transform: scale(1.2);
-      opacity: 0.3;
-    }
-    100% {
-      transform: scale(1);
-      opacity: 0.6;
-    }
-  }
-
-  .animate-slide-up {
-    animation: slideUp 0.3s ease-out;
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.2s ease-out;
-  }
-
-  .animate-pulse-soft {
-    animation: pulse-soft 2s ease-in-out infinite;
-  }
-
-  /* Pulsing circle animation for highlighted tree */
-  .pulsing-circle {
-    animation: pulse-circle 2s ease-in-out infinite;
-  }
-
-  /* ============================================
-     UTILITY CLASSES
-     ============================================ */
-  
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Smooth scrolling */
-  .scroll-smooth {
-    scroll-behavior: smooth;
-  }
-
-  /* ============================================
-     RESPONSIVE BREAKPOINTS
-     ============================================ */
-  
-  /* Mobile First Approach */
-  /* sm: 640px - Small tablets */
-  /* md: 768px - Tablets */
-  /* lg: 1024px - Laptops */
-  /* xl: 1280px - Desktops */
-  /* 2xl: 1536px - Large screens */
-
-  /* ============================================
-     ACCESSIBILITY
-     ============================================ */
-  
-  .focus-visible-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
-  }
-
-  /* Reduce motion for users who prefer it */
-  @media (prefers-reduced-motion: reduce) {
-    * {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-
-  /* ============================================
-     DARK MODE SUPPORT (Future Enhancement)
-     ============================================ */
-  
-  @media (prefers-color-scheme: dark) {
-    /* Dark mode styles can be added here */
-  }
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
 }
 
-/* ============================================
-   GLOBAL STYLES
-   ============================================ */
-
-* {
-  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-}
-
-html {
-  @apply scroll-smooth;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
 }
 
 body {
-  @apply bg-gray-50 text-gray-900;
-  @apply antialiased; /* Better font rendering */
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ============================================
-   CUSTOM SCROLLBAR (Desktop)
-   ============================================ */
-
-@media (min-width: 1024px) {
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
   }
+}
 
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-100;
-  }
+/* Smooth transitions for map layers */
+.leaflet-tile-pane {
+  transition: opacity 0.3s ease-in-out;
+}
 
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
-  }
+.satellite-layer,
+.street-layer {
+  transition: opacity 0.5s ease-in-out;
+}
 
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400;
+/* Pulsing animation for highlighted trees */
+@keyframes pulse-circle {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
   }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+
+.pulsing-circle {
+  animation: pulse-circle 2s ease-in-out infinite;
+}
+
+/* Safe area for mobile devices */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* iOS-style large title header */
+.ios-large-title {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+/* Smooth scroll for mobile */
+@media (max-width: 768px) {
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Leaflet map container fixes */
+.leaflet-container {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Ensure map tiles load smoothly */
+.leaflet-tile-container {
+  transition: opacity 0.2s;
+}
+
+/* Map layer transition effects */
+.leaflet-layer {
+  transition: opacity 0.5s ease-in-out;
 }

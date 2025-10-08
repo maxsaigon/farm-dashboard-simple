@@ -94,6 +94,7 @@ function MapPageContent() {
   const [showUserPath, setShowUserPath] = useState(false)
   const [highlightedTreeId, setHighlightedTreeId] = useState<string | null>(null)
   const [workModeActive, setWorkModeActive] = useState(false)
+  const [mapLayer, setMapLayer] = useState<'auto' | 'street' | 'hybrid'>('auto')
   
   // Tree status filters
   const [filterByStatus, setFilterByStatus] = useState<{
@@ -672,13 +673,59 @@ function MapPageContent() {
                   </div>
                 </div>
 
-                {/* Close Button */}
-                <button
-                  onClick={() => setShowAdvancedSettings(false)}
-                  className="w-full bg-gray-600 text-white px-4 py-3 rounded-lg text-sm font-semibold hover:bg-gray-700 active:bg-gray-800 transition-colors"
-                >
-                  Đóng cài đặt
-                </button>
+               {/* Map Layer Selector */}
+               <div>
+                 <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center">
+                   <span className="mr-2">🗺️</span>
+                   Chế độ xem bản đồ
+                 </h3>
+                 
+                 <div className="space-y-2">
+                   <button
+                     onClick={() => setMapLayer('auto')}
+                     className={`w-full p-3 rounded-lg text-sm font-semibold transition-all ${
+                       mapLayer === 'auto'
+                         ? 'bg-green-600 text-white shadow-md'
+                         : 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50'
+                     }`}
+                   >
+                     <div className="flex items-center justify-between">
+                       <span>🤖 Tự động</span>
+                       <span className="text-xs opacity-75">Zoom 1-18: Hybrid, 19+: Bản đồ</span>
+                     </div>
+                   </button>
+                   
+                   <button
+                     onClick={() => setMapLayer('street')}
+                     className={`w-full p-3 rounded-lg text-sm font-semibold transition-all ${
+                       mapLayer === 'street'
+                         ? 'bg-blue-600 text-white shadow-md'
+                         : 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50'
+                     }`}
+                   >
+                     🗺️ Bản đồ đường phố
+                   </button>
+                   
+                   <button
+                     onClick={() => setMapLayer('hybrid')}
+                     className={`w-full p-3 rounded-lg text-sm font-semibold transition-all ${
+                       mapLayer === 'hybrid'
+                         ? 'bg-blue-600 text-white shadow-md'
+                         : 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50'
+                     }`}
+                   >
+                     🌍 Hybrid (Vệ tinh + Nhãn)
+                   </button>
+                 </div>
+               </div>
+
+               {/* Close Button */}
+               <button
+                 onClick={() => setShowAdvancedSettings(false)}
+                 className="w-full bg-gray-600 text-white px-4 py-3 rounded-lg text-sm font-semibold hover:bg-gray-700 active:bg-gray-800 transition-colors"
+               >
+                 Đóng cài đặt
+               </button>
               </div>
             </div>
           )}
@@ -753,6 +800,7 @@ function MapPageContent() {
                 backgroundTrackingEnabled={backgroundTrackingEnabled}
                 proximityRadius={proximityRadius}
                 highlightedTreeId={highlightedTreeId}
+                mapLayer={mapLayer}
               />
             </>
           )}

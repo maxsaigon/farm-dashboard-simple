@@ -65,7 +65,50 @@ interface UnifiedMapProps {
   backgroundTrackingEnabled?: boolean
   proximityRadius?: number
   highlightedTreeId?: string | null // ID of tree to highlight with pulsing circle
+  mapLayer?: MapLayerType // External control of map layer
+  onMapLayerChange?: (layer: MapLayerType) => void // Callback when layer changes
 }
+
+// Map layer types
+type MapLayerType = 'street' | 'satellite' | 'hybrid' | 'auto'
+
+// Component to handle zoom-based layer switching
+const ZoomBasedLayerManager = memo(({
+  mapLayer,
+  onAutoSwitch
+}: {
+  mapLayer: MapLayerType
+  onAutoSwitch: (newLayer: 'street' | 'hybrid') => void
+}) => {
+  const map = useMap()
+  
+  useEffect(() => {
+    if (mapLayer !== 'auto') return
+
+    const handleZoomEnd = () => {
+      const zoom = map.getZoom()
+      // Esri World Imagery has good data up to zoom 18
+      // Switch to street map at zoom 19+ for better detail
+      if (zoom >= 19) {
+        onAutoSwitch('street')
+      } else {
+        onAutoSwitch('hybrid')
+      }
+    }
+
+    // Initial check
+    handleZoomEnd()
+
+    map.on('zoomend', handleZoomEnd)
+    return () => {
+      map.off('zoomend', handleZoomEnd)
+    }
+  }, [map, mapLayer, onAutoSwitch])
+
+  return null
+})
+
+ZoomBasedLayerManager.displayName = 'ZoomBasedLayerManager'
 
 // iOS-Optimized GPS tracking hook (replaces old useOptimizedPositioning)
 const useIOSGPSTracking = (enabled: boolean = true) => {
@@ -392,16 +435,40 @@ const UnifiedMap = memo(({
   showUserPath: externalShowUserPath = false,
   backgroundTrackingEnabled: externalBackgroundTrackingEnabled = false,
   proximityRadius: externalProximityRadius = 30,
-  highlightedTreeId = null
+  highlightedTreeId = null,
+  mapLayer: externalMapLayer = 'auto',
+  onMapLayerChange
 }: UnifiedMapProps) => {
   const mapRef = useRef<L.Map | null>(null)
   const [showUserPath, setShowUserPath] = useState(externalShowUserPath)
   const [proximityRadius, setProximityRadius] = useState(externalProximityRadius)
   const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] = useState(false)
+  const [mapLayer, setMapLayer] = useState<MapLayerType>(externalMapLayer)
+  const [activeLayer, setActiveLayer] = useState<'street' | 'hybrid'>('hybrid') // Actual active layer
   const [filters, setFilters] = useState({
     showTrees: true,
     showZones: true
   })
+
+  // Handle auto layer switching based on zoom
+  const handleAutoSwitch = useCallback((newLayer: 'street' | 'hybrid') => {
+    if (mapLayer === 'auto' && activeLayer !== newLayer) {
+      console.log(`🔄 Auto-switching from ${activeLayer} to ${newLayer}`)
+      setActiveLayer(newLayer)
+    }
+  }, [mapLayer, activeLayer])
+
+  // Sync with external mapLayer prop
+  useEffect(() => {
+    setMapLayer(externalMapLayer)
+  }, [externalMapLayer])
+
+  // Update active layer when manual selection changes
+  useEffect(() => {
+    if (mapLayer !== 'auto') {
+      setActiveLayer(mapLayer === 'satellite' ? 'hybrid' : mapLayer)
+    }
+  }, [mapLayer])
 
   // Update local state when external props change
   useEffect(() => {
@@ -733,10 +800,31 @@ const UnifiedMap = memo(({
         dragging={true}
         touchZoom={true}
       >
+        {/* Zoom-based layer manager for auto mode */}
+        {mapLayer === 'auto' && (
+          <ZoomBasedLayerManager
+            mapLayer={mapLayer}
+            onAutoSwitch={handleAutoSwitch}
+          />
+        )}
+
+        {/* Satellite Layer (Esri World Imagery) - with smooth transition */}
+        {(mapLayer === 'satellite' || activeLayer === 'hybrid') && (
+          <TileLayer
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution='Tiles &copy; Esri'
+            maxZoom={19}
+            className="satellite-layer"
+          />
+        )}
+
+        {/* Street Map Layer (OpenStreetMap) - with smooth transition */}
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           maxZoom={22}
+          opacity={activeLayer === 'hybrid' ? 0.4 : 1}
+          className="street-layer"
         />
 
         {/* Drawing Controls */}
@@ -897,189 +985,6 @@ const UnifiedMap = memo(({
       </MapContainer>
 
 
-      {/* Map Controls - Enhanced with Visual Indicator */}
-      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 space-y-2 border-4" style={{
-        borderColor: gpsEnabled ? (userPosition ? '#10b981' : '#f59e0b') : '#6b7280'
-      }}>
-        {/* Visual Status Banner */}
-        <div className={`text-center py-1 px-2 rounded text-xs font-bold ${
-          gpsEnabled
-            ? (userPosition ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800')
-            : 'bg-gray-100 text-gray-600'
-        }`}>
-          {gpsEnabled
-            ? (userPosition ? '✅ GPS HOẠT ĐỘNG' : '⏳ ĐANG CHỜ GPS...')
-            : '⭕ GPS TẮT'}
-        </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={async () => {
-              console.log('🖱️ [UnifiedMap] GPS Button Clicked:', {
-                currentState: gpsEnabled,
-                newState: !gpsEnabled,
-                timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent,
-                isSecureContext: window.isSecureContext
-              })
-
-              if (!gpsEnabled) {
-                console.log('🔐 [UnifiedMap] Checking permission before enabling...')
-                // Check permission first
-                const permission = await gps.checkPermission()
-                console.log('📋 [UnifiedMap] Current permission:', permission)
-
-                if (permission === 'denied') {
-                  console.error('❌ [UnifiedMap] Permission denied, showing alert')
-                  alert('❌ Quyền GPS bị từ chối. Vui lòng cấp quyền trong Settings của trình duyệt.')
-                  return
-                }
-
-                console.log('✅ [UnifiedMap] Enabling GPS...')
-                // Enable GPS (permission will be requested automatically by iOS-Optimized GPS)
-                setGpsEnabled(true)
-              } else {
-                console.log('🛑 [UnifiedMap] Disabling GPS...')
-                // Disable GPS
-                setGpsEnabled(false)
-              }
-            }}
-            className={`p-3 rounded-lg font-medium transition-all active:scale-95 ${
-              gpsEnabled
-                ? 'bg-green-600 text-white hover:bg-green-700 shadow-green-200'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-2 border-gray-300'
-            }`}
-            title={gpsEnabled ? 'Tắt GPS tracking' : 'Bật GPS tracking'}
-          >
-            <div className="flex items-center space-x-2">
-              <svg className={`w-5 h-5 ${gpsEnabled ? 'animate-pulse' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm font-bold">
-                {gpsEnabled ? 'GPS ON' : 'GPS'}
-              </span>
-            </div>
-          </button>
-
-          {/* Quick GPS Test Button */}
-          <button
-            onClick={async () => {
-              console.log('🧪 [UnifiedMap] Testing GPS with iOS-Optimized service...')
-
-              try {
-                const position = await gps.getCurrentPosition({
-                  enableHighAccuracy: true,
-                  timeout: 10000
-                })
-                
-                console.log('✅ [UnifiedMap] GPS test successful:', position)
-                alert(`✅ GPS hoạt động!\nVị trí: ${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)}\nĐộ chính xác: ±${position.accuracy.toFixed(0)}m`)
-              } catch (error: any) {
-                console.error('❌ [UnifiedMap] GPS test failed:', error)
-                alert(`❌ GPS lỗi: ${error.message}`)
-              }
-            }}
-            className="p-2 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 border border-purple-300"
-            title="Test GPS nhanh"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Debug Info Panel */}
-        <div className="bg-gray-50 p-2 rounded text-xs space-y-1">
-          <div className="font-bold text-gray-700">🔧 GPS Debug (iOS-Optimized):</div>
-          <div>GPS: <span className={gpsEnabled ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
-            {gpsEnabled ? 'ON' : 'OFF'}
-          </span></div>
-          <div>Position: <span className={userPosition ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
-            {userPosition ? 'YES' : 'NO'}
-          </span></div>
-          <div>iOS: <span className={gps.getStatus().isIOS ? 'text-blue-600 font-bold' : 'text-gray-600'}>
-            {gps.getStatus().isIOS ? 'YES' : 'NO'}
-          </span></div>
-          <div>Permission: <span className={
-            permissionStatus === 'granted' ? 'text-green-600 font-bold' :
-            permissionStatus === 'denied' ? 'text-red-600 font-bold' :
-            permissionStatus === 'prompt' ? 'text-yellow-600 font-bold' :
-            'text-gray-600 font-bold'
-          }>
-            {permissionStatus === 'granted' ? 'GRANTED' :
-             permissionStatus === 'denied' ? 'DENIED' :
-             permissionStatus === 'prompt' ? 'PROMPT' :
-             permissionStatus}
-          </span></div>
-        </div>
-
-        {/* Permission Request Button */}
-        <button
-          onClick={async () => {
-            console.log('🔐 Requesting location permission...')
-
-            try {
-              const permission = await gps.requestPermission()
-              console.log('📋 Permission result:', permission)
-
-              if (permission === 'granted') {
-                alert('✅ Quyền truy cập vị trí đã được cấp! Bây giờ bạn có thể bật GPS tracking.')
-                setPermissionStatus('granted')
-              } else if (permission === 'denied') {
-                alert('❌ Bạn đã từ chối cấp quyền vị trí. Vui lòng cho phép trong cài đặt trình duyệt.')
-                setPermissionStatus('denied')
-              }
-            } catch (error: any) {
-              console.error('❌ Permission request failed:', error)
-              alert(`❌ Không thể lấy quyền: ${error.message}`)
-            }
-          }}
-          className="w-full p-2 bg-yellow-600 text-white rounded-lg text-xs font-medium hover:bg-yellow-700 active:bg-yellow-800 mb-2"
-        >
-          🔐 Request Permission
-        </button>
-
-        {/* Force Enable GPS Button */}
-        <button
-          onClick={() => {
-            console.log('🚀 Force enabling GPS...')
-            setGpsEnabled(true)
-          }}
-          className="w-full p-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 active:bg-blue-800"
-        >
-          🚀 Force Enable GPS
-        </button>
-
-        {/* Show user path toggle (only when GPS is enabled) */}
-        {gpsEnabled && (
-          <label className="flex items-center space-x-2 text-sm">
-            <input
-              type="checkbox"
-              checked={showUserPath}
-              onChange={(e) => setShowUserPath(e.target.checked)}
-              className="rounded"
-            />
-            <span>Hiển thị đường đi</span>
-          </label>
-        )}
-
-        {/* Proximity radius slider (only when GPS is enabled) */}
-        {gpsEnabled && (
-          <div className="space-y-1">
-            <label className="text-xs text-gray-600">
-              Bán kính phát hiện: {proximityRadius}m
-            </label>
-            <input
-              type="range"
-              min="10"
-              max="100"
-              value={proximityRadius}
-              onChange={(e) => setProximityRadius(Number(e.target.value))}
-              className="w-full"
-            />
-          </div>
-        )}
-      </div>
-
       {/* Current Zone Indicator (only when GPS is enabled) */}
       {gpsEnabled && proximityData.currentZone && (
         <div className="absolute top-4 right-4 bg-green-600 text-white rounded-lg shadow-lg p-3">
@@ -1131,110 +1036,17 @@ const UnifiedMap = memo(({
       {/* Position Info Panel (only when GPS is enabled) */}
       {gpsEnabled && userPosition && (
         <>
-          {console.log('📋 Rendering position info panel:', {
-            position: userPosition,
-            gpsEnabled,
-            timestamp: new Date().toISOString()
-          })}
-          <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 text-sm">
-            <div className="font-bold text-red-600">📍 Vị trí của bạn</div>
-            <div className="font-mono text-xs space-y-1">
+          <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-2 text-xs z-[1000]">
+            <div className="font-bold text-green-600">📍 Vị trí</div>
+            <div className="font-mono space-y-0.5">
               <div>{userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}</div>
-              <div>Độ chính xác: ±{userPosition.accuracy.toFixed(0)}m</div>
-              {userPosition.speed && <div>Tốc độ: {(userPosition.speed * 3.6).toFixed(1)} km/h</div>}
+              <div className="text-gray-600">±{userPosition.accuracy.toFixed(0)}m</div>
             </div>
           </div>
         </>
       )}
 
 
-      {/* GPS Instructions (when GPS is disabled) */}
-      {!gpsEnabled && (
-        <div className="absolute bottom-4 left-4 bg-blue-50 border border-blue-200 rounded-lg shadow-lg p-3 text-sm max-w-xs">
-          <div className="font-bold text-blue-600 mb-1">💡 Hướng dẫn GPS</div>
-          <div className="text-xs text-blue-700 space-y-1">
-            <div className="font-bold text-blue-800">📋 Các bước:</div>
-            <div>1. Nhấn nút "GPS" để bắt đầu</div>
-            <div>2. Cho phép truy cập vị trí khi được hỏi</div>
-            <div>3. Vị trí của bạn sẽ hiển thị bằng chấm đỏ</div>
-            <div>4. Phát hiện cây và vùng gần vị trí hiện tại</div>
-            <div className="mt-2 pt-2 border-t border-blue-200">
-              <div className="font-bold text-blue-800">🔧 Debug Tools:</div>
-              <div>• Nút tím: Test GPS permissions</div>
-              <div>• Nút vàng: Chỉ request permission</div>
-              <div>• Nút xanh: Force enable GPS</div>
-              <div>• Xem tọa độ ở góc phải màn hình</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-      {/* GPS Permission Request Helper */}
-      {gpsEnabled && !userPosition && (
-        <div className="absolute bottom-4 left-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-lg p-3 text-sm max-w-xs">
-          <div className="font-bold text-yellow-600 mb-1">⚠️ Chờ GPS...</div>
-          <div className="text-xs text-yellow-700 space-y-1">
-            <div>• Đang lấy vị trí GPS...</div>
-            <div>• Hãy cho phép truy cập vị trí nếu được hỏi</div>
-            <div>• Đảm bảo GPS/Location services đã bật</div>
-            <div>• Kiểm tra kết nối internet</div>
-          </div>
-        </div>
-      )}
-
-      {/* Permission Denied Helper */}
-      {permissionStatus === 'denied' && (
-        <div className="absolute bottom-4 left-4 bg-red-50 border border-red-200 rounded-lg shadow-lg p-3 text-sm max-w-xs">
-          <div className="font-bold text-red-600 mb-1">❌ Quyền GPS bị từ chối</div>
-          <div className="text-xs text-red-700 space-y-1">
-            <div>• Quyền truy cập vị trí đã bị từ chối</div>
-            <div>• Vui lòng cấp quyền trong cài đặt trình duyệt:</div>
-            <div className="font-bold">Chrome: Menu → Cài đặt → Quyền riêng tư → Vị trí</div>
-            <div>• Sau đó nhấn nút vàng "Request Permission"</div>
-          </div>
-        </div>
-      )}
-
-      {/* Current Location Display (when available) */}
-      {userPosition && (
-        <div className="absolute top-20 left-4 bg-green-50 border border-green-200 rounded-lg shadow-lg p-2 text-xs">
-          <div className="font-bold text-green-600">📍 Vị trí hiện tại:</div>
-          <div className="font-mono text-green-700">
-            {userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}
-          </div>
-          <div className="text-green-600">±{userPosition.accuracy.toFixed(0)}m</div>
-        </div>
-      )}
-
-      {/* Compact GPS Status (always visible) */}
-      <div className="absolute top-4 right-4 bg-black bg-opacity-75 text-white rounded p-2 text-xs font-mono">
-        <div>GPS: <span className={gpsEnabled ? 'text-green-400' : 'text-red-400'}>
-          {gpsEnabled ? 'ON' : 'OFF'}
-        </span></div>
-        <div>Pos: <span className={userPosition ? 'text-green-400' : 'text-red-400'}>
-          {userPosition ? 'YES' : 'NO'}
-        </span></div>
-        <div>Perm: <span className={
-          permissionStatus === 'granted' ? 'text-green-400' :
-          permissionStatus === 'denied' ? 'text-red-400' :
-          permissionStatus === 'prompt' ? 'text-yellow-400' :
-          'text-gray-400'
-        }>
-          {permissionStatus === 'granted' ? 'GRANTED' :
-           permissionStatus === 'denied' ? 'DENIED' :
-           permissionStatus === 'prompt' ? 'PROMPT' :
-           permissionStatus}
-        </span></div>
-        {userPosition && (
-          <>
-            <div className="mt-1 pt-1 border-t border-gray-600">
-              <div>{userPosition.lat.toFixed(4)}</div>
-              <div>{userPosition.lng.toFixed(4)}</div>
-            </div>
-          </>
-        )}
-      </div>
     </div>
   )
 })
