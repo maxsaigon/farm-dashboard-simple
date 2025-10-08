@@ -336,6 +336,8 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
   const [seasonLoading, setSeasonLoading] = useState(false)
   const [lastSeason, setLastSeason] = useState<{ name?: string; perTreeCount: number } | null>(null)
   const [needsAttention, setNeedsAttention] = useState<boolean>(tree?.needsAttention || false)
+  const [treeStatus, setTreeStatus] = useState<'Young Tree' | 'Mature' | 'Old' | 'Cây Non' | 'Cây Trưởng Thành' | 'Cây Già'>(tree?.treeStatus || 'Cây Non')
+  const [editingStatus, setEditingStatus] = useState(false)
 
   // Initialize fruit count when tree changes, considering durian season status
   useEffect(() => {
@@ -417,10 +419,11 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
     }
   }, [currentFarm?.id, tree?.id, isOpen])
 
-  // Initialize needsAttention when tree changes
+  // Initialize needsAttention and treeStatus when tree changes
   useEffect(() => {
     if (tree) {
       setNeedsAttention(tree.needsAttention || false)
+      setTreeStatus(tree.treeStatus || 'Cây Non')
     }
   }, [tree])
 
@@ -484,6 +487,22 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
       await updateTree(currentFarm.id, tree.id, user.uid, { needsAttention: newValue })
       setNeedsAttention(newValue)
       showSuccess('Đã cập nhật', 'Trạng thái cần chú ý đã được thay đổi')
+    } catch (e) {
+      showError('Lỗi', `Không thể cập nhật: ${e instanceof Error ? e.message : 'Lỗi không xác định'}`)
+    }
+  }
+
+  const handleUpdateTreeStatus = async () => {
+    if (!user || !currentFarm || !tree) {
+      showError('Lỗi', 'Không thể cập nhật')
+      return
+    }
+
+    try {
+      await updateTree(currentFarm.id, tree.id, user.uid, { treeStatus })
+      setEditingStatus(false)
+      showSuccess('Đã cập nhật', 'Trạng thái cây đã được thay đổi')
+      onSaved?.({ ...tree, treeStatus })
     } catch (e) {
       showError('Lỗi', `Không thể cập nhật: ${e instanceof Error ? e.message : 'Lỗi không xác định'}`)
     }
@@ -679,11 +698,74 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
               </div>
               <div>
                 <div className="text-sm text-gray-500">Vị trí GPS</div>
-                <div className="font-medium text-gray-900 font-mono text-sm">{tree.gpsAccuracy || 'N/A'}</div>
+                <div className="font-medium text-gray-900 font-mono text-sm">
+                  {tree.latitude && tree.longitude
+                    ? `${tree.latitude.toFixed(6)}, ${tree.longitude.toFixed(6)}`
+                    : 'N/A'}
+                </div>
               </div>
-              <div>
-                <div className="text-sm text-gray-500">Trại thái</div>
-                <div className="font-medium text-gray-900 font-mono text-sm">{tree.treeStatus || 'N/A'}</div>
+              <div className="col-span-2">
+                <div className="text-sm text-gray-500 mb-2">Trạng thái cây</div>
+                {editingStatus ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: 'Cây Non', label: 'Cây Non', icon: '🌱' },
+                        { value: 'Cây Trưởng Thành', label: 'Trưởng Thành', icon: '🌳' },
+                        { value: 'Cây Già', label: 'Cây Già', icon: '🌲' },
+                      ].map((status) => (
+                        <button
+                          key={status.value}
+                          type="button"
+                          onClick={() => setTreeStatus(status.value as any)}
+                          className={`p-3 border-2 rounded-lg text-center transition-all active:scale-95 ${
+                            treeStatus === status.value
+                              ? 'border-green-500 bg-green-50 text-green-800 shadow-md'
+                              : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                          }`}
+                        >
+                          <div className="text-xl mb-1">{status.icon}</div>
+                          <div className="font-semibold text-xs">{status.label}</div>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleUpdateTreeStatus}
+                        disabled={!canSave}
+                        className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                      >
+                        Lưu
+                      </button>
+                      <button
+                        onClick={() => {
+                          setTreeStatus(tree.treeStatus || 'Cây Non')
+                          setEditingStatus(false)
+                        }}
+                        className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xl">
+                        {treeStatus === 'Cây Non' || treeStatus === 'Young Tree' ? '🌱' :
+                         treeStatus === 'Cây Trưởng Thành' || treeStatus === 'Mature' ? '🌳' : '🌲'}
+                      </span>
+                      <span className="font-medium text-gray-900">{treeStatus || 'N/A'}</span>
+                    </div>
+                    <button
+                      onClick={() => setEditingStatus(true)}
+                      disabled={!canSave}
+                      className="px-3 py-1 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+                    >
+                      Sửa
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
