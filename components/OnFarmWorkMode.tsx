@@ -148,7 +148,8 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
   const [newTreeData, setNewTreeData] = useState({
     name: '',
     variety: 'Monthong',
-    zoneName: ''
+    zoneName: '',
+    treeStatus: 'Cây Non' as 'Young Tree' | 'Mature' | 'Old' | 'Cây Non' | 'Cây Trưởng Thành' | 'Cây Già'
   })
 
   // Start GPS tracking on mount
@@ -321,6 +322,7 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
         variety: newTreeData.variety,
         zoneName: newTreeData.zoneName,
         zoneCode: newTreeData.zoneName,
+        treeStatus: newTreeData.treeStatus,
         latitude: userPosition.lat,
         longitude: userPosition.lng,
         gpsAccuracy: userPosition.accuracy,
@@ -406,7 +408,7 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
       
       // Step 4: Reset form and cleanup
       console.log('🧹 [OnFarmWorkMode] Cleaning up...')
-      setNewTreeData({ name: '', variety: 'Monthong', zoneName: '' })
+      setNewTreeData({ name: '', variety: 'Monthong', zoneName: '', treeStatus: 'Cây Non' })
       
       // Cleanup photo URLs
       capturedPhotos.forEach(url => URL.revokeObjectURL(url))
@@ -791,6 +793,34 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
                     >
                       <div className="font-semibold text-lg">{variety.value}</div>
                       <div className="text-sm text-gray-500">{variety.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-lg font-semibold text-gray-800 mb-2 flex items-center">
+                  🌿 Trạng thái cây
+                  <span className="text-red-500 ml-2">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { value: 'Cây Non', label: 'Cây Non', icon: '🌱' },
+                    { value: 'Cây Trưởng Thành', label: 'Trưởng Thành', icon: '🌳' },
+                    { value: 'Cây Già', label: 'Cây Già', icon: '🌲' },
+                  ].map((status) => (
+                    <button
+                      key={status.value}
+                      type="button"
+                      onClick={() => setNewTreeData({ ...newTreeData, treeStatus: status.value as any })}
+                      className={`p-4 border-2 rounded-xl text-center transition-all min-touch active:scale-95 ${
+                        newTreeData.treeStatus === status.value
+                          ? 'border-green-500 bg-green-50 text-green-800 shadow-md'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">{status.icon}</div>
+                      <div className="font-semibold text-sm">{status.label}</div>
                     </button>
                   ))}
                 </div>
