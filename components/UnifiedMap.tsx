@@ -64,6 +64,7 @@ interface UnifiedMapProps {
   showUserPath?: boolean
   backgroundTrackingEnabled?: boolean
   proximityRadius?: number
+  highlightedTreeId?: string | null // ID of tree to highlight with pulsing circle
 }
 
 // iOS-Optimized GPS tracking hook (replaces old useOptimizedPositioning)
@@ -390,7 +391,8 @@ const UnifiedMap = memo(({
   className = '',
   showUserPath: externalShowUserPath = false,
   backgroundTrackingEnabled: externalBackgroundTrackingEnabled = false,
-  proximityRadius: externalProximityRadius = 30
+  proximityRadius: externalProximityRadius = 30,
+  highlightedTreeId = null
 }: UnifiedMapProps) => {
   const mapRef = useRef<L.Map | null>(null)
   const [showUserPath, setShowUserPath] = useState(externalShowUserPath)
@@ -774,14 +776,43 @@ const UnifiedMap = memo(({
         {filters.showTrees && trees
           .filter(tree => tree.latitude && tree.longitude && tree.latitude !== 0 && tree.longitude !== 0)
           .map(tree => (
-            <Marker
-              key={tree.id}
-              position={[tree.latitude!, tree.longitude!]}
-              icon={getTreeMarkerIcon(tree)}
-              eventHandlers={{
-                click: () => handleTreeSelect(tree)
-              }}
-            />
+            <React.Fragment key={tree.id}>
+              <Marker
+                position={[tree.latitude!, tree.longitude!]}
+                icon={getTreeMarkerIcon(tree)}
+                eventHandlers={{
+                  click: () => handleTreeSelect(tree)
+                }}
+              />
+              {/* Highlight circle for tree navigated from showcase */}
+              {highlightedTreeId === tree.id && (
+                <>
+                  {/* Pulsing outer circle */}
+                  <Circle
+                    center={[tree.latitude!, tree.longitude!]}
+                    radius={3}
+                    pathOptions={{
+                      color: '#ef4444',
+                      fillColor: '#ef4444',
+                      fillOpacity: 0.2,
+                      weight: 3,
+                      className: 'pulsing-circle'
+                    }}
+                  />
+                  {/* Inner solid circle */}
+                  <Circle
+                    center={[tree.latitude!, tree.longitude!]}
+                    radius={1.5}
+                    pathOptions={{
+                      color: '#ef4444',
+                      fillColor: '#ef4444',
+                      fillOpacity: 0.4,
+                      weight: 2
+                    }}
+                  />
+                </>
+              )}
+            </React.Fragment>
           ))
         }
 
