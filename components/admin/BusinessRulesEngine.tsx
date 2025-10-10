@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { BusinessRulesService, BusinessRule, RuleTemplate } from '@/lib/business-rules-service'
 import { 
   CogIcon,

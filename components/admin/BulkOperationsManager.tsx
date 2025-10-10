@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { BulkOperationsService, BulkOperation, BulkOperationTemplate } from '@/lib/bulk-operations-service'
 import { 
   CloudArrowUpIcon,

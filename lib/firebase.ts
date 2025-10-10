@@ -61,7 +61,13 @@ try {
   auth = getAuth(app)
   storage = getStorage(app)
 
+  console.log('[Firebase] ✅ Firebase initialized successfully')
+  console.log('[Firebase] - App name:', app.name)
+  console.log('[Firebase] - Project ID:', firebaseConfig.projectId)
+  console.log('[Firebase] - Auth domain:', firebaseConfig.authDomain)
+
 } catch (error) {
+  console.error('[Firebase] ❌ Firebase initialization error:', error)
   throw error
 }
 

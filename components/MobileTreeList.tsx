@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { MobileTreeCard } from './MobileCards'
 import MobileLayout from './MobileLayout'
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { subscribeToTrees } from '@/lib/firestore'
 import { 
   MagnifyingGlassIcon,

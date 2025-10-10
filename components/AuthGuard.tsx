@@ -2,8 +2,8 @@
 
 import { useEffect, memo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSimpleAuth } from '../lib/simple-auth-context'
-import { Permission } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
+import { Permission } from '@/lib/optimized-auth-context'
 
 interface AuthGuardProps {
   children: React.ReactNode

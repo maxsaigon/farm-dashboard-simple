@@ -1,6 +1,6 @@
 'use client'
 
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { ShieldCheckIcon, CogIcon } from '@heroicons/react/24/outline'
 
 export function AdminBanner() {

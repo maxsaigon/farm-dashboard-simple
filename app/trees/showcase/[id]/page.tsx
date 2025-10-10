@@ -8,7 +8,7 @@ import { Tree } from '@/lib/types'
 import TreeShowcase from '@/components/TreeShowcase'
 import AuthGuard from '@/components/AuthGuard'
 import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 
 export default function TreeShowcasePage() {
   const params = useParams()

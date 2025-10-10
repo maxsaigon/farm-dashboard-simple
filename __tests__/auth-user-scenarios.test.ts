@@ -4,7 +4,7 @@
  */
 
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
-import { useSimpleAuth, SimpleAuthProvider } from '@/lib/simple-auth-context'
+import { useSimpleAuth, SimpleAuthProvider } from '@/lib/optimized-auth-context'
 import { simpleAuthService } from '@/lib/simple-auth-service'
 import SimpleAuthGuard from '@/components/SimpleAuthGuard'
 

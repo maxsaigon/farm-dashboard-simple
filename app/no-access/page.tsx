@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useSimpleAuth } from '../../lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 
 export default function NoAccessPage() {
   const router = useRouter()

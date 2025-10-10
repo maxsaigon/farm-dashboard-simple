@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { subscribeToTrees } from '@/lib/firestore'
 import { DataReconciliationService } from '@/lib/data-reconciliation-service'
 import { Tree } from '@/lib/types'

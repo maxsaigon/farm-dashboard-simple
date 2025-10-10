@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSimpleAuth, Permission, FarmRole } from '@/lib/simple-auth-context'
+import { useSimpleAuth, Permission, FarmRole } from '@/lib/optimized-auth-context'
 
 interface SimpleAuthGuardProps {
   children: React.ReactNode

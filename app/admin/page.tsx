@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { useRouter } from 'next/navigation'
 import MobileAdminLayout from '@/components/admin/MobileAdminLayout'
 import AdminDashboardMobile from '@/components/admin/AdminDashboardMobile'

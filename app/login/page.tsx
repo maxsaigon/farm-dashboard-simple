@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSimpleAuth } from '../../lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
