@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { Tree } from '@/lib/types'
-import { XMarkIcon, ShareIcon, CheckCircleIcon, ExclamationTriangleIcon, MapPinIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, ShareIcon, CheckCircleIcon, ExclamationTriangleIcon, MapPinIcon, PencilIcon } from '@heroicons/react/24/outline'
 import { ImageGallery } from './ImageGallery'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { updateTree } from '@/lib/firestore'
@@ -338,6 +338,11 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
   const [needsAttention, setNeedsAttention] = useState<boolean>(tree?.needsAttention || false)
   const [treeStatus, setTreeStatus] = useState<'Young Tree' | 'Mature' | 'Old' | 'Cây Non' | 'Cây Trưởng Thành' | 'Cây Già'>(tree?.treeStatus || 'Cây Non')
   const [editingStatus, setEditingStatus] = useState(false)
+  const [editingGPS, setEditingGPS] = useState(false)
+  const [updatingGPS, setUpdatingGPS] = useState(false)
+  const [newLatitude, setNewLatitude] = useState<string>('')
+  const [newLongitude, setNewLongitude] = useState<string>('')
+  const [gpsError, setGpsError] = useState<string>('')
 
   // Initialize fruit count when tree changes, considering durian season status
   useEffect(() => {
@@ -505,6 +510,117 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
       onSaved?.({ ...tree, treeStatus })
     } catch (e) {
       showError('Lỗi', `Không thể cập nhật: ${e instanceof Error ? e.message : 'Lỗi không xác định'}`)
+    }
+  }
+
+  // Calculate distance between two GPS coordinates using Haversine formula
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371e3 // Earth's radius in meters
+    const φ1 = lat1 * Math.PI / 180
+    const φ2 = lat2 * Math.PI / 180
+    const Δφ = (lat2 - lat1) * Math.PI / 180
+    const Δλ = (lon2 - lon1) * Math.PI / 180
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    return R * c // Distance in meters
+  }
+
+  const handleStartGPSUpdate = () => {
+    if (!tree) return
+    setNewLatitude(tree.latitude?.toString() || '')
+    setNewLongitude(tree.longitude?.toString() || '')
+    setGpsError('')
+    setEditingGPS(true)
+  }
+
+  const handleCancelGPSUpdate = () => {
+    setEditingGPS(false)
+    setNewLatitude('')
+    setNewLongitude('')
+    setGpsError('')
+  }
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setGpsError('Trình duyệt không hỗ trợ GPS')
+      return
+    }
+
+    setUpdatingGPS(true)
+    setGpsError('')
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setNewLatitude(position.coords.latitude.toFixed(6))
+        setNewLongitude(position.coords.longitude.toFixed(6))
+        setUpdatingGPS(false)
+      },
+      (error) => {
+        setUpdatingGPS(false)
+        setGpsError('Không thể lấy vị trí hiện tại: ' + error.message)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    )
+  }
+
+  const handleUpdateGPS = async () => {
+    if (!user || !currentFarm || !tree) {
+      showError('Lỗi', 'Không thể cập nhật')
+      return
+    }
+
+    const lat = parseFloat(newLatitude)
+    const lon = parseFloat(newLongitude)
+
+    // Validate coordinates
+    if (isNaN(lat) || isNaN(lon)) {
+      setGpsError('Tọa độ không hợp lệ')
+      return
+    }
+
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      setGpsError('Tọa độ nằm ngoài phạm vi cho phép')
+      return
+    }
+
+    // Check distance constraint (5m radius)
+    if (tree.latitude && tree.longitude) {
+      const distance = calculateDistance(tree.latitude, tree.longitude, lat, lon)
+      
+      if (distance > 5) {
+        setGpsError(
+          `Vị trí mới cách vị trí cũ ${distance.toFixed(1)}m. ` +
+          `Chỉ cho phép cập nhật trong bán kính 5m để tránh nhầm lẫn vị trí cây.`
+        )
+        return
+      }
+    }
+
+    try {
+      setUpdatingGPS(true)
+      setGpsError('')
+
+      await updateTree(currentFarm.id, tree.id, user.uid, {
+        latitude: lat,
+        longitude: lon,
+        gpsAccuracy: 0 // Reset accuracy when manually updated
+      })
+
+      onSaved?.({ ...tree, latitude: lat, longitude: lon })
+      setEditingGPS(false)
+      showSuccess('Đã cập nhật', 'Tọa độ GPS đã được cập nhật thành công')
+    } catch (e) {
+      setGpsError(`Không thể cập nhật: ${e instanceof Error ? e.message : 'Lỗi không xác định'}`)
+    } finally {
+      setUpdatingGPS(false)
     }
   }
 
@@ -688,13 +804,112 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
                 <div className="text-sm text-gray-500">Sức Khoẻ</div>
                 <div className="font-medium text-gray-900 font-mono text-sm">{tree.healthNotes || 'N/A'}</div>
               </div>
-              <div>
-                <div className="text-sm text-gray-500">Vị trí GPS</div>
-                <div className="font-medium text-gray-900 font-mono text-sm">
-                  {tree.latitude && tree.longitude
-                    ? `${tree.latitude.toFixed(6)}, ${tree.longitude.toFixed(6)}`
-                    : 'N/A'}
-                </div>
+              <div className="col-span-2">
+                <div className="text-sm text-gray-500 mb-2">Vị trí GPS</div>
+                {editingGPS ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Vĩ độ (Latitude)</label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={newLatitude}
+                          onChange={(e) => {
+                            setNewLatitude(e.target.value)
+                            setGpsError('')
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="10.123456"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Kinh độ (Longitude)</label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={newLongitude}
+                          onChange={(e) => {
+                            setNewLongitude(e.target.value)
+                            setGpsError('')
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="106.123456"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Get Current Location Button */}
+                    <button
+                      onClick={handleGetCurrentLocation}
+                      disabled={updatingGPS}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 disabled:opacity-50 text-blue-700 rounded-lg font-medium transition-colors"
+                    >
+                      {updatingGPS ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-700 border-t-transparent"></div>
+                          <span>Đang lấy vị trí...</span>
+                        </>
+                      ) : (
+                        <>
+                          <MapPinIcon className="w-4 h-4" />
+                          <span>Lấy vị trí hiện tại</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Error Message */}
+                    {gpsError && (
+                      <div className="flex items-start space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <ExclamationTriangleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-red-800">{gpsError}</div>
+                      </div>
+                    )}
+
+                    {/* Info Message */}
+                    <div className="flex items-start space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <ExclamationTriangleIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs text-blue-800">
+                        <div className="font-medium mb-1">Lưu ý quan trọng:</div>
+                        <div>Vị trí mới chỉ được phép cách vị trí cũ tối đa <strong>5 mét</strong> để tránh nhầm lẫn và xáo trộn vị trí các cây trên bản đồ.</div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleUpdateGPS}
+                        disabled={!canSave || updatingGPS || !newLatitude || !newLongitude}
+                        className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                      >
+                        {updatingGPS ? 'Đang lưu...' : 'Lưu GPS'}
+                      </button>
+                      <button
+                        onClick={handleCancelGPSUpdate}
+                        disabled={updatingGPS}
+                        className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:opacity-50 text-gray-700 rounded-lg font-medium transition-colors"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-gray-900 font-mono text-sm">
+                      {tree.latitude && tree.longitude
+                        ? `${tree.latitude.toFixed(6)}, ${tree.longitude.toFixed(6)}`
+                        : 'Chưa có tọa độ'}
+                    </div>
+                    <button
+                      onClick={handleStartGPSUpdate}
+                      disabled={!canSave}
+                      className="flex items-center space-x-1 px-3 py-1 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                      <span>Sửa GPS</span>
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="col-span-2">
                 <div className="text-sm text-gray-500 mb-2">Trạng thái cây</div>
