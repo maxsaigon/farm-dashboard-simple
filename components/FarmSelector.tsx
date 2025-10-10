@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Farm } from '@/lib/types'
 import { FarmService } from '@/lib/farm-service'
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 
 interface FarmSelectorProps {
   selectedFarmId?: string

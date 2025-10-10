@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { SimpleAuthProvider } from "@/lib/simple-auth-context";
+import { SimpleAuthProvider } from "@/lib/optimized-auth-context";
 import DemoModeIndicator from "@/components/DemoModeIndicator";
 import { Navigation } from "@/components/Navigation";
 import BottomTabBar from "@/components/ui/BottomTabBar";

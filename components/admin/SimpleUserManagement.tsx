@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSimpleAuth, SimpleUser } from '@/lib/simple-auth-context'
+import { useSimpleAuth, SimpleUser } from '@/lib/optimized-auth-context'
 import { simpleAuthService } from '@/lib/simple-auth-service'
 import {
   UsersIcon,

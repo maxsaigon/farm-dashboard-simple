@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSimpleAuth, SimpleFarm } from '@/lib/simple-auth-context'
+import { useSimpleAuth, SimpleFarm } from '@/lib/optimized-auth-context'
 import { 
   XMarkIcon, 
   CheckCircleIcon,

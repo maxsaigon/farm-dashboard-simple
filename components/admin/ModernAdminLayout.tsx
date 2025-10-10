@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, ReactNode } from 'react'
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { useRouter } from 'next/navigation'
 import {
   Bars3Icon,

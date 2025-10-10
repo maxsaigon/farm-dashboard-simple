@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Tree } from '@/lib/types'
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { XMarkIcon, ClipboardIcon, CheckIcon, UserPlusIcon, ShareIcon } from '@heroicons/react/24/outline'
 import { useToast } from './Toast'
 import { collection, getDocs, query, where, addDoc } from 'firebase/firestore'

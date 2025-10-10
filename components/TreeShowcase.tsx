@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { Tree } from '@/lib/types'
 import { ImageGallery } from './ImageGallery'
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { updateTree } from '@/lib/firestore'
 import { CheckCircleIcon, MapPinIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { useToast } from './Toast'

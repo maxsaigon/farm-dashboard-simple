@@ -22,7 +22,7 @@ import {
   writeBatch
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
-import { SimpleFarm, SimpleUser, FarmAccess, FarmRole } from './simple-auth-context'
+import { SimpleFarm, SimpleUser, FarmAccess, FarmRole } from './optimized-auth-context'
 
 export class SimpleAuthService {
   // User Authentication

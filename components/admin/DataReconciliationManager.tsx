@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useSimpleAuth } from '@/lib/simple-auth-context'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { DataReconciliationService, ReconciliationResult } from '@/lib/data-reconciliation-service'
 import { FarmService } from '@/lib/farm-service'
 import {
