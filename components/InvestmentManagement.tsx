@@ -532,8 +532,8 @@ export default function InvestmentManagement() {
               <p className="text-gray-500 mt-2">Đang tải...</p>
             </div>
           ) : (
-            <div className="bg-white shadow overflow-hidden sm:rounded-md">
-              <ul className="divide-y divide-gray-200">
+            <div className="bg-gray-50">
+              <ul className="space-y-0">
                 {filteredInvestments.length === 0 ? (
                   <li className="px-6 py-8 text-center">
                     <CurrencyDollarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -546,96 +546,121 @@ export default function InvestmentManagement() {
                   </li>
                 ) : (
                   filteredInvestments.map((investment) => (
-                    <li key={investment.id}>
-                      <div className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
-                        <div className="flex items-center space-x-4 flex-1">
-                          <div className="flex-shrink-0">
+                    <li key={investment.id} className="py-1">
+                      {/* Compact card design optimized for mobile */}
+                      <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
+                        {/* Header: Category + User (compact) */}
+                        <div className="px-3 py-2 bg-gray-50 rounded-t-lg border-b border-gray-200 flex items-center justify-between gap-2">
+                          {/* Category with icon */}
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                            <span className="text-base flex-shrink-0">
+                              {investment.category === 'Phân bón' ? '🌱' :
+                               investment.category === 'Thuốc BVTV' ? '🛡️' :
+                               investment.category === 'Công cụ' ? '🔧' :
+                               investment.category === 'Lao động' ? '👥' : '📦'}
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900 truncate">
+                              {investment.subcategory || investment.category}
+                            </span>
+                            {investment.isRecurring && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 flex-shrink-0">
+                                🔄
+                              </span>
+                            )}
+                          </div>
+
+                          {/* User DisplayName - clear and prominent for farmers */}
+                          {investment.createdBy && (
+                            <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200 flex-shrink-0">
+                              {getUserDisplayName(investment.createdBy)}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Body: Compact layout */}
+                        <div className="p-3">
+                          <div className="flex items-start gap-2">
+                            {/* Invoice thumbnail - smaller */}
                             {investment.images && investment.images.length > 0 ? (
-                              <div className="h-10 w-10 rounded-lg overflow-hidden border border-gray-200 cursor-pointer" onClick={() => {
-                                setSelectedPhoto(investment)
-                                setShowPhotoModal(true)
-                              }}>
+                              <div
+                                className="h-12 w-12 rounded border border-blue-200 cursor-pointer hover:border-blue-400 transition-colors flex-shrink-0"
+                                onClick={() => {
+                                  setSelectedPhoto(investment)
+                                  setShowPhotoModal(true)
+                                }}
+                              >
                                 <img
                                   src={investment.images[0]}
                                   alt="Hoá đơn"
-                                  className="h-full w-full object-cover"
+                                  className="h-full w-full object-cover rounded"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = '/placeholder-image.png'
                                   }}
                                 />
                               </div>
                             ) : (
-                              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                <CurrencyDollarIcon className="h-6 w-6 text-blue-600" />
+                              <div className="h-12 w-12 rounded bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                <CurrencyDollarIcon className="h-6 w-6 text-blue-500" />
                               </div>
                             )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center space-x-2">
-                              <p className="text-sm font-medium text-gray-900">
-                                {investment.subcategory || investment.category}
-                              </p>
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {investment.category}
-                              </span>
-                              {investment.isRecurring && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Định kỳ
-                                </span>
-                              )}
-                            </div>
-                            {investment.createdBy && (
-                              <div className="flex items-center space-x-2 mt-2">
-                                <div className="flex items-center space-x-1">
-                                  <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
-                                    {getUserDisplayName(investment.createdBy).charAt(0).toUpperCase()}
-                                  </div>
-                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                                    {getUserDisplayName(investment.createdBy)}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                            <div className="flex items-center space-x-4 mt-1">
-                              <p className="text-lg font-semibold text-blue-600">
+
+                            {/* Amount and details - compact */}
+                            <div className="flex-1 min-w-0">
+                              {/* Amount - prominent but compact */}
+                              <div className="text-xl font-bold text-blue-600 leading-tight">
                                 {formatCurrency(investment.amount)}
-                              </p>
-                              {investment.quantity && investment.unit && (
-                                <p className="text-sm text-gray-500">
-                                  {investment.quantity} {investment.unit}
+                              </div>
+                              
+                              {/* Secondary info: Date + Quantity - single line */}
+                              <div className="flex items-center gap-2 text-xs text-gray-600 mt-0.5">
+                                <span className="flex items-center gap-0.5">
+                                  <CalendarIcon className="h-3 w-3" />
+                                  {new Date(investment.date).toLocaleDateString('vi-VN', {
+                                    day: '2-digit',
+                                    month: '2-digit'
+                                  })}
+                                </span>
+                                {investment.quantity && investment.unit && (
+                                  <span className="flex items-center gap-0.5">
+                                    <TagIcon className="h-3 w-3" />
+                                    {investment.quantity} {investment.unit}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Notes - compact */}
+                              {investment.notes && (
+                                <p className="text-xs text-gray-600 mt-1 line-clamp-1">
+                                  {investment.notes}
                                 </p>
                               )}
-                              <p className="text-sm text-gray-500">
-                                {new Date(investment.date).toLocaleDateString('vi-VN')}
-                              </p>
                             </div>
-                            {investment.notes && (
-                              <p className="text-sm text-gray-600 mt-1">{investment.notes}</p>
-                            )}
+
+                            {/* Action buttons - compact horizontal layout */}
+                            <div className="flex gap-1 flex-shrink-0">
+                              {hasPermission('write') && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedInvestment(investment)
+                                    setShowInvestmentModal(true)
+                                  }}
+                                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="Sửa"
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                </button>
+                              )}
+                              {hasPermission('delete') && (
+                                <button
+                                  onClick={() => handleDeleteInvestment(investment.id)}
+                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="Xóa"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {hasPermission('write') && (
-                            <button
-                              onClick={() => {
-                                setSelectedInvestment(investment)
-                                setShowInvestmentModal(true)
-                              }}
-                              className="p-2 text-gray-400 hover:text-blue-600"
-                              title="Chỉnh sửa"
-                            >
-                              <PencilIcon className="h-4 w-4" />
-                            </button>
-                          )}
-                          {hasPermission('delete') && (
-                            <button
-                              onClick={() => handleDeleteInvestment(investment.id)}
-                              className="p-2 text-gray-400 hover:text-red-600"
-                              title="Xóa"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          )}
                         </div>
                       </div>
                     </li>
