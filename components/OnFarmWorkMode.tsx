@@ -13,6 +13,7 @@ import { compressImageSmart } from '@/lib/photo-compression'
 import { uploadFile } from '@/lib/storage'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { AuditService } from '@/lib/audit-service'
 
 // Fix Leaflet icons
 if (typeof window !== 'undefined') {
@@ -386,6 +387,30 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
             
             await setDoc(doc(db, 'farms', farmId, 'photos', photoId), photoDoc)
             console.log(`  ✅ Photo document created: ${photoId}`)
+            
+            // Log photo upload to audit system
+            try {
+              await AuditService.logEvent({
+                userId: user.uid,
+                userEmail: user.email || 'Unknown User',
+                action: 'PHOTO_UPLOADED',
+                resource: 'photo',
+                resourceId: treeId,
+                details: {
+                  photoId: photoId,
+                  photoType: 'general',
+                  treeId: treeId,
+                  farmId: farmId,
+                  hasGPS: true,
+                  source: 'on_farm_work_mode'
+                },
+                severity: 'low',
+                category: 'data_modification',
+                status: 'success'
+              })
+            } catch (auditError) {
+              console.error('Failed to log photo upload:', auditError)
+            }
             
           } catch (photoError) {
             console.error(`  ❌ Error uploading photo ${i + 1}:`, photoError)

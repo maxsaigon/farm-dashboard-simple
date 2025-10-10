@@ -1,12 +1,13 @@
-import { 
-  collection, 
+import {
+  collection,
   doc,
   setDoc,
   updateDoc,
   deleteDoc,
   getDocs,
-  onSnapshot, 
-  query, 
+  getDoc,
+  onSnapshot,
+  query,
   where,
   orderBy,
   Timestamp
@@ -15,6 +16,7 @@ import { db } from './firebase'
 import { Tree, Photo, ManualEntry, DashboardStats, FarmStatistics } from './types'
 import { FarmService } from './farm-service'
 import { AdminService } from './admin-service'
+import { AuditService } from './audit-service'
 import { safeFirebaseOperation, withTimeout, NetworkError } from './network-utils'
 
 // Convert various date formats to JavaScript Date
@@ -211,7 +213,18 @@ export async function updateTree(farmId: string, treeId: string, userId: string,
     if (!hasAccess) throw new Error('No permission to update trees')
   }
   
+  // Get current tree data for audit logging
   const treeRef = doc(db, 'farms', farmId, 'trees', treeId)
+  let oldTreeData: any = null
+  try {
+    const treeSnap = await getDoc(treeRef)
+    if (treeSnap.exists()) {
+      oldTreeData = treeSnap.data()
+    }
+  } catch (error) {
+    // Continue without old data if fetch fails
+  }
+  
   const updateData = {
     ...updates,
     updatedAt: Timestamp.now(),
@@ -233,6 +246,42 @@ export async function updateTree(farmId: string, treeId: string, userId: string,
   })
 
   await updateDoc(treeRef, updateData)
+  
+  // Log changes to audit system
+  if (oldTreeData) {
+    // Get user email for audit log
+    let userEmail = 'Unknown User'
+    try {
+      const { auth } = await import('./firebase')
+      userEmail = auth.currentUser?.email || 'Unknown User'
+    } catch (error) {
+      // Continue with default email
+    }
+    
+    // Log each changed field
+    for (const [field, newValue] of Object.entries(updates)) {
+      if (field === 'updatedAt') continue // Skip metadata fields
+      
+      const oldValue = oldTreeData[field]
+      
+      // Only log if value actually changed
+      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+        try {
+          await AuditService.logTreeUpdate(
+            userId,
+            userEmail,
+            treeId,
+            farmId,
+            field,
+            oldValue,
+            newValue
+          )
+        } catch (error) {
+          // Don't fail the update if audit logging fails
+        }
+      }
+    }
+  }
 }
 
 // Delete tree

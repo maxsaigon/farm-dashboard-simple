@@ -14,6 +14,7 @@ import { ref, uploadBytes, deleteObject } from 'firebase/storage'
 import { db, storage } from '@/lib/firebase'
 import { compressImageSmart, getCompressionInfo, needsCompression } from '@/lib/photo-compression'
 import { FarmService } from '@/lib/farm-service'
+import { AuditService } from '@/lib/audit-service'
 
 interface ImageGalleryProps {
   tree: Tree
@@ -428,7 +429,30 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       }
       
       const photosRef = collection(db, 'photos')
-      await addDoc(photosRef, photoData)
+      const photoDocRef = await addDoc(photosRef, photoData)
+
+      // Log photo upload to audit system
+      try {
+        await AuditService.logEvent({
+          userId: user.uid,
+          userEmail: user.email || 'Unknown User',
+          action: 'PHOTO_UPLOADED',
+          resource: 'photo',
+          resourceId: tree.id,
+          details: {
+            photoId: photoDocRef.id,
+            photoType: photoType,
+            treeId: tree.id,
+            farmId: currentFarm.id,
+            hasGPS: !!(latitude && longitude)
+          },
+          severity: 'low',
+          category: 'data_modification',
+          status: 'success'
+        })
+      } catch (auditError) {
+        console.error('Failed to log photo upload:', auditError)
+      }
 
       // Force refresh the image gallery
       await refreshImageGallery()

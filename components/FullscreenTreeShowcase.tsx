@@ -9,6 +9,7 @@ import { updateTree } from '@/lib/firestore'
 import { useToast } from './Toast'
 import ShareTreeModal from './ShareTreeModal'
 import TreeNoteSystem from './TreeNoteSystem'
+import TreeTimeline from './TreeTimeline'
 import { db } from '@/lib/firebase'
 import { collection, getDocs, orderBy, limit, query, where } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
@@ -704,8 +705,8 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
         <div className="px-4 py-6 space-y-6 max-w-2xl mx-auto">
           {/* Collaborative Notes System */}
           {currentFarm?.id && (
-            <TreeNoteSystem 
-              treeId={tree.id} 
+            <TreeNoteSystem
+              treeId={tree.id}
               farmId={currentFarm.id}
             />
           )}
@@ -994,6 +995,14 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
               </div>
             </div>
           </div>
+
+          {/* Tree Timeline - Activity Log (moved to bottom) */}
+          {currentFarm?.id && (
+            <TreeTimeline
+              treeId={tree.id}
+              farmId={currentFarm.id}
+            />
+          )}
         </div>
       </div>
 

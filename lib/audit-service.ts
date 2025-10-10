@@ -299,4 +299,64 @@ export class AuditService {
       status: 'success'
     })
   }
+
+  // Log tree-specific changes
+  static async logTreeUpdate(
+    userId: string,
+    userEmail: string,
+    treeId: string,
+    farmId: string,
+    field: string,
+    oldValue: any,
+    newValue: any,
+    note?: string
+  ): Promise<void> {
+    await this.logEvent({
+      userId,
+      userEmail,
+      action: 'TREE_UPDATE',
+      resource: 'tree',
+      resourceId: treeId,
+      details: {
+        farmId,
+        field,
+        oldValue,
+        newValue,
+        note
+      },
+      severity: 'low',
+      category: 'data_modification',
+      status: 'success'
+    })
+  }
+
+  // Log tree creation
+  static async logTreeCreation(userId: string, userEmail: string, treeId: string, farmId: string, details?: any): Promise<void> {
+    await this.logEvent({
+      userId,
+      userEmail,
+      action: 'TREE_CREATED',
+      resource: 'tree',
+      resourceId: treeId,
+      details: { farmId, ...details },
+      severity: 'low',
+      category: 'data_modification',
+      status: 'success'
+    })
+  }
+
+  // Log tree deletion
+  static async logTreeDeletion(userId: string, userEmail: string, treeId: string, farmId: string, details?: any): Promise<void> {
+    await this.logEvent({
+      userId,
+      userEmail,
+      action: 'TREE_DELETED',
+      resource: 'tree',
+      resourceId: treeId,
+      details: { farmId, ...details },
+      severity: 'medium',
+      category: 'data_modification',
+      status: 'success'
+    })
+  }
 }
