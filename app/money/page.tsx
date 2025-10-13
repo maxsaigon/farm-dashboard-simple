@@ -6,7 +6,7 @@ import InvestmentManagement from '@/components/InvestmentManagement'
 export default function MoneyPage() {
   return (
     <AuthGuard requiredPermission="read" requireFarmAccess={true}>
-      <div className="min-h-screen bg-gray-50 p-4">
+      <div className="min-h-screen bg-gray-50 p-4 with-bottom-tab">
         <div className="max-w-7xl mx-auto">
           
           <InvestmentManagement />

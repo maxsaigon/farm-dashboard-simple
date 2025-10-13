@@ -263,7 +263,7 @@ export default function SimplifiedZoneManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 with-bottom-tab">
       {/* Fixed Header */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-4">
         <h1 className="text-xl font-bold text-gray-900 mb-3">Khu vực</h1>
@@ -297,7 +297,7 @@ export default function SimplifiedZoneManagement() {
       </div>
 
       {/* Zones List */}
-      <div className="px-4 pb-20">
+      <div className="px-4">
         {filteredZones.length === 0 ? (
           <div className="text-center py-12">
             <MapIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
