@@ -122,3 +122,10 @@ body {
 .leaflet-layer {
   transition: opacity 0.5s ease-in-out;
 }
+
+/* Bottom Tab Bar spacing - consistent across all mobile pages */
+@media (max-width: 1024px) {
+  .with-bottom-tab {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+}
