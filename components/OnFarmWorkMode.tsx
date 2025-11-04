@@ -231,6 +231,13 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
   // Camera functions
   const startCamera = async () => {
     try {
+      console.log('📸 Starting camera...')
+      
+      // Check if mediaDevices is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera API not supported')
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'environment',
@@ -239,14 +246,18 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
         }
       })
       
+      console.log('✅ Camera stream obtained')
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
         setCameraActive(true)
+        console.log('✅ Camera active')
       }
     } catch (error) {
-      console.error('Camera error:', error)
-      alert('❌ Không thể mở camera. Vui lòng kiểm tra quyền truy cập.')
+      console.error('❌ Camera error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      alert(`❌ Không thể mở camera: ${errorMessage}\n\nVui lòng:\n1. Kiểm tra quyền truy cập camera\n2. Đảm bảo không có ứng dụng nào khác đang dùng camera\n3. Thử tải lại trang`)
     }
   }
 
@@ -756,11 +767,15 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
                   )}
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={startCamera}
+                      onClick={() => {
+                        startCamera().catch(err => {
+                          console.error('Failed to start camera:', err)
+                        })
+                      }}
                       className="bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:scale-98 transition-all flex items-center justify-center space-x-2"
                     >
                       <CameraIcon className="h-5 w-5" />
-                      <span>Mở camera</span>
+                      <span>Mở Camera</span>
                     </button>
                     <button
                       onClick={() => fileInputRef.current?.click()}
