@@ -100,19 +100,6 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     }
   }, [tree, initialFormData])
 
-  if (!tree) {
-    return (
-      <div className={`bg-white rounded-xl shadow-lg border border-gray-200 p-6 ${className}`}>
-        <div className="text-center py-12">
-          <EyeIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Chọn một cây để xem chi tiết</h3>
-          <p className="text-gray-600">
-            Nhấn vào một cây trong danh sách để xem thông tin chi tiết.
-          </p>
-        </div>
-      </div>
-    )
-  }
 
   const validateFormData = useCallback((data: Partial<Tree>) => {
     if (!data.name || data.name.trim() === '') {
@@ -290,7 +277,19 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
 
 
   // Simplified return - just return the tree detail component
-  if (!tree) return null
+  if (!tree) {
+    return (
+      <div className={`bg-white rounded-xl shadow-lg border border-gray-200 p-6 ${className}`}>
+        <div className="text-center py-12">
+          <EyeIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Chọn một cây để xem chi tiết</h3>
+          <p className="text-gray-600">
+            Nhấn vào một cây trong danh sách để xem thông tin chi tiết.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={`bg-white ${isMobile ? '' : 'rounded-xl shadow-lg border border-gray-200'} ${className}`} data-testid="tree-detail">

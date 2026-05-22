@@ -26,10 +26,6 @@ export default function BottomTabBar() {
   const allowedPaths = ['/', '/map', '/zones', '/money', '/trees', '/camera']
   const shouldShow = allowedPaths.some(path => pathname === path || (path !== '/' && pathname?.startsWith(path)))
 
-  if (!shouldShow) {
-    return null
-  }
-
   const haptic = useCallback(() => {
     try {
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
@@ -37,6 +33,10 @@ export default function BottomTabBar() {
       }
     } catch {}
   }, [])
+
+  if (!shouldShow) {
+    return null
+  }
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[9999] ios-blur border-t border-gray-200 pt-1 pb-[calc(env(safe-area-inset-bottom)+6px)]">

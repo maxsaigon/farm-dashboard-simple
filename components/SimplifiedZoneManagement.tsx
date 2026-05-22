@@ -82,32 +82,34 @@ export default function SimplifiedZoneManagement() {
         setLoading(true)
 
         // Try farm-specific collection first
-        let zonesRef = collection(db, 'farms', currentFarm.id, 'zones')
+        const farmZonesRef = collection(db, 'farms', currentFarm.id, 'zones')
 
-        let zonesSnapshot = await getDocs(zonesRef)
+        // Also try legacy global zones collection
+        const legacyZonesRef = collection(db, 'zones')
+        const legacyZonesQuery = query(legacyZonesRef, where('farmId', '==', currentFarm.id))
 
-        // If no zones found in farm collection, try global zones collection
-        if (zonesSnapshot.empty) {
-          zonesRef = collection(db, 'zones')
-          const globalQuery = query(zonesRef, where('farmId', '==', currentFarm.id))
-          zonesSnapshot = await getDocs(globalQuery)
-        }
+        // Fetch both concurrently to avoid sequential loading bottlenecks
+        const [farmZonesSnapshot, legacyZonesSnapshot] = await Promise.all([
+          getDocs(farmZonesRef),
+          getDocs(legacyZonesQuery)
+        ])
 
-        const zonesData = zonesSnapshot.docs.map(doc => {
-          const data = doc.data()
+        const mergedMap = new Map<string, Zone>()
 
-          // Handle different possible field names for boundaries (from debug code)
-          let boundaries = data.boundary || data.boundaries || data.coordinates || data.polygon || data.points || []
+        const processDoc = (docSnapshot: any) => {
+          const data = docSnapshot.data()
+
+          // Handle different possible field names for boundaries
+          let boundaries = data.boundaries || data.boundary || data.coordinates || data.polygon || data.points || []
 
           if (boundaries && Array.isArray(boundaries) && boundaries.length > 0) {
-            boundaries = boundaries.map((point: any, index: number) => {
+            boundaries = boundaries.map((point: any) => {
               // Handle Firebase GeoPoint format
               if (point && typeof point === 'object' && ('_lat' in point || 'latitude' in point)) {
-                const converted = {
+                return {
                   latitude: point._lat || point.latitude,
                   longitude: point._long || point.longitude
                 }
-                return converted
               }
               return point
             })
@@ -115,7 +117,6 @@ export default function SimplifiedZoneManagement() {
 
           // Calculate area from boundaries if available
           let computedArea = data.area || 0
-
           if (boundaries && Array.isArray(boundaries) && boundaries.length >= 3) {
             try {
               computedArea = polygonAreaHectares(boundaries)
@@ -124,7 +125,7 @@ export default function SimplifiedZoneManagement() {
             }
           }
 
-          // Handle metadata object (from debug code)
+          // Handle metadata object
           const metadata = data.metadata || {}
           
           // Determine if zone needs attention
@@ -137,12 +138,24 @@ export default function SimplifiedZoneManagement() {
 
           const finalArea = computedArea || metadata.area || 0
 
+          // Standardize color (hex or RGB colorData)
+          let color = data.color
+          if (!color && data.colorData) {
+            const { red, green, blue } = data.colorData
+            const toHex = (c: number) => {
+              const hex = Math.round((c || 0) * 255).toString(16)
+              return hex.length === 1 ? '0' + hex : hex
+            }
+            color = `#${toHex(red || 0)}${toHex(green || 0)}${toHex(blue || 0)}`
+          }
+          if (!color) color = '#10b981'
+
           return {
-            id: doc.id,
-            name: data.name || `Zone ${doc.id}`,
-            code: data.code || doc.id.toUpperCase(),
+            id: docSnapshot.id,
+            name: data.name || `Zone ${docSnapshot.id}`,
+            code: data.code || docSnapshot.id.toUpperCase(),
             description: data.description || '',
-            color: data.color || '#10b981',
+            color: color,
             boundaries: boundaries,
             area: finalArea,
             treeCount: data.treeCount || 0,
@@ -156,9 +169,19 @@ export default function SimplifiedZoneManagement() {
             createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date(),
             needsAttention
           } as Zone
+        }
+
+        // 1. Process legacy global zones first
+        legacyZonesSnapshot.docs.forEach(doc => {
+          mergedMap.set(doc.id, processDoc(doc))
         })
 
-        setZones(zonesData)
+        // 2. Overwrite/merge with new farm-scoped zones
+        farmZonesSnapshot.docs.forEach(doc => {
+          mergedMap.set(doc.id, processDoc(doc))
+        })
+
+        setZones(Array.from(mergedMap.values()))
       } catch (error) {
         setZones([])
       } finally {
@@ -221,11 +244,19 @@ export default function SimplifiedZoneManagement() {
       case 'inspect':
         if (!currentFarm?.id) return
         try {
-          // Update in Firebase
-          const zoneRef = doc(db, 'farms', currentFarm.id, 'zones', zone.id)
-          await updateDoc(zoneRef, {
+          // Update in Firebase (both paths for backward compatibility)
+          const farmZoneRef = doc(db, 'farms', currentFarm.id, 'zones', zone.id)
+          await updateDoc(farmZoneRef, {
             lastInspectionDate: new Date()
           })
+          try {
+            const legacyZoneRef = doc(db, 'zones', zone.id)
+            await updateDoc(legacyZoneRef, {
+              lastInspectionDate: new Date()
+            })
+          } catch (e) {
+            console.warn('Failed to update legacy zone path:', e)
+          }
           
           // Update local state
           setZones(prev => prev.map(z =>

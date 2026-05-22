@@ -8,7 +8,7 @@ import * as turf from '@turf/turf'
 import { useIOSOptimizedGPS, IOSGPSPosition } from '@/lib/ios-optimized-gps'
 import { PlusCircleIcon, XMarkIcon, MapPinIcon, ArrowPathIcon, CameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
-import { createTree } from '@/lib/firestore'
+import { createTree, updateTree } from '@/lib/firestore'
 import { compressImageSmart } from '@/lib/photo-compression'
 import { uploadFile } from '@/lib/storage'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
@@ -17,6 +17,7 @@ import { AuditService } from '@/lib/audit-service'
 
 // Fix Leaflet icons
 if (typeof window !== 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('leaflet/dist/leaflet.css')
   delete (L.Icon.Default.prototype as any)._getIconUrl
   L.Icon.Default.mergeOptions({
@@ -40,6 +41,7 @@ interface OnFarmWorkModeProps {
   onClose: () => void
   onTreeSelect: (tree: Tree) => void
   onTreeCreated?: (tree: Tree) => void
+  onTreeUpdated?: (tree: Tree) => void
   farmId: string
 }
 
@@ -60,7 +62,7 @@ function AutoCenterMap({ userPosition }: { userPosition: { lat: number, lng: num
   return null
 }
 
-export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, onTreeCreated, farmId }: OnFarmWorkModeProps) {
+export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, onTreeCreated, onTreeUpdated, farmId }: OnFarmWorkModeProps) {
   const { user } = useSimpleAuth()
   const gps = useIOSOptimizedGPS()
   
@@ -85,6 +87,9 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
   const [cameraActive, setCameraActive] = useState(false)
   const [nearestZone, setNearestZone] = useState<Zone | null>(null)
   const [selectedZone, setSelectedZone] = useState<string>('')
+  const [ambiguousTrees, setAmbiguousTrees] = useState<Tree[] | null>(null)
+  const [showAmbiguityResolver, setShowAmbiguityResolver] = useState(false)
+  const [quickUpdatingGPS, setQuickUpdatingGPS] = useState<string | null>(null)
   
   // Find nearest zone when user position changes
   useEffect(() => {
@@ -316,11 +321,86 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
     }
   }, [])
 
+  const handleQuickUpdateGPS = async (tree: Tree) => {
+    if (!user || !userPosition) {
+      alert('Không tìm thấy thông tin người dùng hoặc vị trí GPS hiện tại.')
+      return
+    }
+
+    const confirmUpdate = window.confirm(
+      `Bạn có chắc chắn muốn cập nhật tọa độ của cây "${tree.name || tree.variety}" về vị trí hiện tại của bạn?\n` +
+      `Độ chính xác GPS hiện tại: ±${userPosition.accuracy.toFixed(0)}m.`
+    )
+    if (!confirmUpdate) return
+
+    setQuickUpdatingGPS(tree.id)
+    try {
+      await updateTree(farmId, tree.id, user.uid, {
+        latitude: userPosition.lat,
+        longitude: userPosition.lng,
+        gpsAccuracy: userPosition.accuracy,
+        updatedAt: new Date()
+      })
+      
+      const updatedTree = {
+        ...tree,
+        latitude: userPosition.lat,
+        longitude: userPosition.lng,
+        gpsAccuracy: userPosition.accuracy,
+        updatedAt: new Date()
+      }
+
+      onTreeUpdated?.(updatedTree)
+      alert('Cập nhật tọa độ GPS thành công!')
+    } catch (error) {
+      console.error('Error updating tree GPS:', error)
+      alert('Lỗi cập nhật GPS. Vui lòng thử lại.')
+    } finally {
+      setQuickUpdatingGPS(null)
+    }
+  }
+
+  const handleMarkerClick = (clickedTree: Tree) => {
+    if (!clickedTree.latitude || !clickedTree.longitude) {
+      onTreeSelect(clickedTree)
+      return
+    }
+
+    const clickedPoint = turf.point([clickedTree.longitude, clickedTree.latitude])
+    
+    // Find all trees within 4 meters of the clicked tree
+    const overlapping = trees.filter(t => {
+      if (!t.latitude || !t.longitude) return false
+      const distance = turf.distance(
+        clickedPoint,
+        turf.point([t.longitude, t.latitude]),
+        { units: 'meters' }
+      )
+      return distance <= 4
+    })
+
+    if (overlapping.length > 1) {
+      setAmbiguousTrees(overlapping)
+      setShowAmbiguityResolver(true)
+    } else {
+      onTreeSelect(clickedTree)
+    }
+  }
+
   // Handle create new tree with photo upload
   const handleCreateTree = useCallback(async () => {
     if (!user || !userPosition || !newTreeData.variety || !newTreeData.zoneName) {
       alert('Vui lòng chọn giống cây và khu vực')
       return
+    }
+
+    if (userPosition.accuracy > 15) {
+      const confirmSave = window.confirm(
+        `⚠️ Cảnh báo: Độ chính xác GPS hiện tại khá kém (±${userPosition.accuracy.toFixed(0)}m).\n` +
+        `Tọa độ lưu lại có thể bị lệch nhiều so với thực tế.\n\n` +
+        `Bạn có muốn tiếp tục tạo cây tại vị trí này không?`
+      )
+      if (!confirmSave) return
     }
 
     setCreating(true)
@@ -506,6 +586,13 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
           opacity: 0 !important;
           pointer-events: none !important;
         }
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        .animate-slide-up {
+          animation: slideUp 0.3s ease-out forwards;
+        }
       `}</style>
       
       <div className="fixed inset-0 bg-white flex flex-col" style={{ zIndex: 9999 }}>
@@ -545,21 +632,38 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
               icon={L.divIcon({
                 className: 'user-marker',
                 html: `
-                  <div style="
-                    width: 24px;
-                    height: 24px;
-                    background: radial-gradient(circle, #3b82f6 30%, rgba(59, 130, 246, 0.3) 70%);
-                    border-radius: 50%;
-                    border: 3px solid white;
-                    box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
-                    animation: pulse 2s infinite;
-                  "></div>
-                  <style>
-                    @keyframes pulse {
-                      0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
-                      50% { box-shadow: 0 0 30px rgba(59, 130, 246, 1); }
-                    }
-                  </style>
+                  <div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
+                    ${userPosition.heading !== undefined && userPosition.heading !== null && !isNaN(userPosition.heading) ? `
+                      <svg style="
+                        position: absolute;
+                        width: 80px;
+                        height: 80px;
+                        top: -25px;
+                        left: -25px;
+                        transform: rotate(${userPosition.heading}deg);
+                        transform-origin: center center;
+                        pointer-events: none;
+                      " viewBox="0 0 100 100">
+                        <defs>
+                          <linearGradient id="beamGradient" x1="0%" y1="100%" x2="0%" y2="0%">
+                            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.6"/>
+                            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+                          </linearGradient>
+                        </defs>
+                        <path d="M 50 50 L 32 15 L 68 15 Z" fill="url(#beamGradient)"/>
+                      </svg>
+                    ` : ''}
+                    <div style="
+                      position: relative;
+                      width: 20px;
+                      height: 20px;
+                      background: radial-gradient(circle, #3b82f6 30%, rgba(59, 130, 246, 0.3) 70%);
+                      border-radius: 50%;
+                      border: 3px solid white;
+                      box-shadow: 0 0 15px rgba(59, 130, 246, 0.8);
+                      z-index: 10;
+                    "></div>
+                  </div>
                 `,
                 iconSize: [30, 30],
                 iconAnchor: [15, 15]
@@ -585,7 +689,7 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
                 position={[tree.latitude!, tree.longitude!]}
                 icon={getTreeMarkerIcon(tree)}
                 eventHandlers={{
-                  click: () => onTreeSelect(tree)
+                  click: () => handleMarkerClick(tree)
                 }}
               />
             ))}
@@ -645,34 +749,64 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
               Cây gần bạn ({nearbyTrees.length})
             </h3>
             <div className="space-y-2">
-              {nearbyTrees.map(tree => (
-                <button
-                  key={tree.id}
-                  onClick={() => onTreeSelect(tree)}
-                  className="w-full bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-200 rounded-xl p-4 hover:border-blue-400 active:scale-98 transition-all text-left"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
+              {nearbyTrees.map(tree => {
+                const canQuickUpdate = tree.distance <= 15
+                return (
+                  <div
+                    key={tree.id}
+                    className="w-full bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-200 rounded-xl p-4 hover:border-blue-300 transition-all flex items-center justify-between"
+                  >
+                    {/* Clickable details area */}
+                    <button
+                      onClick={() => onTreeSelect(tree)}
+                      className="flex-1 text-left focus:outline-none min-touch"
+                    >
                       <div className="font-bold text-gray-900 text-lg">
                         {tree.name || tree.variety}
                       </div>
                       <div className="text-sm text-gray-600">
                         {tree.variety} • {tree.zoneName || tree.zoneCode}
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className={`text-2xl font-bold ${
-                        tree.distance < 10 ? 'text-red-600' :
-                        tree.distance < 20 ? 'text-orange-600' :
-                        'text-green-600'
-                      }`}>
-                        {tree.distance.toFixed(1)}m
+                      <div className="text-xs text-gray-500 mt-1 flex items-center space-x-1">
+                        <span>Khoảng cách:</span>
+                        <span className={`font-semibold ${
+                          tree.distance < 10 ? 'text-red-600' :
+                          tree.distance < 20 ? 'text-orange-600' :
+                          'text-green-600'
+                        }`}>
+                          {tree.distance.toFixed(1)}m
+                        </span>
                       </div>
-                      <div className="text-xs text-gray-500">khoảng cách</div>
+                    </button>
+
+                    {/* Quick GPS update button */}
+                    <div className="flex items-center space-x-2 ml-4">
+                      <button
+                        disabled={!canQuickUpdate || quickUpdatingGPS === tree.id}
+                        onClick={() => handleQuickUpdateGPS(tree)}
+                        className={`px-3 py-2 rounded-lg font-semibold text-xs transition-all flex items-center space-x-1 ${
+                          canQuickUpdate
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white active:scale-95 shadow-sm'
+                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
+                        title={canQuickUpdate ? "Cập nhật GPS về vị trí hiện tại của bạn" : "Đứng gần hơn (<= 15m) để cập nhật GPS"}
+                      >
+                        {quickUpdatingGPS === tree.id ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></div>
+                            <span className="hidden sm:inline">Đang lưu...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowPathIcon className="h-3.5 w-3.5" />
+                            <span>Cập nhật GPS</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
-                </button>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
@@ -918,14 +1052,27 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
               </div>
 
               {userPosition && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <div className="text-xs text-blue-700 font-semibold mb-1">📍 Vị trí GPS:</div>
-                  <div className="text-xs font-mono text-blue-900">
-                    {userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}
+                <div className="space-y-2">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="text-xs text-blue-700 font-semibold mb-1">📍 Vị trí GPS:</div>
+                    <div className="text-xs font-mono text-blue-900">
+                      {userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}
+                    </div>
+                    <div className="text-xs text-blue-600 mt-1">
+                      Độ chính xác: ±{userPosition.accuracy.toFixed(0)}m
+                    </div>
                   </div>
-                  <div className="text-xs text-blue-600 mt-1">
-                    Độ chính xác: ±{userPosition.accuracy.toFixed(0)}m
-                  </div>
+                  {userPosition.accuracy > 15 && (
+                    <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start space-x-2 shadow-sm animate-pulse">
+                      <span className="text-lg">⚠️</span>
+                      <div className="text-xs">
+                        <div className="font-bold text-amber-800">Tín hiệu GPS yếu</div>
+                        <div className="text-amber-700 mt-0.5">
+                          Độ chính xác ±{userPosition.accuracy.toFixed(0)}m (kém hơn 15m). Tọa độ lưu lại có thể bị lệch.
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -968,6 +1115,90 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
           </div>
         )}
       </div>
+
+      {/* Overlapping Trees Resolver Panel */}
+      {showAmbiguityResolver && ambiguousTrees && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center" style={{ zIndex: 10002 }}>
+          <div className="bg-white rounded-t-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up pb-6">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold flex items-center">
+                <MapPinIcon className="h-6 w-6 mr-2 animate-bounce" />
+                Chọn cây chính xác (Trùng vị trí)
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAmbiguityResolver(false)
+                  setAmbiguousTrees(null)
+                }}
+                className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            
+            {/* Body */}
+            <div className="p-4 space-y-3 max-h-[50vh] overflow-y-auto">
+              <p className="text-sm text-gray-500 mb-2">
+                Phát hiện {ambiguousTrees.length} cây ở khoảng cách rất gần nhau. Vui lòng chọn cây bạn muốn thao tác:
+              </p>
+              
+              <div className="space-y-2">
+                {ambiguousTrees.map(tree => {
+                  // Calculate distance from user position if available
+                  let distanceText = 'Không rõ khoảng cách'
+                  if (userPosition && tree.latitude && tree.longitude) {
+                    const userPoint = turf.point([userPosition.lng, userPosition.lat])
+                    const treePoint = turf.point([tree.longitude, tree.latitude])
+                    const dist = turf.distance(userPoint, treePoint, { units: 'meters' })
+                    distanceText = `${dist.toFixed(1)}m`
+                  }
+                  
+                  return (
+                    <button
+                      key={tree.id}
+                      onClick={() => {
+                        onTreeSelect(tree)
+                        setShowAmbiguityResolver(false)
+                        setAmbiguousTrees(null)
+                      }}
+                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-4 hover:border-blue-400 active:scale-98 transition-all text-left flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="font-bold text-slate-800 text-lg">
+                          {tree.name || tree.variety}
+                        </div>
+                        <div className="text-sm text-slate-500">
+                          {tree.variety} • {tree.zoneName || tree.zoneCode}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-blue-600">
+                          {distanceText}
+                        </div>
+                        <div className="text-xs text-slate-400">cách bạn</div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            
+            {/* Footer */}
+            <div className="px-4 pt-2">
+              <button
+                onClick={() => {
+                  setShowAmbiguityResolver(false)
+                  setAmbiguousTrees(null)
+                }}
+                className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl active:scale-95 transition-all text-center"
+              >
+                Hủy bỏ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hidden file input */}
       <input

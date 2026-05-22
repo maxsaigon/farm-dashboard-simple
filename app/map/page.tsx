@@ -451,17 +451,26 @@ function MapPageContent() {
 
   if (workModeActive) {
     return (
-      <OnFarmWorkMode
-        trees={trees}
-        zones={zones}
-        onClose={() => setWorkModeActive(false)}
-        onTreeSelect={handleTreeSelect}
-        onTreeCreated={(newTree) => {
-          setTrees(prev => [...prev, newTree])
-          loadData()
-        }}
-        farmId={displayFarm.id}
-      />
+      <>
+        <OnFarmWorkMode
+          trees={trees}
+          zones={zones}
+          onClose={() => setWorkModeActive(false)}
+          onTreeSelect={handleTreeSelect}
+          onTreeCreated={(newTree) => {
+            setTrees(prev => [...prev, newTree])
+            loadData()
+          }}
+          onTreeUpdated={handleTreeUpdate}
+          farmId={displayFarm.id}
+        />
+        <FullscreenTreeShowcase
+          tree={selectedTree}
+          isOpen={showFullscreenTree}
+          onClose={handleCloseFullscreenTree}
+          onSaved={handleTreeUpdate}
+        />
+      </>
     )
   }
 

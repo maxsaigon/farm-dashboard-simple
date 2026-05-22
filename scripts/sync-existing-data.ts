@@ -7,15 +7,20 @@
 
 import { initializeApp } from 'firebase/app'
 import { getFirestore, collection, getDocs, doc, setDoc, query, where } from 'firebase/firestore'
+import * as dotenv from 'dotenv'
+import * as path from 'path'
+
+// Load environment variables from .env.local
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
 // Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyBEMsHC6A6azD2AFrCgW36j2s0H-ZcxrNw",
-  authDomain: "lettest-ecom.firebaseapp.com",
-  projectId: "lettest-ecom",
-  storageBucket: "lettest-ecom.firebasestorage.app",
-  messagingSenderId: "832836231786",
-  appId: "1:832836231786:web:bc029ed19ed87ea3f0e013"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 }
 
 async function analyzeDatabaseStructure() {

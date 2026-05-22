@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { collection, getDocs, doc, setDoc, deleteDoc, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 
@@ -20,6 +21,19 @@ interface Zone {
 interface Farm {
   id: string
   name: string
+}
+
+function hexToColorData(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  if (result) {
+    return {
+      red: parseInt(result[1], 16) / 255,
+      green: parseInt(result[2], 16) / 255,
+      blue: parseInt(result[3], 16) / 255,
+      alpha: 1.0
+    }
+  }
+  return { red: 0.23, green: 0.51, blue: 0.96, alpha: 1.0 }
 }
 
 export default function AdminZonesPage() {
@@ -64,27 +78,78 @@ export default function AdminZonesPage() {
     try {
       log(`Loading zones for farm: ${farmId}`)
       
-      // Try global zones collection
-      const zonesRef = collection(db, 'zones')
-      const zonesQuery = query(zonesRef, where('farmId', '==', farmId))
-      const zonesSnapshot = await getDocs(zonesQuery)
+      // Try new farm-scoped zones collection first
+      const farmZonesRef = collection(db, 'farms', farmId, 'zones')
+      const farmZonesSnapshot = await getDocs(farmZonesRef)
       
-      const zonesData = zonesSnapshot.docs.map(doc => {
+      // Also try legacy global zones collection
+      const legacyZonesRef = collection(db, 'zones')
+      const legacyZonesQuery = query(legacyZonesRef, where('farmId', '==', farmId))
+      const legacyZonesSnapshot = await getDocs(legacyZonesQuery)
+      
+      const mergedMap = new Map<string, Zone>()
+      
+      // 1. Process legacy zones first
+      legacyZonesSnapshot.docs.forEach(doc => {
         const data = doc.data()
-        return {
+        const rawBoundary = data.boundary || data.boundaries || data.coordinates || data.polygon || data.points || []
+        
+        let color = data.color
+        if (!color && data.colorData) {
+          const { red, green, blue } = data.colorData
+          const toHex = (c: number) => {
+            const hex = Math.round((c || 0) * 255).toString(16)
+            return hex.length === 1 ? '0' + hex : hex
+          }
+          color = `#${toHex(red || 0)}${toHex(green || 0)}${toHex(blue || 0)}`
+        }
+        if (!color) color = '#3b82f6'
+
+        mergedMap.set(doc.id, {
           id: doc.id,
           name: data.name || `Zone ${doc.id.slice(0, 8)}`,
-          color: data.color || '#3b82f6',
-          boundary: data.boundary || [],
-          farmId: data.farmId,
+          color: color,
+          boundary: Array.isArray(rawBoundary) ? rawBoundary : [],
+          farmId: data.farmId || farmId,
           treeCount: data.treeCount || 0,
           area: data.area || 0,
           isActive: data.isActive !== false,
           notes: data.notes || '',
           createdAt: data.createdAt?.toDate?.() || new Date()
+        })
+      })
+
+      // 2. Overwrite/merge with new farm-scoped zones
+      farmZonesSnapshot.docs.forEach(doc => {
+        const data = doc.data()
+        const rawBoundary = data.boundaries || data.boundary || data.coordinates || data.polygon || data.points || []
+        
+        let color = data.color
+        if (!color && data.colorData) {
+          const { red, green, blue } = data.colorData
+          const toHex = (c: number) => {
+            const hex = Math.round((c || 0) * 255).toString(16)
+            return hex.length === 1 ? '0' + hex : hex
+          }
+          color = `#${toHex(red || 0)}${toHex(green || 0)}${toHex(blue || 0)}`
         }
+        if (!color) color = '#3b82f6'
+
+        mergedMap.set(doc.id, {
+          id: doc.id,
+          name: data.name || `Zone ${doc.id.slice(0, 8)}`,
+          color: color,
+          boundary: Array.isArray(rawBoundary) ? rawBoundary : [],
+          farmId: farmId,
+          treeCount: data.treeCount || 0,
+          area: data.area || 0,
+          isActive: data.isActive !== false,
+          notes: data.notes || '',
+          createdAt: data.createdAt?.toDate?.() || new Date()
+        })
       })
       
+      const zonesData = Array.from(mergedMap.values())
       setZones(zonesData)
       log(`Loaded ${zonesData.length} zones`)
     } catch (error) {
@@ -108,7 +173,11 @@ export default function AdminZonesPage() {
     
     try {
       log(`Deleting zone: ${zoneName} (${zoneId})`)
+      // Delete from new path
+      await deleteDoc(doc(db, 'farms', selectedFarm, 'zones', zoneId))
+      // Delete from legacy path
       await deleteDoc(doc(db, 'zones', zoneId))
+      
       setZones(prev => prev.filter(z => z.id !== zoneId))
       log(`Zone deleted successfully: ${zoneName}`)
     } catch (error) {
@@ -120,17 +189,35 @@ export default function AdminZonesPage() {
     try {
       log(`Duplicating zone: ${zone.name}`)
       const newZoneRef = doc(collection(db, 'zones'))
+      const newId = newZoneRef.id
       const newZone = {
         ...zone,
-        id: newZoneRef.id,
+        id: newId,
         name: `${zone.name} (Copy)`,
         createdAt: new Date()
       }
       
-      await setDoc(newZoneRef, {
-        ...newZone,
-        createdAt: new Date()
-      })
+      const colorData = hexToColorData(newZone.color)
+      const payload = {
+        id: newId,
+        name: newZone.name,
+        color: newZone.color,
+        colorData,
+        boundary: newZone.boundary,
+        boundaries: newZone.boundary,
+        farmId: selectedFarm,
+        treeCount: newZone.treeCount,
+        area: newZone.area,
+        isActive: newZone.isActive,
+        notes: newZone.notes || '',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+      
+      // Write to new path
+      await setDoc(doc(db, 'farms', selectedFarm, 'zones', newId), payload)
+      // Write to legacy path
+      await setDoc(doc(db, 'zones', newId), payload)
       
       setZones(prev => [...prev, newZone])
       log(`Zone duplicated successfully: ${newZone.name}`)
@@ -145,7 +232,10 @@ export default function AdminZonesPage() {
     
     try {
       log(`Clearing all zones for farm: ${selectedFarm}`)
-      const deletePromises = zones.map(zone => deleteDoc(doc(db, 'zones', zone.id)))
+      const deletePromises = zones.map(zone => [
+        deleteDoc(doc(db, 'farms', selectedFarm, 'zones', zone.id)),
+        deleteDoc(doc(db, 'zones', zone.id))
+      ]).flat()
       await Promise.all(deletePromises)
       setZones([])
       log(`All zones cleared successfully`)
@@ -161,18 +251,18 @@ export default function AdminZonesPage() {
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold text-gray-900">🔧 Super Admin - Zone Management</h1>
             <div className="flex items-center space-x-4">
-              <a
+              <Link
                 href="/map"
                 className="text-blue-600 hover:text-blue-700 font-medium"
               >
                 → View Map
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/"
                 className="text-gray-600 hover:text-gray-700 font-medium"
               >
                 ← Back
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -392,20 +482,47 @@ function ZoneModal({ zone, farmId, onClose, onSave, onLog }: ZoneModalProps) {
         createdAt: zone?.createdAt || new Date()
       }
 
+      const colorData = hexToColorData(formData.color)
+      const payload = {
+        id: zoneData.id,
+        name: zoneData.name,
+        color: zoneData.color,
+        colorData,
+        boundary: zoneData.boundary,
+        boundaries: zoneData.boundary,
+        farmId: farmId,
+        treeCount: zoneData.treeCount,
+        area: zoneData.area,
+        isActive: zoneData.isActive,
+        notes: zoneData.notes || '',
+        createdAt: zoneData.createdAt,
+        updatedAt: new Date()
+      }
+
+      let activeId = zone?.id
       if (zone) {
         // Update existing zone
         onLog(`Updating zone: ${formData.name}`)
-        await setDoc(doc(db, 'zones', zone.id), {
-          ...zoneData,
-          updatedAt: new Date()
-        })
+        // Write to new path
+        await setDoc(doc(db, 'farms', farmId, 'zones', zone.id), payload)
+        // Write to legacy path
+        await setDoc(doc(db, 'zones', zone.id), payload)
       } else {
         // Create new zone
         onLog(`Creating zone: ${formData.name}`)
         const newZoneRef = doc(collection(db, 'zones'))
-        zoneData.id = newZoneRef.id
-        await setDoc(newZoneRef, {
-          ...zoneData,
+        activeId = newZoneRef.id
+        zoneData.id = activeId
+        payload.id = activeId
+        
+        // Write to new path
+        await setDoc(doc(db, 'farms', farmId, 'zones', activeId), {
+          ...payload,
+          createdAt: new Date()
+        })
+        // Write to legacy path
+        await setDoc(doc(db, 'zones', activeId), {
+          ...payload,
           createdAt: new Date()
         })
       }

@@ -12,7 +12,9 @@ import { useIOSOptimizedGPS, IOSGPSPosition } from '@/lib/ios-optimized-gps'
 
 // Import CSS files
 if (typeof window !== 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('leaflet/dist/leaflet.css')
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('leaflet-draw/dist/leaflet.draw.css')
 }
 
@@ -20,6 +22,7 @@ if (typeof window !== 'undefined') {
 let LDraw: any = null
 if (typeof window !== 'undefined') {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     LDraw = require('leaflet-draw')
   } catch (e) {
     console.warn('leaflet-draw not available:', e)
@@ -356,6 +359,7 @@ const DrawingControls = memo(({
 
   return null
 })
+DrawingControls.displayName = 'DrawingControls'
 
 // Calculate optimal center and zoom based on data
 const calculateMapBounds = (trees: Tree[], zones: Zone[]) => {

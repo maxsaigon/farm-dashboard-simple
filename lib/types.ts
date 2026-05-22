@@ -122,6 +122,10 @@ export interface Investment {
   recurringPeriod?: string
   farmId: string
   images?: string[] // Array of image URLs/names stored in Firestore
+  createdBy?: string // User who created the investment
+  userId?: string // Deprecated, stored for compatibility
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 // Fertilizer calculations
@@ -141,21 +145,32 @@ export interface FertilizerCalculation {
 export interface FarmZone {
   id: string
   name: string
-  colorData: {
+  code?: string
+  description?: string
+  color?: string // Hex color string
+  colorData?: {
     red: number
     green: number
     blue: number
     alpha: number
   }
-  boundary: Array<{
+  boundaries?: Array<{
+    latitude: number
+    longitude: number
+  }>
+  boundary?: Array<{
     latitude: number
     longitude: number
   }>
   treeCount: number
+  area?: number // square meters or hectares
+  isActive?: boolean
+  needsAttention?: boolean
   notes: string
   farmId?: string
-  updatedAt: number
-  version: number
+  createdAt?: Date
+  updatedAt?: Date | number
+  version?: number
 }
 
 // Dashboard statistics

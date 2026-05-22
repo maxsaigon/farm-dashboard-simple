@@ -7,6 +7,11 @@
 
 import { initializeApp } from 'firebase/app'
 import { getFirestore, doc, setDoc } from 'firebase/firestore'
+import * as dotenv from 'dotenv'
+import * as path from 'path'
+
+// Load environment variables from .env.local
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
 // Firebase config - using environment variables or defaults
 const firebaseConfig = {

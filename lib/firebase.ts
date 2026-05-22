@@ -13,14 +13,14 @@ const fallbackConfig = {
   appId: "1:123456789:web:abcdef123456"
 }
 
-// Use direct config that we know works
+// Load Firebase configuration dynamically from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyBEMsHC6A6azD2AFrCgW36j2s0H-ZcxrNw",
-  authDomain: "lettest-ecom.firebaseapp.com", 
-  projectId: "lettest-ecom",
-  storageBucket: "lettest-ecom.firebasestorage.app",
-  messagingSenderId: "832836231786",
-  appId: "1:832836231786:web:bc029ed19ed87ea3f0e013"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || fallbackConfig.apiKey,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || fallbackConfig.authDomain,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || fallbackConfig.projectId,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || fallbackConfig.storageBucket,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || fallbackConfig.messagingSenderId,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || fallbackConfig.appId
 }
 
 // Validate Firebase configuration
@@ -71,6 +71,6 @@ try {
   throw error
 }
 
-export const isDemoConfig = false
+export const isDemoConfig = !process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'demo-api-key'
 export { db, auth, storage }
 export default app

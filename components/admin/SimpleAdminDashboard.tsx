@@ -73,8 +73,13 @@ export default function SimpleAdminDashboard() {
 
   const loadStats = async () => {
     try {
-      // Load users
-      const usersSnapshot = await getDocs(collection(db, 'users'))
+      // Load users, farms, and farm access in parallel
+      const [usersSnapshot, farmsSnapshot, accessSnapshot] = await Promise.all([
+        getDocs(collection(db, 'users')),
+        getDocs(collection(db, 'farms')),
+        getDocs(collection(db, 'farmAccess'))
+      ])
+
       const users = usersSnapshot.docs.map(doc => {
         const data = doc.data()
         return {
@@ -83,12 +88,7 @@ export default function SimpleAdminDashboard() {
         }
       })
 
-      // Load farms
-      const farmsSnapshot = await getDocs(collection(db, 'farms'))
       const farms = farmsSnapshot.docs.map(doc => doc.data())
-
-      // Load farm access
-      const accessSnapshot = await getDocs(collection(db, 'farmAccess'))
 
       // Calculate recent users (30 days)
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
@@ -102,21 +102,25 @@ export default function SimpleAdminDashboard() {
       let totalPhotos = 0
       let problemTrees = 0
 
-      // For each farm, try to count trees
-      for (const farm of farms) {
+      // Fetch trees for all farms in parallel to avoid N+1 query pattern
+      const treesPromises = farms.map(async (farm) => {
         try {
           const treesSnapshot = await getDocs(collection(db, 'farms', farm.id || 'unknown', 'trees'))
-          const farmTrees = treesSnapshot.docs.map(doc => doc.data())
-          
-          totalTrees += farmTrees.length
-          problemTrees += farmTrees.filter(t => t.needsAttention || t.healthStatus === 'Poor').length
-
-          // Estimate photos (simplified)
-          totalPhotos += farmTrees.length * 2 // Assume 2 photos per tree on average
+          return treesSnapshot.docs.map(doc => doc.data())
         } catch (error) {
           // Skip if farm doesn't have trees collection
           console.log(`No trees collection for farm ${farm.id}`)
+          return []
         }
+      })
+
+      const farmsTrees = await Promise.all(treesPromises)
+
+      for (const farmTrees of farmsTrees) {
+        totalTrees += farmTrees.length
+        problemTrees += farmTrees.filter(t => t.needsAttention || t.healthStatus === 'Poor').length
+        // Estimate photos (simplified)
+        totalPhotos += farmTrees.length * 2 // Assume 2 photos per tree on average
       }
 
       setStats({
@@ -136,13 +140,23 @@ export default function SimpleAdminDashboard() {
 
   const loadRecentActivity = async () => {
     try {
-      // Load recent users
       const usersQuery = query(
         collection(db, 'users'),
         orderBy('createdAt', 'desc'),
         limit(5)
       )
-      const usersSnapshot = await getDocs(usersQuery)
+      
+      const farmsQuery = query(
+        collection(db, 'farms'),
+        orderBy('createdDate', 'desc'),
+        limit(3)
+      )
+
+      // Load recent users and farms in parallel
+      const [usersSnapshot, farmsSnapshot] = await Promise.all([
+        getDocs(usersQuery),
+        getDocs(farmsQuery)
+      ])
       
       const activities: RecentActivity[] = []
       
@@ -157,14 +171,6 @@ export default function SimpleAdminDashboard() {
         })
       })
 
-      // Load recent farms
-      const farmsQuery = query(
-        collection(db, 'farms'),
-        orderBy('createdDate', 'desc'),
-        limit(3)
-      )
-      const farmsSnapshot = await getDocs(farmsQuery)
-      
       farmsSnapshot.docs.forEach(doc => {
         const farmData = doc.data()
         activities.push({

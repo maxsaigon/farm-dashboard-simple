@@ -1,0 +1,7 @@
+{
+  "plugins": {
+    "installed": [
+      "superpowers@claude-plugins-official"
+    ]
+  }
+}
