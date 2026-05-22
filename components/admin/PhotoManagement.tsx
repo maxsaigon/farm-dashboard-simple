@@ -117,7 +117,7 @@ export default function PhotoManagement() {
   }
 
   const getFilteredAndSortedPhotos = () => {
-    let filtered = photos.filter(photo => {
+    const filtered = photos.filter(photo => {
       const matchesSearch = photo.filename?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            photo.userNotes?.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesFarm = filterFarm === 'all' || photo.farmId === filterFarm

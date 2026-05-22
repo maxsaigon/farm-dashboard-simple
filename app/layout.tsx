@@ -8,6 +8,7 @@ import BottomTabBar from "@/components/ui/BottomTabBar";
 import OfflineIndicator from "@/components/ui/OfflineIndicator";
 import EdgeSwipeBack from "@/components/EdgeSwipeBack";
 import MobileOnlyWrapper from "@/components/MobileOnlyWrapper";
+import LocalTestHarness from "@/components/local-test-harness";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -134,6 +135,7 @@ export default function RootLayout({
             <OfflineIndicator />
             {children}
             <BottomTabBar />
+            <LocalTestHarness />
           </SimpleAuthProvider>
         </MobileOnlyWrapper>
       </body>

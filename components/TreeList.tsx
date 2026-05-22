@@ -59,7 +59,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
     try {
       const unsubscribe = subscribeToTrees(currentFarm.id, user.uid, async (updatedTrees) => {
         // Show real data or empty list if no trees loaded
-        let allTrees = [...updatedTrees]
+        const allTrees = [...updatedTrees]
 
         // Check for missing trees from iOS collection and include them
         try {

@@ -88,8 +88,6 @@ export default function InvestmentManagement() {
   const { user, hasPermission, currentFarm } = useSimpleAuth()
   const [investments, setInvestments] = useState<Investment[]>([])
   const [farmMembers, setFarmMembers] = useState<Array<{userId: string, displayName?: string, email?: string}>>([])
-  const investmentsRef = useRef<Map<string, Investment>>(new Map())
-
   const [loading, setLoading] = useState(true)
   const [showInvestmentModal, setShowInvestmentModal] = useState(false)
   
@@ -145,46 +143,22 @@ export default function InvestmentManagement() {
     }
   }, [hasPermission, currentFarm])
 
-  // Realtime subscription for investments from all farm members
+  // Realtime subscription for farm-scoped investments (single query)
   useEffect(() => {
     if (!user || !currentFarm?.id || !hasPermission('read')) {
       setInvestments([])
       return
     }
 
-    const unsubscribes: (() => void)[] = []
-
-    const updateCombinedInvestments = () => {
-      const combined = Array.from(investmentsRef.current.values())
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      setInvestments(combined)
-    }
-
-    // Subscribe to current user's investments
-    const unsubscribeCurrentUser = subInvestments(user.uid, currentFarm.id, (items) => {
-      items.forEach(item => investmentsRef.current.set(item.id, item as unknown as Investment))
-      updateCombinedInvestments()
-    })
-    unsubscribes.push(unsubscribeCurrentUser)
-
-    // Subscribe to other farm members' investments
-    farmMembers.forEach(member => {
-      if (member.userId !== user.uid) {
-        const unsubscribeOtherUser = subInvestments(member.userId, currentFarm.id, (items) => {
-          items.forEach(item => investmentsRef.current.set(item.id, item as unknown as Investment))
-          updateCombinedInvestments()
-        })
-        unsubscribes.push(unsubscribeOtherUser)
-      }
+    console.log(`Setting up single farm-scoped subscription for farm: ${currentFarm.id}`)
+    const unsubscribe = subInvestments(user.uid, currentFarm.id, (items) => {
+      setInvestments(items as unknown as Investment[])
     })
 
     return () => {
-      investmentsRef.current.clear()
-      unsubscribes.forEach(unsubscribe => {
-        try { unsubscribe && unsubscribe() } catch {}
-      })
+      try { if (unsubscribe) unsubscribe() } catch {}
     }
-  }, [user?.uid, currentFarm?.id, hasPermission, farmMembers])
+  }, [user?.uid, currentFarm?.id, hasPermission])
 
   // Fertilizer calculations hidden in demo
 

@@ -4,16 +4,167 @@
 
 Farm Manager là một ứng dụng di động web (PWA) được thiết kế để quản lý trang trại sầu riêng thông minh. Ứng dụng hỗ trợ chụp ảnh cây trồng bằng AI, theo dõi vị trí GPS thời gian thực, và quản lý dữ liệu nông trại một cách hiệu quả.
 
-## Thông tin Dự án
+## Bản đồ Chi tiết Ứng dụng (Architecture & Application Maps)
 
-- **Tên dự án**: farm-dashboard-simple
-- **Phiên bản**: 0.1.0
-- **Framework**: Next.js 14 với React 18
-- **Database**: Firebase Firestore
-- **Authentication**: Firebase Auth
-- **Maps**: Leaflet với OpenStreetMap
-- **Styling**: Tailwind CSS
-- **Ngôn ngữ**: TypeScript
+Dưới đây là các bản đồ trực quan mô tả cấu trúc hệ thống, luồng dữ liệu điều hướng và cấu trúc cơ sở dữ liệu của ứng dụng.
+
+### 1. Sơ đồ Kiến trúc Hệ thống (System Architecture)
+Sơ đồ này mô tả cấu trúc phân lớp của ứng dụng, sự tương tác giữa client-side (Next.js), database (Firebase), và các script CLI quản trị ở môi trường local.
+
+```mermaid
+graph TD
+    subgraph Client ["Trình duyệt / Thiết bị khách (Next.js PWA)"]
+        UI["UI Pages (app Router)"] 
+        UI --> AuthGuard["AuthGuard (Bảo vệ Route)"]
+        AuthGuard --> Contexts["Auth Context (optimized-auth-context)"]
+        Contexts --> Components["React Components (UnifiedMap, BottomSheet, UI Elements)"]
+        Components --> LibServices["Services (farm-service, photo-service, etc.)"]
+        LibServices --> ClientSDK["Firebase Web SDK Client"]
+    end
+
+    subgraph Firebase ["Firebase Cloud Platform"]
+        Auth["Firebase Authentication (Xác thực)"]
+        Firestore["Firestore Database (Lưu trữ NoSQL)"]
+        Storage["Firebase Storage (Lưu trữ Hình ảnh Cây)"]
+    end
+
+    subgraph CLI ["Công cụ Quản trị Local (CLI Scripts)"]
+        Dotenv["dotenv (.env.local)"] --> TSX["tsx Script runner"]
+        TSX --> Scripts["Admin Scripts (setup-super-admin, sync-data, verify-admin)"]
+        Scripts --> ClientSDKCLI["Firebase Client SDK (Node.js)"]
+    end
+
+    ClientSDK --> Auth
+    ClientSDK --> Firestore
+    ClientSDK --> Storage
+
+    ClientSDKCLI --> Firestore
+```
+
+### 2. Bản đồ Điều hướng & Phân quyền Trang (Navigation & Page Routing Map)
+Ứng dụng sử dụng cấu trúc Next.js App Router với `AuthGuard` để bảo vệ các tuyến đường yêu cầu xác thực hoặc phân quyền quản trị viên.
+
+```mermaid
+flowchart TD
+    Start((Người dùng truy cập)) --> RootRoute["Route Gốc (/)"]
+    RootRoute --> CheckAuth{Đã đăng nhập?}
+    
+    CheckAuth -- Chưa đăng nhập --> Login["/login (Trang đăng nhập)"]
+    CheckAuth -- Đã đăng nhập --> AuthGuardRoute{Kiểm tra quyền?}
+    
+    Login -- Đăng nhập thành công --> AuthGuardRoute
+    
+    subgraph UserGroup ["Khu vực Người dùng (Cần đăng nhập)"]
+        AuthGuardRoute -- User/Manager/Admin --> MapRoute["/map (Bản đồ Cây & Khu vực)"]
+        AuthGuardRoute -- User/Manager/Admin --> TreesRoute["/trees (Quản lý & Showcase cây trồng)"]
+        AuthGuardRoute -- User/Manager/Admin --> CameraRoute["/camera (Chụp ảnh & GPS AI)"]
+        AuthGuardRoute -- User/Manager/Admin --> ZonesRoute["/zones (Khu vực của trang trại)"]
+        AuthGuardRoute -- User/Manager/Admin --> MoneyRoute["/money (Theo dõi Đầu tư & Tài chính)"]
+    end
+
+    subgraph AdminGroup ["Khu vực Quản trị viên (Cần quyền Admin/Super Admin)"]
+        AuthGuardRoute -- Admin Only --> AdminDashboard["/admin (Bảng điều khiển hệ thống - Thống kê song song)"]
+        AuthGuardRoute -- Admin Only --> AdminZones["/admin-zones (Quản lý Ranh giới & Tạo khu vực)"]
+    end
+
+    AuthGuardRoute -- Không đủ quyền --> NoAccess["/no-access (Từ chối truy cập)"]
+
+    MapRoute --> UnifiedMapComponent["UnifiedMap (Leaflet + OpenStreetMap)"]
+    MapRoute --> BottomSheetComponent["BottomSheet (Chi tiết cây và khu vực)"]
+    TreesRoute --> TreeShowcaseComponent["TreeShowcase (Dạng lưới & Tìm kiếm)"]
+    TreesRoute --> TreeDetailComponent["TreeDetail (Thông tin chi tiết cây)"]
+```
+
+### 3. Sơ đồ Thực thể Cơ sở dữ liệu (Database Schema ERD)
+Mô tả cấu trúc dữ liệu NoSQL Firestore, các subcollections, và mối quan hệ logic giữa các collection.
+
+```mermaid
+erDiagram
+    users {
+        string uid PK "Mã định danh User"
+        string email
+        string displayName
+        string accountStatus "active | suspended"
+        boolean isEmailVerified
+        timestamp createdAt
+        object preferences "Giao diện, ngôn ngữ, thông báo"
+    }
+    userRoles {
+        string id PK "Mã ID Vai trò"
+        string userId FK "userId liên kết với users"
+        string roleType "super_admin | admin | manager | viewer"
+        string scopeType "system | farm"
+        string farmId FK "Liên kết với farms nếu scopeType = farm"
+        array permissions "Danh sách quyền hạn cụ thể"
+        boolean isActive
+    }
+    adminConfig {
+        string id PK "Mã cấu hình (chỉ có 1 bản ghi: 'main')"
+        array superAdminUsers "Mảng các UID có quyền Super Admin tối cao"
+        boolean enhancedRoleSystem "Bật hệ thống phân quyền nâng cao"
+        string systemVersion "Phiên bản hệ thống"
+        timestamp lastUpdated
+    }
+    farms {
+        string id PK "Mã định danh Farm"
+        string name "Tên trang trại"
+        string ownerId FK "UID của chủ trang trại"
+        string ownerName
+        boolean isActive
+        timestamp createdDate
+    }
+    farmAccess {
+        string id PK
+        string farmId FK "Liên kết với farms"
+        string userId FK "Liên kết với users"
+        string role "owner | manager | worker | viewer"
+    }
+    trees {
+        string id PK "Đường dẫn: farms/{farmId}/trees/{treeId}"
+        string farmId FK
+        string name "Mã số cây (ví dụ: Ri6-001)"
+        string qrCode
+        string variety "Ri6 | Monthong | Musang King"
+        string zoneCode "Mã khu vực của cây"
+        float latitude "Vĩ độ GPS"
+        float longitude "Kinh độ GPS"
+        string healthStatus "Good | Poor | Needs Attention"
+        timestamp plantingDate
+        boolean needsAttention
+    }
+    zones {
+        string id PK "Đường dẫn: farms/{farmId}/zones/{zoneId} hoặc /zones/{zoneId}"
+        string farmId FK
+        string name "Tên khu vực"
+        string code "Mã khu vực"
+        array boundaries "Mảng các tọa độ GPS {latitude, longitude}"
+        float area "Diện tích tính bằng hecta"
+        int treeCount "Số lượng cây trong khu vực"
+        string color "Mã màu Hex đại diện trên bản đồ"
+        boolean isActive
+    }
+    activityLogs {
+        string id PK
+        string userId FK "Người thực hiện hành động"
+        string action "Loại hành động (ví dụ: login, tree:create)"
+        string resource "Tài nguyên chịu tác động"
+        string resourceId
+        timestamp timestamp
+        string status "success | failure"
+        object details "Thông tin chi tiết"
+    }
+
+    users ||--o{ userRoles : "được gán"
+    users ||--o{ farmAccess : "truy cập"
+    farms ||--o{ farmAccess : "có danh sách"
+    farms ||--o{ trees : "chứa các"
+    farms ||--o{ zones : "phân chia thành"
+    users ||--o{ activityLogs : "tạo ra"
+```
+
+---
+
+## Thông tin Dự án
 
 ## Cấu trúc Thư mục
 

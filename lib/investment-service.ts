@@ -1,4 +1,4 @@
-import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, Timestamp, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, setDoc, updateDoc, deleteDoc, getDoc, onSnapshot, query, orderBy, getDocs, Timestamp, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Investment } from './types'
 
@@ -18,16 +18,12 @@ function toDate(value: any): Date | null {
   return null
 }
 
-// Path helpers following iOS doc: users/{uid}/farms/{farmId}/investments
+// Legacy nested paths (retained only for migration purposes)
 function investmentsCol(userId: string, farmId: string) {
   return collection(db, 'users', userId, 'farms', farmId, 'investments')
 }
 
-function investmentDoc(userId: string, farmId: string, investmentId: string) {
-  return doc(db, 'users', userId, 'farms', farmId, 'investments', investmentId)
-}
-
-// Legacy path from doc: users/{uid}/investments
+// Legacy top-level path (retained only for migration purposes)
 function legacyInvestmentsCol(userId: string) {
   return collection(db, 'users', userId, 'investments')
 }
@@ -40,15 +36,16 @@ export type InvestmentRecord = Investment & {
   createdByName?: string
 }
 
+// Standardized subscription using farm-scoped path
 export function subscribeToInvestments(userId: string, farmId: string, callback: (items: InvestmentRecord[]) => void) {
-  if (!userId || !farmId) {
-    console.log('subscribeToInvestments: Missing userId or farmId')
+  if (!farmId) {
+    console.log('subscribeToInvestments: Missing farmId')
     callback([])
     return () => {}
   }
 
-  console.log(`subscribeToInvestments: Setting up listener for user ${userId}, farm ${farmId}`)
-  const q = query(investmentsCol(userId, farmId), orderBy('date', 'desc'))
+  console.log(`subscribeToInvestments: Setting up listener for farm ${farmId}`)
+  const q = query(collection(db, 'farms', farmId, 'investments'), orderBy('date', 'desc'))
 
   return onSnapshot(q, (snap) => {
     console.log(`subscribeToInvestments: Received ${snap.docs.length} investments`)
@@ -68,8 +65,8 @@ export function subscribeToInvestments(userId: string, farmId: string, callback:
         isRecurring: Boolean(data.isRecurring),
         recurringPeriod: data.recurringPeriod || undefined,
         farmId: data.farmId || farmId,
-        userId: data.userId,
-        createdBy: data.createdBy,
+        userId: data.userId || data.createdBy || userId,
+        createdBy: data.createdBy || data.userId || userId,
         createdAt: toDate(data.createdAt) || undefined,
         updatedAt: toDate(data.updatedAt) || undefined,
         images: Array.isArray(data.images) ? data.images : undefined,
@@ -78,22 +75,18 @@ export function subscribeToInvestments(userId: string, farmId: string, callback:
     callback(items)
   }, (err) => {
     console.error('subscribeToInvestments error:', err)
-    console.error('subscribeToInvestments error details:', {
-      userId,
-      farmId,
-      errorCode: err.code,
-      errorMessage: err.message
-    })
     callback([])
   })
 }
 
+// Add investment to farm-scoped path
 export async function addInvestment(userId: string, farmId: string, investment: Omit<InvestmentRecord, 'id' | 'farmId'>): Promise<string> {
   if (!userId || !farmId) throw new Error('Missing userId or farmId')
-  const ref = doc(investmentsCol(userId, farmId))
+  const ref = doc(collection(db, 'farms', farmId, 'investments'))
   const payload: any = {
     ...investment,
     userId,
+    createdBy: userId,
     farmId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -103,50 +96,86 @@ export async function addInvestment(userId: string, farmId: string, investment: 
   return ref.id
 }
 
+// Update investment in farm-scoped path
 export async function updateInvestment(userId: string, farmId: string, id: string, updates: Partial<InvestmentRecord>): Promise<void> {
-  if (!userId || !farmId || !id) throw new Error('Missing ids')
-  const ref = investmentDoc(userId, farmId, id)
+  if (!farmId || !id) throw new Error('Missing ids')
+  const ref = doc(db, 'farms', farmId, 'investments', id)
   const data: any = { ...updates, updatedAt: serverTimestamp() }
   if (updates.date instanceof Date) data.date = Timestamp.fromDate(updates.date)
   await updateDoc(ref, data)
 }
 
+// Delete investment from farm-scoped path
 export async function deleteInvestment(userId: string, farmId: string, id: string): Promise<void> {
-  if (!userId || !farmId || !id) throw new Error('Missing ids')
-  const ref = investmentDoc(userId, farmId, id)
+  if (!farmId || !id) throw new Error('Missing ids')
+  const ref = doc(db, 'farms', farmId, 'investments', id)
   await deleteDoc(ref)
 }
 
-// One-way copy of legacy docs to nested path, assigning farmId if missing
+// Migrate legacy user-owned investments to farm-scoped path
 export async function migrateLegacyInvestments(userId: string, activeFarmId: string): Promise<number> {
   try {
     if (!userId || !activeFarmId) return 0
-    const legacySnap = await getDocs(legacyInvestmentsCol(userId))
-    if (legacySnap.empty) return 0
     let migrated = 0
+
+    // 1. Migrate legacy path `/users/{userId}/investments`
+    const legacySnap = await getDocs(legacyInvestmentsCol(userId))
     for (const d of legacySnap.docs) {
       const data = d.data() as any
-      const targetRef = doc(investmentsCol(userId, activeFarmId), d.id)
-      const payload: any = {
-        ...data,
-        userId,
-        farmId: data.farmId || activeFarmId,
-        createdAt: data.createdAt || serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      const targetRef = doc(db, 'farms', activeFarmId, 'investments', d.id)
+      const destDoc = await getDoc(targetRef)
+      
+      if (!destDoc.exists()) {
+        const payload: any = {
+          ...data,
+          userId,
+          createdBy: userId,
+          farmId: data.farmId || activeFarmId,
+          createdAt: data.createdAt || serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+        if (data.date) {
+          const maybeDate = toDate(data.date)
+          payload.date = maybeDate ? Timestamp.fromDate(maybeDate) : serverTimestamp()
+        } else {
+          payload.date = serverTimestamp()
+        }
+        await setDoc(targetRef, payload)
+        migrated++
       }
-      // Normalize date
-      if (data.date) {
-        const maybeDate = toDate(data.date)
-        payload.date = maybeDate ? Timestamp.fromDate(maybeDate) : serverTimestamp()
-      } else {
-        payload.date = serverTimestamp()
-      }
-      await setDoc(targetRef, payload)
-      migrated++
     }
+
+    // 2. Migrate nested path `/users/{userId}/farms/{activeFarmId}/investments`
+    const nestedSnap = await getDocs(investmentsCol(userId, activeFarmId))
+    for (const d of nestedSnap.docs) {
+      const data = d.data() as any
+      const targetRef = doc(db, 'farms', activeFarmId, 'investments', d.id)
+      const destDoc = await getDoc(targetRef)
+      
+      if (!destDoc.exists()) {
+        const payload: any = {
+          ...data,
+          userId,
+          createdBy: userId,
+          farmId: activeFarmId,
+          createdAt: data.createdAt || serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+        if (data.date) {
+          const maybeDate = toDate(data.date)
+          payload.date = maybeDate ? Timestamp.fromDate(maybeDate) : serverTimestamp()
+        } else {
+          payload.date = serverTimestamp()
+        }
+        await setDoc(targetRef, payload)
+        migrated++
+      }
+    }
+
     return migrated
   } catch (e) {
     console.error('migrateLegacyInvestments error:', e)
     return 0
   }
 }
+

@@ -13,6 +13,7 @@ import TreeTimeline from './TreeTimeline'
 import { db } from '@/lib/firebase'
 import { collection, getDocs, orderBy, limit, query, where } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
+import { iosOptimizedGPS } from '@/lib/ios-optimized-gps'
 
 // Helper function to get season info from date
 function getSeasonFromDate(date: Date): { year: number, phase: string } {
@@ -344,6 +345,7 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
   const [newLatitude, setNewLatitude] = useState<string>('')
   const [newLongitude, setNewLongitude] = useState<string>('')
   const [gpsError, setGpsError] = useState<string>('')
+  const [confirmLargeDistance, setConfirmLargeDistance] = useState<boolean>(false)
 
   // Initialize fruit count when tree changes, considering durian season status
   useEffect(() => {
@@ -530,11 +532,20 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
     return R * c // Distance in meters
   }
 
+  const getUpdateDistance = (): number | null => {
+    if (!tree || !tree.latitude || !tree.longitude) return null
+    const lat = parseFloat(newLatitude)
+    const lon = parseFloat(newLongitude)
+    if (isNaN(lat) || isNaN(lon)) return null
+    return calculateDistance(tree.latitude, tree.longitude, lat, lon)
+  }
+
   const handleStartGPSUpdate = () => {
     if (!tree) return
     setNewLatitude(tree.latitude?.toString() || '')
     setNewLongitude(tree.longitude?.toString() || '')
     setGpsError('')
+    setConfirmLargeDistance(false)
     setEditingGPS(true)
   }
 
@@ -543,33 +554,28 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
     setNewLatitude('')
     setNewLongitude('')
     setGpsError('')
+    setConfirmLargeDistance(false)
   }
 
   const handleGetCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setGpsError('Trình duyệt không hỗ trợ GPS')
+    if (!iosOptimizedGPS.isSupported()) {
+      setGpsError('Thiết bị không hỗ trợ định vị GPS')
       return
     }
 
     setUpdatingGPS(true)
     setGpsError('')
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setNewLatitude(position.coords.latitude.toFixed(6))
-        setNewLongitude(position.coords.longitude.toFixed(6))
+    iosOptimizedGPS.getCurrentPosition({ enableHighAccuracy: true })
+      .then((position) => {
+        setNewLatitude(position.latitude.toFixed(6))
+        setNewLongitude(position.longitude.toFixed(6))
         setUpdatingGPS(false)
-      },
-      (error) => {
+      })
+      .catch((error) => {
         setUpdatingGPS(false)
-        setGpsError('Không thể lấy vị trí hiện tại: ' + error.message)
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
-    )
+        setGpsError('Không thể lấy vị trí hiện tại: ' + (error.message || 'Lỗi định vị'))
+      })
   }
 
   const handleUpdateGPS = async () => {
@@ -592,14 +598,22 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
       return
     }
 
-    // Check distance constraint (5m radius)
+    // Check distance constraint
     if (tree.latitude && tree.longitude) {
       const distance = calculateDistance(tree.latitude, tree.longitude, lat, lon)
       
-      if (distance > 5) {
+      if (distance > 30) {
         setGpsError(
           `Vị trí mới cách vị trí cũ ${distance.toFixed(1)}m. ` +
-          `Chỉ cho phép cập nhật trong bán kính 5m để tránh nhầm lẫn vị trí cây.`
+          `Chỉ cho phép cập nhật trong bán kính tối đa 30m để tránh nhầm lẫn vị trí cây.`
+        )
+        return
+      }
+
+      if (distance > 5 && !confirmLargeDistance) {
+        setGpsError(
+          `Vị trí mới cách vị trí cũ ${distance.toFixed(1)}m (lớn hơn 5m). ` +
+          `Vui lòng tích chọn xác nhận vị trí này là chính xác trước khi lưu.`
         )
         return
       }
@@ -867,12 +881,45 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
                       </div>
                     )}
 
+                    {/* Distance Warning and Checkbox */}
+                    {(() => {
+                      const dist = getUpdateDistance();
+                      if (dist !== null && dist > 5) {
+                        return (
+                          <div className={`p-3 rounded-lg border text-sm ${dist > 30 ? 'bg-red-50 border-red-200 text-red-800' : 'bg-yellow-50 border-yellow-200 text-yellow-800'}`}>
+                            <div className="flex items-start space-x-2">
+                              <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <div className="font-semibold">Khoảng cách dịch chuyển lớn: {dist.toFixed(1)}m</div>
+                                {dist > 30 ? (
+                                  <div>Không cho phép thay đổi quá 30m để bảo toàn vị trí cây chính xác.</div>
+                                ) : (
+                                  <div className="mt-2">
+                                    <label className="flex items-center space-x-2 cursor-pointer font-medium">
+                                      <input
+                                        type="checkbox"
+                                        checked={confirmLargeDistance}
+                                        onChange={(e) => setConfirmLargeDistance(e.target.checked)}
+                                        className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                      />
+                                      <span>Tôi xác nhận vị trí mới này là chính xác.</span>
+                                    </label>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      }
+                      return null
+                    })()}
+
                     {/* Info Message */}
                     <div className="flex items-start space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <ExclamationTriangleIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                       <div className="text-xs text-blue-800">
                         <div className="font-medium mb-1">Lưu ý quan trọng:</div>
-                        <div>Vị trí mới chỉ được phép cách vị trí cũ tối đa <strong>5 mét</strong> để tránh nhầm lẫn và xáo trộn vị trí các cây trên bản đồ.</div>
+                        <div>Vị trí mới chỉ được phép cách vị trí cũ tối đa <strong>30 mét</strong> (yêu cầu xác nhận nếu lớn hơn 5m) để tránh nhầm lẫn vị trí các cây.</div>
                       </div>
                     </div>
 
@@ -880,7 +927,19 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
                     <div className="flex space-x-2">
                       <button
                         onClick={handleUpdateGPS}
-                        disabled={!canSave || updatingGPS || !newLatitude || !newLongitude}
+                        disabled={
+                          !canSave ||
+                          updatingGPS ||
+                          !newLatitude ||
+                          !newLongitude ||
+                          (() => {
+                            const dist = getUpdateDistance();
+                            if (dist === null) return false;
+                            if (dist > 30) return true;
+                            if (dist > 5 && !confirmLargeDistance) return true;
+                            return false;
+                          })()
+                        }
                         className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
                       >
                         {updatingGPS ? 'Đang lưu...' : 'Lưu GPS'}
