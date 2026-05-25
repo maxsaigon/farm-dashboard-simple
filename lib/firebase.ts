@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
-import { getFirestore, connectFirestoreEmulator, Firestore, initializeFirestore, CACHE_SIZE_UNLIMITED } from 'firebase/firestore'
+import { getFirestore, connectFirestoreEmulator, Firestore, initializeFirestore, CACHE_SIZE_UNLIMITED, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 import { getAuth, Auth } from 'firebase/auth'
 import { getStorage, FirebaseStorage } from 'firebase/storage'
 
@@ -47,9 +47,12 @@ try {
 
   // Initialize Firebase services with safer settings for v12+
   try {
-    // More conservative Firestore initialization to avoid assertion errors
+    // Enable persistent offline cache using persistentLocalCache & persistentMultipleTabManager
     db = initializeFirestore(app, {
-      cacheSizeBytes: 40 * 1024 * 1024, // 40MB instead of unlimited
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+        cacheSizeBytes: 40 * 1024 * 1024 // 40MB cache size
+      }),
       experimentalForceLongPolling: false,
       ignoreUndefinedProperties: true, // Help with type safety
     })

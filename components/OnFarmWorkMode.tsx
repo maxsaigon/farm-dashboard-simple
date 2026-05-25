@@ -6,6 +6,7 @@ import { MapContainer, TileLayer, Marker, Circle, Polyline, useMap } from 'react
 import L from 'leaflet'
 import * as turf from '@turf/turf'
 import { useIOSOptimizedGPS, IOSGPSPosition } from '@/lib/ios-optimized-gps'
+import { useWakeLock } from '@/lib/use-wake-lock'
 import { PlusCircleIcon, XMarkIcon, MapPinIcon, ArrowPathIcon, CameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { createTree, updateTree } from '@/lib/firestore'
@@ -66,6 +67,9 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
   const { user } = useSimpleAuth()
   const gps = useIOSOptimizedGPS()
   
+  // Keep device screen active during active farm work
+  useWakeLock(true)
+  
   const [userPosition, setUserPosition] = useState<{
     lat: number
     lng: number
@@ -90,6 +94,16 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
   const [ambiguousTrees, setAmbiguousTrees] = useState<Tree[] | null>(null)
   const [showAmbiguityResolver, setShowAmbiguityResolver] = useState(false)
   const [quickUpdatingGPS, setQuickUpdatingGPS] = useState<string | null>(null)
+  
+  // GPS Calibration (Burst Mode) & Drag-drop fine-tuning states
+  const [isCalibrating, setIsCalibrating] = useState(false)
+  const [calibrationProgress, setCalibrationProgress] = useState(0)
+  const [calibratedPosition, setCalibratedPosition] = useState<{
+    lat: number
+    lng: number
+    accuracy: number
+  } | null>(null)
+  const [isPlacingNewTree, setIsPlacingNewTree] = useState(false)
   
   // Find nearest zone when user position changes
   useEffect(() => {
@@ -198,7 +212,8 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
       enableHighAccuracy: true,
       timeout: 5000,
       maximumAge: 0,
-      distanceFilter: 3 // Update every 3 meters
+      distanceFilter: 3, // Update every 3 meters
+      accuracyFilter: 20 // Skip inaccurate cell-tower positions (>20m error)
     })
 
     return () => {
@@ -321,6 +336,45 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
     }
   }, [])
 
+  const handleStartTreePlacement = async () => {
+    if (!userPosition) return
+    
+    setIsCalibrating(true)
+    setCalibrationProgress(10)
+    
+    try {
+      // Simulate progress bar movement during burst
+      const progressInterval = setInterval(() => {
+        setCalibrationProgress(prev => Math.min(prev + 15, 90))
+      }, 400)
+      
+      const calibrated = await gps.getGPSBurst(4, 500, { enableHighAccuracy: true })
+      
+      clearInterval(progressInterval)
+      setCalibrationProgress(100)
+      
+      setTimeout(() => {
+        setIsCalibrating(false)
+        setCalibratedPosition({
+          lat: calibrated.latitude,
+          lng: calibrated.longitude,
+          accuracy: calibrated.accuracy
+        })
+        setIsPlacingNewTree(true)
+      }, 300)
+      
+    } catch (error) {
+      console.error('Calibration failed, falling back to current user position:', error)
+      setIsCalibrating(false)
+      setCalibratedPosition({
+        lat: userPosition.lat,
+        lng: userPosition.lng,
+        accuracy: userPosition.accuracy
+      })
+      setIsPlacingNewTree(true)
+    }
+  }
+
   const handleQuickUpdateGPS = async (tree: Tree) => {
     if (!user || !userPosition) {
       alert('Không tìm thấy thông tin người dùng hoặc vị trí GPS hiện tại.')
@@ -328,33 +382,76 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
     }
 
     const confirmUpdate = window.confirm(
-      `Bạn có chắc chắn muốn cập nhật tọa độ của cây "${tree.name || tree.variety}" về vị trí hiện tại của bạn?\n` +
-      `Độ chính xác GPS hiện tại: ±${userPosition.accuracy.toFixed(0)}m.`
+      `Bạn có chắc chắn muốn cập nhật tọa độ của cây "${tree.name || tree.variety}"?\n` +
+      `Hệ thống sẽ chạy chuẩn hóa vị trí GPS trong 3 giây để triệt tiêu sai số.`
     )
     if (!confirmUpdate) return
 
     setQuickUpdatingGPS(tree.id)
-    try {
-      await updateTree(farmId, tree.id, user.uid, {
-        latitude: userPosition.lat,
-        longitude: userPosition.lng,
-        gpsAccuracy: userPosition.accuracy,
-        updatedAt: new Date()
-      })
-      
-      const updatedTree = {
-        ...tree,
-        latitude: userPosition.lat,
-        longitude: userPosition.lng,
-        gpsAccuracy: userPosition.accuracy,
-        updatedAt: new Date()
-      }
+    setIsCalibrating(true)
+    setCalibrationProgress(15)
 
-      onTreeUpdated?.(updatedTree)
-      alert('Cập nhật tọa độ GPS thành công!')
+    try {
+      const progressInterval = setInterval(() => {
+        setCalibrationProgress(prev => Math.min(prev + 20, 90))
+      }, 500)
+
+      const calibrated = await gps.getGPSBurst(4, 500, { enableHighAccuracy: true })
+      
+      clearInterval(progressInterval)
+      setCalibrationProgress(100)
+      
+      setTimeout(async () => {
+        setIsCalibrating(false)
+        try {
+          await updateTree(farmId, tree.id, user.uid, {
+            latitude: calibrated.latitude,
+            longitude: calibrated.longitude,
+            gpsAccuracy: calibrated.accuracy,
+            updatedAt: new Date()
+          })
+          
+          const updatedTree = {
+            ...tree,
+            latitude: calibrated.latitude,
+            longitude: calibrated.longitude,
+            gpsAccuracy: calibrated.accuracy,
+            updatedAt: new Date()
+          }
+
+          onTreeUpdated?.(updatedTree)
+          alert('Cập nhật tọa độ GPS chuẩn hóa thành công!')
+        } catch (error) {
+          console.error('Error updating tree GPS:', error)
+          alert('Lỗi cập nhật GPS. Vui lòng thử lại.')
+        }
+      }, 300)
+
     } catch (error) {
-      console.error('Error updating tree GPS:', error)
-      alert('Lỗi cập nhật GPS. Vui lòng thử lại.')
+      console.error('Calibration failed, falling back to current user position:', error)
+      setIsCalibrating(false)
+      try {
+        await updateTree(farmId, tree.id, user.uid, {
+          latitude: userPosition.lat,
+          longitude: userPosition.lng,
+          gpsAccuracy: userPosition.accuracy,
+          updatedAt: new Date()
+        })
+        
+        const updatedTree = {
+          ...tree,
+          latitude: userPosition.lat,
+          longitude: userPosition.lng,
+          gpsAccuracy: userPosition.accuracy,
+          updatedAt: new Date()
+        }
+
+        onTreeUpdated?.(updatedTree)
+        alert('Không thể chuẩn hóa, đã cập nhật GPS theo vị trí hiện tại của bạn!')
+      } catch (innerError) {
+        console.error('Fallback update failed:', innerError)
+        alert('Lỗi cập nhật GPS. Vui lòng thử lại.')
+      }
     } finally {
       setQuickUpdatingGPS(null)
     }
@@ -389,14 +486,23 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
 
   // Handle create new tree with photo upload
   const handleCreateTree = useCallback(async () => {
-    if (!user || !userPosition || !newTreeData.variety || !newTreeData.zoneName) {
+    if (!user || !newTreeData.variety || !newTreeData.zoneName) {
       alert('Vui lòng chọn giống cây và khu vực')
       return
     }
 
-    if (userPosition.accuracy > 15) {
+    const activeLat = calibratedPosition?.lat ?? userPosition?.lat
+    const activeLng = calibratedPosition?.lng ?? userPosition?.lng
+    const activeAccuracy = calibratedPosition?.accuracy ?? userPosition?.accuracy
+
+    if (!activeLat || !activeLng || activeAccuracy === undefined) {
+      alert('Không xác định được tọa độ để tạo cây')
+      return
+    }
+
+    if (activeAccuracy > 15) {
       const confirmSave = window.confirm(
-        `⚠️ Cảnh báo: Độ chính xác GPS hiện tại khá kém (±${userPosition.accuracy.toFixed(0)}m).\n` +
+        `⚠️ Cảnh báo: Độ chính xác GPS hiện tại khá kém (±${activeAccuracy.toFixed(0)}m).\n` +
         `Tọa độ lưu lại có thể bị lệch nhiều so với thực tế.\n\n` +
         `Bạn có muốn tiếp tục tạo cây tại vị trí này không?`
       )
@@ -415,9 +521,9 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
         zoneName: newTreeData.zoneName,
         zoneCode: newTreeData.zoneName,
         treeStatus: newTreeData.treeStatus,
-        latitude: userPosition.lat,
-        longitude: userPosition.lng,
-        gpsAccuracy: userPosition.accuracy,
+        latitude: activeLat,
+        longitude: activeLng,
+        gpsAccuracy: activeAccuracy,
         plantingDate: new Date(),
         healthStatus: 'Good',
         manualFruitCount: 0,
@@ -465,8 +571,8 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
               filename: `photo_${i + 1}.jpg`,
               photoType: 'general',
               timestamp: serverTimestamp(),
-              latitude: userPosition.lat,
-              longitude: userPosition.lng,
+              latitude: activeLat,
+              longitude: activeLng,
               uploadedToServer: true,
               serverProcessed: false,
               needsAIAnalysis: false,
@@ -530,6 +636,8 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
       capturedPhotos.forEach(url => URL.revokeObjectURL(url))
       setCapturedPhotos([])
       setShowCreateForm(false)
+      setIsPlacingNewTree(false)
+      setCalibratedPosition(null)
       
       alert(`✅ Đã tạo cây "${autoName}" với ${capturedPhotos.length} ảnh!`)
       console.log('🎉 [OnFarmWorkMode] Tree creation completed successfully!')
@@ -682,6 +790,54 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
               }}
             />
 
+            {/* Draggable Temporary New Tree Marker */}
+            {isPlacingNewTree && calibratedPosition && (
+              <Marker
+                position={[calibratedPosition.lat, calibratedPosition.lng]}
+                draggable={true}
+                eventHandlers={{
+                  dragend: (e) => {
+                    const marker = e.target
+                    const position = marker.getLatLng()
+                    console.log('📌 Dragged new tree pin to:', position)
+                    setCalibratedPosition(prev => prev ? {
+                      ...prev,
+                      lat: position.lat,
+                      lng: position.lng
+                    } : null)
+                  }
+                }}
+                icon={L.divIcon({
+                  className: 'new-tree-placement-marker',
+                  html: `
+                    <div style="
+                      width: 28px;
+                      height: 28px;
+                      background-color: #10b981;
+                      border-radius: 50%;
+                      border: 3px solid white;
+                      box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+                      animation: pulse-green 1.5s infinite;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      color: white;
+                      font-size: 14px;
+                    ">🌱</div>
+                    <style>
+                      @keyframes pulse-green {
+                        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+                        70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+                      }
+                    </style>
+                  `,
+                  iconSize: [30, 30],
+                  iconAnchor: [15, 15]
+                })}
+              />
+            )}
+
             {/* Nearby trees */}
             {nearbyTrees.map(tree => (
               <Marker
@@ -739,10 +895,42 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
         </div>
       </div>
 
-      {/* Bottom Panel - Nearby Trees & Actions */}
-      <div className="bg-white border-t-4 border-blue-500 shadow-2xl" style={{ maxHeight: '40vh', zIndex: 9998 }}>
-        {/* Nearby Trees List */}
-        {nearbyTrees.length > 0 && !showCreateForm && (
+      {/* Bottom Panel - Nearby Trees & Actions OR Placement controller */}
+      <div className="bg-white border-t-4 border-blue-500 shadow-2xl" style={{ maxHeight: '45vh', zIndex: 9998 }}>
+        {isPlacingNewTree && calibratedPosition ? (
+          <div className="p-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto text-xl animate-bounce">
+              📍
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Xác nhận vị trí cây mới</h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Kéo biểu tượng mầm cây xanh <span className="font-semibold text-emerald-600">🌱</span> trên bản đồ vệ tinh để khớp với gốc cây thực tế, sau đó bấm tiếp tục.
+              </p>
+            </div>
+            <div className="flex space-x-3 max-w-md mx-auto">
+              <button
+                onClick={() => {
+                  setIsPlacingNewTree(false)
+                  setCalibratedPosition(null)
+                }}
+                className="flex-1 py-3.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl active:scale-95 transition-all text-center"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={() => {
+                  setShowCreateForm(true)
+                }}
+                className="flex-1 py-3.5 bg-gradient-to-r from-green-600 to-blue-600 text-white font-bold rounded-xl active:scale-95 transition-all text-center"
+              >
+                Tiếp tục
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Nearby Trees List */
+          nearbyTrees.length > 0 && !showCreateForm && (
           <div className="p-4 overflow-y-auto" style={{ maxHeight: '30vh' }}>
             <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center">
               <MapPinIcon className="h-5 w-5 mr-2 text-blue-600" />
@@ -809,7 +997,7 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
               })}
             </div>
           </div>
-        )}
+        ))}
 
         {/* No nearby trees message */}
         {nearbyTrees.length === 0 && !showCreateForm && userPosition && (
@@ -1051,30 +1239,39 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
                 )}
               </div>
 
-              {userPosition && (
-                <div className="space-y-2">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <div className="text-xs text-blue-700 font-semibold mb-1">📍 Vị trí GPS:</div>
-                    <div className="text-xs font-mono text-blue-900">
-                      {userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}
-                    </div>
-                    <div className="text-xs text-blue-600 mt-1">
-                      Độ chính xác: ±{userPosition.accuracy.toFixed(0)}m
-                    </div>
-                  </div>
-                  {userPosition.accuracy > 15 && (
-                    <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start space-x-2 shadow-sm animate-pulse">
-                      <span className="text-lg">⚠️</span>
-                      <div className="text-xs">
-                        <div className="font-bold text-amber-800">Tín hiệu GPS yếu</div>
-                        <div className="text-amber-700 mt-0.5">
-                          Độ chính xác ±{userPosition.accuracy.toFixed(0)}m (kém hơn 15m). Tọa độ lưu lại có thể bị lệch.
-                        </div>
+              {(() => {
+                const displayLat = calibratedPosition?.lat ?? userPosition?.lat
+                const displayLng = calibratedPosition?.lng ?? userPosition?.lng
+                const displayAccuracy = calibratedPosition?.accuracy ?? userPosition?.accuracy
+                
+                if (displayLat === undefined || displayLng === undefined || displayAccuracy === undefined) return null;
+                
+                return (
+                  <div className="space-y-2">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="text-xs text-blue-700 font-semibold mb-1">📍 Vị trí GPS cây:</div>
+                      <div className="text-xs font-mono text-blue-900">
+                        {displayLat.toFixed(6)}, {displayLng.toFixed(6)}
+                      </div>
+                      <div className="text-xs text-blue-600 mt-1">
+                        Độ chính xác chuẩn hóa: ±{displayAccuracy.toFixed(0)}m
+                        {calibratedPosition && <span className="ml-1 text-green-600 font-semibold">(Đã căn chỉnh)</span>}
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
+                    {displayAccuracy > 15 && (
+                      <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start space-x-2 shadow-sm">
+                        <span className="text-lg">⚠️</span>
+                        <div className="text-xs">
+                          <div className="font-bold text-amber-800">Tín hiệu GPS yếu</div>
+                          <div className="text-amber-700 mt-0.5">
+                            Độ chính xác ±{displayAccuracy.toFixed(0)}m (kém hơn 15m). Tọa độ lưu lại có thể bị lệch.
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Action Buttons */}
               <div className="flex space-x-3 pt-4 sticky bottom-0 bg-white pb-4">
@@ -1083,6 +1280,8 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
                     setShowCreateForm(false)
                     stopCamera()
                     setCapturedPhotos([])
+                    setIsPlacingNewTree(false)
+                    setCalibratedPosition(null)
                   }}
                   className="flex-1 px-4 py-4 bg-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-300 active:scale-98 transition-all"
                 >
@@ -1102,10 +1301,10 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
         )}
 
         {/* Action Buttons */}
-        {!showCreateForm && (
+        {!showCreateForm && !isPlacingNewTree && (
           <div className="p-4 border-t border-gray-200">
             <button
-              onClick={() => setShowCreateForm(true)}
+              onClick={handleStartTreePlacement}
               disabled={!userPosition}
               className="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl active:scale-98 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
@@ -1209,6 +1408,26 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
         onChange={handleFileSelect}
         className="hidden"
       />
+
+      {/* GPS Calibration Overlay */}
+      {isCalibrating && (
+        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center" style={{ zIndex: 20000 }}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl text-center space-y-4">
+            <div className="relative w-16 h-16 mx-auto">
+              <div className="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <div>
+              <h4 className="text-lg font-bold text-slate-900">Đang chuẩn hóa GPS...</h4>
+              <p className="text-sm text-slate-500 mt-1">Lấy mẫu dữ liệu và khử nhiễu môi trường để tăng độ chính xác vị trí</p>
+            </div>
+            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+              <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${calibrationProgress}%` }}></div>
+            </div>
+            <div className="text-xs text-slate-400 font-mono">Tiến trình: {calibrationProgress}%</div>
+          </div>
+        </div>
+      )}
     </div>
     </>
   )
