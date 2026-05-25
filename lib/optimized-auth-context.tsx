@@ -201,8 +201,8 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       const stored = localStorage.getItem(AUTH_STATE_KEY)
       if (stored) {
         const state = JSON.parse(stored)
-        // Only restore if less than 1 hour old
-        if (Date.now() - state.timestamp < 60 * 60 * 1000) {
+        // Only restore if less than 7 days old
+        if (Date.now() - state.timestamp < 7 * 24 * 60 * 60 * 1000) {
           return {
             user: state.user,
             farms: state.farms,
@@ -219,8 +219,29 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
 
   // Initialize auth state listener
   useEffect(() => {
-    console.log('[Auth] 🚀 Setting up auth listener')
+    console.log('[Auth] 🚀 Setting up auth context')
     
+    // 1. Try to restore cache immediately on mount
+    let initialUser: SimpleUser | null = null
+    try {
+      const restoredState = restoreAuthState()
+      if (restoredState) {
+        console.log('[Auth] ⚡ Restored cached auth state on mount:', restoredState.user.email)
+        setUser(restoredState.user)
+        setFarms(restoredState.farms)
+        setFarmAccess(restoredState.farmAccess)
+        if (restoredState.currentFarmId) {
+          const current = restoredState.farms.find((f: any) => f.id === restoredState.currentFarmId)
+          if (current) setCurrentFarmState(current)
+        }
+        setLoading(false)
+        initialUser = restoredState.user
+      }
+    } catch (err) {
+      console.error('[Auth] Error restoring cache on mount:', err)
+    }
+
+    // 2. Setup Firebase Auth listener
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('[Auth] 🎯 Auth state changed:', firebaseUser ? firebaseUser.email : 'No user')
       
@@ -228,39 +249,38 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         setFirebaseUser(firebaseUser)
         
         if (firebaseUser) {
-          // Try to restore from localStorage for faster loading
-          const restoredState = restoreAuthState()
-          console.log('[Auth] 💾 Cache:', restoredState ? 'Found' : 'Not found')
+          // Check if the firebaseUser matches the initial user we restored from cache
+          const currentUser = initialUser
           
-          if (restoredState) {
-            console.log('[Auth] ⚡ Using cache for instant UI')
-            setUser(restoredState.user)
-            setFarms(restoredState.farms)
-            setFarmAccess(restoredState.farmAccess)
-            if (restoredState.currentFarmId) {
-              const currentFarm = restoredState.farms.find((f: any) => f.id === restoredState.currentFarmId)
-              if (currentFarm) setCurrentFarmState(currentFarm)
-            }
-            setLoading(false) // End loading immediately with cache
-            console.log('[Auth] ✅ Loading FALSE (cached)')
-            
-            // Load fresh data in background
-            setTimeout(() => {
-              console.log('[Auth] 🔄 Background refresh...')
-              loadFreshAuthData(firebaseUser)
-            }, 2000)
-          } else {
-            // Load fresh data
-            console.log('[Auth] 📡 Loading fresh data...')
+          if (currentUser && currentUser.uid === firebaseUser.uid) {
+            console.log('[Auth] ⚡ firebaseUser matches cached user, triggering background refresh')
             await loadFreshAuthData(firebaseUser)
+          } else {
+            // Try to read cache again (e.g. if updated elsewhere or login was performed)
+            const restoredState = restoreAuthState()
+            if (restoredState && restoredState.user.uid === firebaseUser.uid) {
+              console.log('[Auth] ⚡ cache matches firebaseUser, updating state')
+              setUser(restoredState.user)
+              setFarms(restoredState.farms)
+              setFarmAccess(restoredState.farmAccess)
+              if (restoredState.currentFarmId) {
+                const current = restoredState.farms.find((f: any) => f.id === restoredState.currentFarmId)
+                if (current) setCurrentFarmState(current)
+              }
+              setLoading(false)
+              await loadFreshAuthData(firebaseUser)
+            } else {
+              console.log('[Auth] 📡 No matching cache found, loading fresh data from Firestore')
+              await loadFreshAuthData(firebaseUser, true) // Force refresh
+            }
           }
-
         } else {
           console.log('[Auth] ❌ No user')
           setUser(null)
           setFarms([])
           setCurrentFarmState(null)
           setFarmAccess([])
+          localStorage.removeItem(AUTH_STATE_KEY)
           // Clear auth cache
           authCache.current = {
             userProfile: null,
@@ -270,45 +290,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
           }
         }
       } catch (error) {
-        console.error('[Auth] ❌ Error:', error)
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-
-        // Provide demo data for offline/demo mode
-        if (firebaseUser) {
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName || 'Demo User',
-            emailVerified: firebaseUser.emailVerified,
-            createdAt: new Date(),
-            preferredLanguage: 'vi',
-            timezone: 'Asia/Ho_Chi_Minh'
-          })
-
-          const demoFarmAccess = [{
-            farmId: 'demo-farm-001',
-            userId: firebaseUser.uid,
-            role: 'owner' as const,
-            grantedAt: new Date(),
-            grantedBy: firebaseUser.uid,
-            isActive: true
-          }]
-
-          const demoFarm = {
-            id: 'demo-farm-001',
-            name: 'Nông trại Demo',
-            ownerName: firebaseUser.displayName || 'Demo Farmer',
-            totalArea: 2.5,
-            centerLatitude: 10.762622,
-            centerLongitude: 106.660172,
-            isActive: true,
-            createdDate: new Date()
-          }
-
-          setFarmAccess(demoFarmAccess)
-          setFarms([demoFarm])
-          setCurrentFarmState(demoFarm)
-        }
+        console.error('[Auth] Error in auth state listener:', error)
       } finally {
         setLoading(false)
       }
@@ -552,10 +534,35 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   }
 
   // Load fresh auth data (used for background refresh and initial load)
-  const loadFreshAuthData = async (firebaseUser: FirebaseUser) => {
+  const loadFreshAuthData = async (firebaseUser: FirebaseUser, force = false) => {
     try {
-      console.log('[Auth] 📡 loadFreshAuthData started for:', firebaseUser.email)
+      console.log('[Auth] 📡 loadFreshAuthData started for:', firebaseUser.email, force ? '(forced)' : '')
       
+      // If forced, invalidate the memory cache
+      if (force) {
+        authCache.current = {
+          userProfile: null,
+          farmAccess: null,
+          farms: null,
+          lastFetch: 0
+        }
+      } else {
+        // If not forced, check if cache is still fresh (< 5 minutes)
+        try {
+          const stored = localStorage.getItem(AUTH_STATE_KEY)
+          if (stored) {
+            const state = JSON.parse(stored)
+            // If cache timestamp is less than 5 minutes old, skip querying Firestore
+            if (state.timestamp && Date.now() - state.timestamp < 5 * 60 * 1000) {
+              console.log('[Auth] ⚡ Cache is fresh (< 5 mins), skipping background Firestore fetch')
+              return
+            }
+          }
+        } catch (e) {
+          // Ignore cache reading error, proceed to load
+        }
+      }
+
       // Load or create user profile
       const userProfile = await loadOrCreateUserProfile(firebaseUser)
       console.log('[Auth] ✅ User profile loaded:', userProfile.email)
@@ -615,7 +622,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       // Save state to localStorage
       setTimeout(saveAuthState, 1000) // Save after a short delay to ensure state is set
     } catch (error) {
-      // Error loading fresh auth data
+      console.error('[Auth] Error loadFreshAuthData:', error)
     }
   }
 
@@ -714,14 +721,9 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
 
   const refreshUserData = async (): Promise<void> => {
     if (firebaseUser) {
-      // Invalidate cache to force fresh data
-      authCache.current.lastFetch = 0
-
-      const access = await loadUserFarmAccessCached(firebaseUser.uid)
-      setFarmAccess(access)
-
-      const userFarms = await loadUserFarmsCached(access)
-      setFarms(userFarms)
+      console.log('[Auth] 🔄 refreshUserData forced')
+      // Invalidate memory cache and fetch fresh data from Firestore
+      await loadFreshAuthData(firebaseUser, true)
     }
   }
 

@@ -92,6 +92,12 @@ export default function SimpleAuthGuard({
 
   // Show loading while checking authentication
   if (loading) {
+    // If we have a cached auth state, render nothing (null) instead of a flashing loading screen
+    const hasCache = typeof window !== 'undefined' && !!localStorage.getItem('farmDashboard_authState')
+    if (hasCache) {
+      return null
+    }
+
     if (loadingComponent) {
       return <>{loadingComponent}</>
     }

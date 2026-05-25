@@ -51,6 +51,12 @@ const AuthGuard = memo(function AuthGuard({
 
   // Show loading while checking authentication
   if (loading) {
+    // If we have a cached auth state, render nothing (null) instead of a flashing loading screen
+    const hasCache = typeof window !== 'undefined' && !!localStorage.getItem('farmDashboard_authState')
+    if (hasCache) {
+      return null
+    }
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
