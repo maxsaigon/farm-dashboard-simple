@@ -26,6 +26,7 @@ export default function SimpleAuthGuard({
     user, 
     loading, 
     currentFarm, 
+    farms,
     hasPermission, 
     getUserRole,
     canAccessFarm 
@@ -41,7 +42,11 @@ export default function SimpleAuthGuard({
 
       // Require farm access by default
       if (requireFarmAccess && !currentFarm) {
-        router.push('/no-access')
+        if (farms && farms.length > 0) {
+          router.push('/select-farm')
+        } else {
+          router.push('/no-access')
+        }
         return
       }
 

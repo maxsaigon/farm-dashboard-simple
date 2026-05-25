@@ -19,7 +19,7 @@ const AuthGuard = memo(function AuthGuard({
   requireFarmAccess = true
 }: AuthGuardProps) {
   const router = useRouter()
-  const { user, loading, currentFarm, hasPermission } = useSimpleAuth()
+  const { user, loading, currentFarm, farms, hasPermission } = useSimpleAuth()
 
   useEffect(() => {
     if (!loading) {
@@ -31,7 +31,11 @@ const AuthGuard = memo(function AuthGuard({
 
       // Require farm access by default
       if (requireFarmAccess && !currentFarm) {
-        router.push('/no-access')
+        if (farms && farms.length > 0) {
+          router.push('/select-farm')
+        } else {
+          router.push('/no-access')
+        }
         return
       }
 
