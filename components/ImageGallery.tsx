@@ -197,12 +197,14 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   }
 
   const getSeasonLabel = (image: DisplayImage): string => {
-    if ('seasonYear' in image && image.seasonYear) {
+    if ('seasonYear' in image && image.seasonYear && image.seasonYear >= 2000) {
       return `${image.seasonYear}`
     }
     if ('timestamp' in image && image.timestamp) {
       const year = new Date(image.timestamp).getFullYear()
-      return `${year}`
+      if (year >= 2000) {
+        return `${year}`
+      }
     }
     return ''
   }
@@ -210,10 +212,13 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   const availableSeasonsForTree = useMemo(() => {
     const seasonsSet = new Set<number>()
     photos.forEach(p => {
-      if (p.seasonYear) {
+      if (p.seasonYear && p.seasonYear >= 2000) {
         seasonsSet.add(p.seasonYear)
       } else if (p.timestamp) {
-        seasonsSet.add(new Date(p.timestamp).getFullYear())
+        const year = new Date(p.timestamp).getFullYear()
+        if (year >= 2000) {
+          seasonsSet.add(year)
+        }
       }
     })
     return Array.from(seasonsSet).sort((a, b) => b - a)

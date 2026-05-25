@@ -646,7 +646,8 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
                 timestamp: new Date().toISOString(),
                 imageBlob: blob,
                 latitude: activeLat,
-                longitude: activeLng
+                longitude: activeLng,
+                seasonYear: selectedSeasonYear
               })
               console.log(`  ✅ Photo ${i + 1} saved to IndexedDB: ${photoId}`)
             } catch (err) {

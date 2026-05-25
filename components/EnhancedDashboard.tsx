@@ -183,7 +183,10 @@ export default function EnhancedDashboard() {
       })
 
       const currentSeasonPhotos = loadedPhotos.filter(photo => {
-        const photoSeason = photo.seasonYear || photo.timestamp?.getFullYear() || 2025
+        let photoSeason = photo.seasonYear || photo.timestamp?.getFullYear() || 2025
+        if (photoSeason < 2000) {
+          photoSeason = 2025
+        }
         return photoSeason === selectedSeasonYear
       })
 

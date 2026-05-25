@@ -62,6 +62,12 @@ export class OfflineSyncService {
           const storagePath = `farms/${item.farmId}/trees/${item.treeId}/photos/${item.id}/compressed.jpg`
           const downloadURL = await uploadFile(compressedFile, storagePath)
           
+          let finalSeasonYear = item.seasonYear
+          if (!finalSeasonYear || finalSeasonYear < 2000) {
+            const parsedYear = new Date(item.timestamp).getFullYear()
+            finalSeasonYear = parsedYear >= 2020 ? parsedYear : 2025
+          }
+
           // Create document in subcollection farms/{farmId}/photos/{photoId}
           const photoDoc = {
             treeId: item.treeId,
@@ -78,7 +84,8 @@ export class OfflineSyncService {
             compressedPath: storagePath,
             originalPath: storagePath,
             localPath: downloadURL,
-            createdAt: serverTimestamp()
+            createdAt: serverTimestamp(),
+            seasonYear: finalSeasonYear
           }
 
           // Save document to Firestore under subcollection /farms/{farmId}/photos/{photoId}

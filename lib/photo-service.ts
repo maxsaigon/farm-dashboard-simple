@@ -43,7 +43,8 @@ function convertToPhoto(doc: QueryDocumentSnapshot<DocumentData>): Photo {
     localStorageDate: safeToDate(data.localStorageDate),
     totalLocalSize: data.totalLocalSize,
     treeId: data.treeId,
-    farmName: data.farmName
+    farmName: data.farmName,
+    seasonYear: (data.seasonYear && data.seasonYear >= 2000) ? data.seasonYear : undefined
   }
 }
 
