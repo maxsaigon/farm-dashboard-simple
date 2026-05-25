@@ -388,7 +388,8 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   useEffect(() => {
     if (currentFarm) {
       const farmSeason = currentFarm.currentSeasonYear || 2025
-      setSelectedSeasonYearState(farmSeason)
+      const validSeason = farmSeason < 2000 ? 2025 : farmSeason
+      setSelectedSeasonYearState(validSeason)
     }
   }, [currentFarm])
 
@@ -402,16 +403,25 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         
         // 1. Migrate Farm configuration
         const currentSeasons = currentFarm.seasons || [2025]
+        const cleanSeasons = currentSeasons.filter(y => y >= 2000)
+        if (cleanSeasons.length === 0) {
+          cleanSeasons.push(2025)
+        }
+        
         let farmUpdated = false
-        if (!currentFarm.currentSeasonYear || !currentFarm.seasons || !currentSeasons.includes(2025)) {
-          const updatedSeasons = Array.from(new Set([...currentSeasons, 2025])).sort((a, b) => b - a)
+        const isSeasonYearInvalid = !currentFarm.currentSeasonYear || currentFarm.currentSeasonYear < 2000
+        const isSeasonsListInvalid = !currentFarm.seasons || currentFarm.seasons.some(y => y < 2000) || !currentSeasons.includes(2025)
+
+        if (isSeasonYearInvalid || isSeasonsListInvalid) {
+          const finalSeasonYear = isSeasonYearInvalid ? 2025 : currentFarm.currentSeasonYear
+          const updatedSeasons = Array.from(new Set([...cleanSeasons, 2025])).sort((a, b) => b - a)
           const farmRef = doc(db, 'farms', currentFarm.id)
           await setDoc(farmRef, {
-            currentSeasonYear: currentFarm.currentSeasonYear || 2025,
+            currentSeasonYear: finalSeasonYear,
             seasons: updatedSeasons
           }, { merge: true })
           
-          currentFarm.currentSeasonYear = currentFarm.currentSeasonYear || 2025
+          currentFarm.currentSeasonYear = finalSeasonYear
           currentFarm.seasons = updatedSeasons
           farmUpdated = true
         }
@@ -426,17 +436,45 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         for (const treeDoc of treesSnapshot.docs) {
           const treeData = treeDoc.data()
           const seasonalStats = treeData.seasonalStats || {}
-          if (!seasonalStats[2025]) {
-            seasonalStats[2025] = {
+          
+          let treeUpdated = false
+          const newSeasonalStats = { ...seasonalStats }
+
+          // Clean up invalid seasonalStats keys (< 2000 or 1970)
+          for (const key of Object.keys(seasonalStats)) {
+            const yearKey = parseInt(key, 10)
+            if (isNaN(yearKey) || yearKey < 2000) {
+              const existing2025Stats = newSeasonalStats[2025] || {}
+              const badStats = seasonalStats[key] || {}
+              
+              newSeasonalStats[2025] = {
+                manualFruitCount: badStats.manualFruitCount !== undefined ? badStats.manualFruitCount : (existing2025Stats.manualFruitCount || 0),
+                aiFruitCount: badStats.aiFruitCount !== undefined ? badStats.aiFruitCount : (existing2025Stats.aiFruitCount || 0),
+                healthStatus: badStats.healthStatus || existing2025Stats.healthStatus || 'Good',
+                notes: badStats.notes || existing2025Stats.notes || '',
+                updatedAt: badStats.updatedAt || existing2025Stats.updatedAt || new Date()
+              }
+              
+              delete newSeasonalStats[key]
+              treeUpdated = true
+            }
+          }
+
+          // If seasonalStats for 2025 does not exist, copy root values
+          if (!newSeasonalStats[2025]) {
+            newSeasonalStats[2025] = {
               manualFruitCount: treeData.manualFruitCount || 0,
               aiFruitCount: treeData.aiFruitCount || 0,
               healthStatus: treeData.healthStatus || 'Good',
               notes: treeData.notes || '',
               updatedAt: treeData.updatedAt || new Date()
             }
+            treeUpdated = true
+          }
 
+          if (treeUpdated) {
             batch.update(doc(db, 'farms', currentFarm.id, 'trees', treeDoc.id), {
-              seasonalStats
+              seasonalStats: newSeasonalStats
             })
             opCount++
             treesMigrated++
@@ -453,54 +491,69 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
           await batch.commit()
         }
 
-        // 3. Migrate Photos
+        // Helper to migrate a list of photo documents
+        const migratePhotoDocs = async (photoDocs: any[]) => {
+          let migrated = 0
+          let batchWrite = writeBatch(db)
+          let opCountPhotos = 0
+
+          for (const photoDoc of photoDocs) {
+            const photoData = photoDoc.data()
+            if (photoData.seasonYear === undefined || photoData.seasonYear < 2000) {
+              let seasonYear = 2025
+              let photoDate: Date | null = null
+              if (photoData.timestamp) {
+                if (photoData.timestamp.toDate) {
+                  photoDate = photoData.timestamp.toDate()
+                } else {
+                  photoDate = new Date(photoData.timestamp)
+                }
+              }
+
+              if (photoDate && photoDate.getFullYear() >= 2020) {
+                seasonYear = photoDate.getFullYear()
+              } else if (currentFarm.currentSeasonYear && currentFarm.currentSeasonYear >= 2000) {
+                seasonYear = currentFarm.currentSeasonYear
+              }
+
+              batchWrite.update(photoDoc.ref, {
+                seasonYear
+              })
+              opCountPhotos++
+              migrated++
+
+              if (opCountPhotos >= 400) {
+                await batchWrite.commit()
+                batchWrite = writeBatch(db)
+                opCountPhotos = 0
+              }
+            }
+          }
+
+          if (opCountPhotos > 0) {
+            await batchWrite.commit()
+          }
+          return migrated
+        }
+
+        // 3. Migrate Photos (Root Collection)
         const photosRef = collection(db, 'photos')
         const photosQuery = query(photosRef, where('farmId', '==', currentFarm.id))
         const photosSnapshot = await getDocs(photosQuery)
-        let photosMigrated = 0
-        let batchWrite = writeBatch(db)
-        let opCountPhotos = 0
+        const rootPhotosMigrated = await migratePhotoDocs(photosSnapshot.docs)
 
-        for (const photoDoc of photosSnapshot.docs) {
-          const photoData = photoDoc.data()
-          if (photoData.seasonYear === undefined) {
-            let seasonYear = 2025
-            let photoDate: Date | null = null
-            if (photoData.timestamp) {
-              if (photoData.timestamp.toDate) {
-                photoDate = photoData.timestamp.toDate()
-              } else {
-                photoDate = new Date(photoData.timestamp)
-              }
-            }
+        // 4. Migrate Photos (Farm Subcollection)
+        const subPhotosRef = collection(db, 'farms', currentFarm.id, 'photos')
+        const subPhotosSnapshot = await getDocs(subPhotosRef)
+        const subPhotosMigrated = await migratePhotoDocs(subPhotosSnapshot.docs)
 
-            if (photoDate && photoDate.getFullYear() >= 2026) {
-              seasonYear = photoDate.getFullYear()
-            }
+        const totalPhotosMigrated = rootPhotosMigrated + subPhotosMigrated
 
-            batchWrite.update(doc(db, 'photos', photoDoc.id), {
-              seasonYear
-            })
-            opCountPhotos++
-            photosMigrated++
-
-            if (opCountPhotos >= 400) {
-              await batchWrite.commit()
-              batchWrite = writeBatch(db)
-              opCountPhotos = 0
-            }
-          }
-        }
-
-        if (opCountPhotos > 0) {
-          await batchWrite.commit()
-        }
-
-        if (farmUpdated || treesMigrated > 0 || photosMigrated > 0) {
+        if (farmUpdated || treesMigrated > 0 || totalPhotosMigrated > 0) {
           console.log('[SeasonMigration] ✅ Season migration completed client-side.', {
             farmUpdated,
             treesMigrated,
-            photosMigrated
+            totalPhotosMigrated
           })
           if (farmUpdated) {
             setCurrentFarmState({ ...currentFarm })

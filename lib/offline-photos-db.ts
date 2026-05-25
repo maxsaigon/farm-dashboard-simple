@@ -9,6 +9,7 @@ export interface PendingPhoto {
   altitude?: number
   timestamp: string // Store Date as ISO string
   imageBlob: Blob
+  seasonYear?: number
 }
 
 const DB_NAME = 'OfflinePhotosDB'

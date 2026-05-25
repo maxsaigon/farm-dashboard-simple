@@ -205,7 +205,10 @@ export default function PhotoManagement() {
     }
     if (filters.seasonYear) {
       filtered = filtered.filter(photo => {
-        const photoSeason = photo.seasonYear || (photo.timestamp ? new Date(photo.timestamp).getFullYear() : 2025)
+        let photoSeason = photo.seasonYear || (photo.timestamp ? new Date(photo.timestamp).getFullYear() : 2025)
+        if (photoSeason < 2000) {
+          photoSeason = 2025
+        }
         return photoSeason === filters.seasonYear
       })
     }
