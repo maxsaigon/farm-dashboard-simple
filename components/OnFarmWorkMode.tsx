@@ -15,6 +15,8 @@ import { uploadFile } from '@/lib/storage'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { AuditService } from '@/lib/audit-service'
+import { savePendingPhoto } from '@/lib/offline-photos-db'
+import { isWifiConnection } from '@/lib/offline-sync-service'
 
 // Fix Leaflet icons
 if (typeof window !== 'undefined') {
@@ -536,82 +538,111 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
       const treeId = await createTree(farmId, user.uid, newTree as Omit<Tree, 'id' | 'farmId'>)
       console.log('✅ [OnFarmWorkMode] Tree created with ID:', treeId)
       
-      // Step 2: Upload photos if any
+      // Step 2: Upload or queue photos offline
       if (capturedPhotos.length > 0) {
-        console.log(`📸 [OnFarmWorkMode] Step 2: Uploading ${capturedPhotos.length} photos...`)
-        
-        for (let i = 0; i < capturedPhotos.length; i++) {
-          const photoUrl = capturedPhotos[i]
-          console.log(`  Processing photo ${i + 1}/${capturedPhotos.length}`)
+        const isOnline = typeof navigator !== 'undefined' && navigator.onLine
+        const isWifi = isWifiConnection()
+
+        if (isOnline && isWifi) {
+          console.log(`📸 [OnFarmWorkMode] Step 2: Uploading ${capturedPhotos.length} photos...`)
           
-          try {
-            // Convert blob URL to File
-            const response = await fetch(photoUrl)
-            const blob = await response.blob()
-            const file = new File([blob], `photo_${Date.now()}_${i}.jpg`, { type: 'image/jpeg' })
+          for (let i = 0; i < capturedPhotos.length; i++) {
+            const photoUrl = capturedPhotos[i]
+            console.log(`  Processing photo ${i + 1}/${capturedPhotos.length}`)
             
-            // Compress photo
-            console.log(`  Compressing photo ${i + 1}...`)
-            const compressedFile = await compressImageSmart(file, 'general')
-            console.log(`  Compressed: ${(file.size / 1024).toFixed(0)}KB → ${(compressedFile.size / 1024).toFixed(0)}KB`)
-            
-            // Upload to Firebase Storage
-            // Path: farms/{farmId}/trees/{treeId}/photos/{photoId}/compressed.jpg
-            const photoId = `photo_${Date.now()}_${i}`
-            const storagePath = `farms/${farmId}/trees/${treeId}/photos/${photoId}/compressed.jpg`
-            console.log(`  Uploading to: ${storagePath}`)
-            
-            const downloadURL = await uploadFile(compressedFile, storagePath)
-            console.log(`  ✅ Uploaded, URL: ${downloadURL}`)
-            
-            // Create photo document in Firestore
-            const photoDoc = {
-              treeId,
-              farmId,
-              filename: `photo_${i + 1}.jpg`,
-              photoType: 'general',
-              timestamp: serverTimestamp(),
-              latitude: activeLat,
-              longitude: activeLng,
-              uploadedToServer: true,
-              serverProcessed: false,
-              needsAIAnalysis: false,
-              compressedPath: storagePath,
-              originalPath: storagePath,
-              localPath: downloadURL,
-              createdAt: serverTimestamp()
-            }
-            
-            await setDoc(doc(db, 'farms', farmId, 'photos', photoId), photoDoc)
-            console.log(`  ✅ Photo document created: ${photoId}`)
-            
-            // Log photo upload to audit system
             try {
-              await AuditService.logEvent({
-                userId: user.uid,
-                userEmail: user.email || 'Unknown User',
-                action: 'PHOTO_UPLOADED',
-                resource: 'photo',
-                resourceId: treeId,
-                details: {
-                  photoId: photoId,
-                  photoType: 'general',
-                  treeId: treeId,
-                  farmId: farmId,
-                  hasGPS: true,
-                  source: 'on_farm_work_mode'
-                },
-                severity: 'low',
-                category: 'data_modification',
-                status: 'success'
-              })
-            } catch (auditError) {
-              console.error('Failed to log photo upload:', auditError)
+              // Convert blob URL to File
+              const response = await fetch(photoUrl)
+              const blob = await response.blob()
+              const file = new File([blob], `photo_${Date.now()}_${i}.jpg`, { type: 'image/jpeg' })
+              
+              // Compress photo
+              console.log(`  Compressing photo ${i + 1}...`)
+              const compressedFile = await compressImageSmart(file, 'general')
+              console.log(`  Compressed: ${(file.size / 1024).toFixed(0)}KB → ${(compressedFile.size / 1024).toFixed(0)}KB`)
+              
+              // Upload to Firebase Storage
+              const photoId = `photo_${Date.now()}_${i}`
+              const storagePath = `farms/${farmId}/trees/${treeId}/photos/${photoId}/compressed.jpg`
+              console.log(`  Uploading to: ${storagePath}`)
+              
+              const downloadURL = await uploadFile(compressedFile, storagePath)
+              console.log(`  ✅ Uploaded, URL: ${downloadURL}`)
+              
+              // Create photo document in Firestore
+              const photoDoc = {
+                treeId,
+                farmId,
+                filename: `photo_${i + 1}.jpg`,
+                photoType: 'general',
+                timestamp: serverTimestamp(),
+                latitude: activeLat,
+                longitude: activeLng,
+                uploadedToServer: true,
+                serverProcessed: false,
+                needsAIAnalysis: false,
+                compressedPath: storagePath,
+                originalPath: storagePath,
+                localPath: downloadURL,
+                createdAt: serverTimestamp()
+              }
+              
+              await setDoc(doc(db, 'farms', farmId, 'photos', photoId), photoDoc)
+              console.log(`  ✅ Photo document created: ${photoId}`)
+              
+              // Log photo upload to audit system
+              try {
+                await AuditService.logEvent({
+                  userId: user.uid,
+                  userEmail: user.email || 'Unknown User',
+                  action: 'PHOTO_UPLOADED',
+                  resource: 'photo',
+                  resourceId: treeId,
+                  details: {
+                    photoId: photoId,
+                    photoType: 'general',
+                    treeId: treeId,
+                    farmId: farmId,
+                    hasGPS: true,
+                    source: 'on_farm_work_mode'
+                  },
+                  severity: 'low',
+                  category: 'data_modification',
+                  status: 'success'
+                })
+              } catch (auditError) {
+                console.error('Failed to log photo upload:', auditError)
+              }
+              
+            } catch (photoError) {
+              console.error(`  ❌ Error uploading photo ${i + 1}:`, photoError)
             }
-            
-          } catch (photoError) {
-            console.error(`  ❌ Error uploading photo ${i + 1}:`, photoError)
-            // Continue with other photos even if one fails
+          }
+        } else {
+          console.log(`📦 [OnFarmWorkMode] Device offline or not on Wifi. Storing ${capturedPhotos.length} photos in IndexedDB queue...`)
+          
+          for (let i = 0; i < capturedPhotos.length; i++) {
+            const photoUrl = capturedPhotos[i]
+            try {
+              const response = await fetch(photoUrl)
+              const blob = await response.blob()
+              
+              const photoId = `pending_photo_${Date.now()}_${i}`
+              
+              await savePendingPhoto({
+                id: photoId,
+                treeId,
+                farmId,
+                photoType: 'general',
+                timestamp: new Date().toISOString(),
+                imageBlob: blob,
+                latitude: activeLat,
+                longitude: activeLng
+              })
+              console.log(`  ✅ Photo ${i + 1} saved to IndexedDB: ${photoId}`)
+            } catch (err) {
+              console.error(`  ❌ Failed to save photo ${i + 1} to IndexedDB:`, err)
+            }
           }
         }
         
@@ -639,7 +670,11 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
       setIsPlacingNewTree(false)
       setCalibratedPosition(null)
       
-      alert(`✅ Đã tạo cây "${autoName}" với ${capturedPhotos.length} ảnh!`)
+      if (typeof navigator !== 'undefined' && navigator.onLine && isWifiConnection()) {
+        alert(`✅ Đã tạo cây "${autoName}" với ${capturedPhotos.length} ảnh!`)
+      } else {
+        alert(`✅ Đã tạo cây "${autoName}" ngoại tuyến! ${capturedPhotos.length} ảnh đã được lưu vào thiết bị và sẽ tự động đồng bộ khi có kết nối Wifi.`)
+      }
       console.log('🎉 [OnFarmWorkMode] Tree creation completed successfully!')
       
     } catch (error) {
