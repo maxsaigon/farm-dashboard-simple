@@ -9,7 +9,7 @@ interface Props {
 
 export default function MobileOnlyWrapper({ children }: Props) {
   const [isMobile, setIsMobile] = useState(true)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     const checkDeviceType = () => {

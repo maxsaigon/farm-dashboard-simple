@@ -143,6 +143,38 @@ function MapPageContent() {
   const debugFarm = { id: debugFarmId, name: "Debug Farm" }
   const displayFarm = currentFarm || debugFarm
 
+  // Load cached trees and zones on farm change for instant load
+  useEffect(() => {
+    if (displayFarm.id) {
+      try {
+        const cachedTrees = localStorage.getItem(`farm_trees_${displayFarm.id}`)
+        const cachedZones = localStorage.getItem(`farm_zones_${displayFarm.id}`)
+        if (cachedTrees && cachedZones) {
+          console.log('⚡ [MapPage] Restored trees and zones from cache')
+          const parsedTrees = JSON.parse(cachedTrees)
+          const parsedZones = JSON.parse(cachedZones)
+          
+          const codeToName = new Map<string, string>()
+          parsedZones.forEach((z: any) => {
+            if (z.id) codeToName.set(z.id, z.name)
+            if (z.code) codeToName.set(z.code, z.name)
+            if (z.name) codeToName.set(z.name, z.name)
+          })
+          const treesWithNames = parsedTrees.map((t: any) => ({
+            ...t,
+            zoneName: t.zoneName || (t.zoneCode ? codeToName.get(String(t.zoneCode)) : undefined)
+          }))
+          
+          setTrees(treesWithNames)
+          setZones(parsedZones)
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error('Error loading map cache:', err)
+      }
+    }
+  }, [displayFarm.id])
+
   useEffect(() => {
     console.log('🗺️ [MapPage] Farm changed, loading data:', {
       farmId: displayFarm.id,
@@ -161,10 +193,17 @@ function MapPageContent() {
     
     if (!farmId) return
 
-    setLoading(true)
+    // If cache exists, do not show blocking load screen
+    const hasCache = typeof window !== 'undefined' && 
+      !!localStorage.getItem(`farm_trees_${farmId}`) && 
+      !!localStorage.getItem(`farm_zones_${farmId}`)
+
+    if (!hasCache) {
+      setLoading(true)
+    }
     setError(null)
     try {
-      console.log('🔄 [MapPage] Loading trees and zones...')
+      console.log('🔄 [MapPage] Loading trees and zones from Firestore...')
       const [treesData, zonesData] = await Promise.all([
         loadTrees(farmId),
         loadZones(farmId)
@@ -190,6 +229,15 @@ function MapPageContent() {
       console.log('📝 [MapPage] Setting trees and zones state')
       setTrees(treesWithNames)
       setZones(zonesData)
+
+      // Save to cache
+      try {
+        localStorage.setItem(`farm_trees_${farmId}`, JSON.stringify(treesData))
+        localStorage.setItem(`farm_zones_${farmId}`, JSON.stringify(zonesData))
+        localStorage.setItem(`farm_data_timestamp_${farmId}`, Date.now().toString())
+      } catch (err) {
+        console.warn('Failed to save farm data cache:', err)
+      }
       
       console.log('✅ [MapPage] State updated:', {
         trees: treesWithNames.length,
@@ -218,12 +266,13 @@ function MapPageContent() {
       }
     } catch (error) {
       logger.error('Error loading data:', error)
-      setError('Không thể tải dữ liệu bản đồ')
+      if (!hasCache) {
+        setError('Không thể tải dữ liệu bản đồ')
+      }
     } finally {
       setLoading(false)
     }
   }
-
   const loadTrees = async (farmId: string): Promise<Tree[]> => {
     if (!farmId) return []
 
