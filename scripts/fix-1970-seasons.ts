@@ -73,7 +73,7 @@ async function fix1970Seasons() {
     }
 
     // Helper to process photo documents
-    async function cleanPhotoDocs(photoDocs: any[], typeLabel: string) {
+    const cleanPhotoDocs = async (photoDocs: any[], typeLabel: string) => {
       let photosMigrated = 0
       let batchWrite = writeBatch(db)
       let opCount = 0
