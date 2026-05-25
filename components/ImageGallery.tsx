@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Tree } from '@/lib/types'
-import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PhotoIcon, EyeIcon, CalendarDaysIcon, MapPinIcon, CameraIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PhotoIcon, EyeIcon, CalendarDaysIcon, MapPinIcon, CameraIcon, PlusIcon, TrashIcon, MagnifyingGlassPlusIcon, MagnifyingGlassMinusIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
 import { PhotoWithUrls, getPhotosWithUrls, subscribeToTreePhotos, getTreePhotos } from '@/lib/photo-service'
 import { getTreeImagesByPattern } from '@/lib/storage'
@@ -211,12 +211,170 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     }
   }, [selectedImage, totalImages])
 
+  // Zoom and pan states for full screen view
+  const [scale, setScale] = useState(1)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+
+  // Refs for tracking mouse/touch interactions
+  const isDragging = useRef(false)
+  const dragStart = useRef({ x: 0, y: 0 })
+  const isTouchDragging = useRef(false)
+  const touchDragStart = useRef({ x: 0, y: 0 })
+  const initialTouchDistance = useRef<number | null>(null)
+  const initialScale = useRef<number>(1)
+  const touchStartY = useRef<number | null>(null)
+  const touchStartX = useRef<number | null>(null)
+  const lastTap = useRef<number>(0)
+
+  // Reset zoom on selectedImage changes
+  useEffect(() => {
+    setScale(1)
+    setPosition({ x: 0, y: 0 })
+  }, [selectedImage])
+
+  // Calculate boundary clamping for image panning
+  const clampPosition = useCallback((newX: number, newY: number, currentScale: number) => {
+    if (currentScale <= 1) return { x: 0, y: 0 }
+    
+    // Use window dimension heuristics for standard clamping boundaries
+    const maxOffsetX = (window.innerWidth * (currentScale - 1)) / 2
+    const maxOffsetY = (window.innerHeight * (currentScale - 1)) / 2
+    
+    return {
+      x: Math.max(-maxOffsetX, Math.min(maxOffsetX, newX)),
+      y: Math.max(-maxOffsetY, Math.min(maxOffsetY, newY))
+    }
+  }, [])
+
+  // Desktop Mouse Handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (scale <= 1) return
+    isDragging.current = true
+    dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y }
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || scale <= 1) return
+    const newX = e.clientX - dragStart.current.x
+    const newY = e.clientY - dragStart.current.y
+    setPosition(clampPosition(newX, newY, scale))
+  }
+
+  const handleMouseUpOrLeave = () => {
+    isDragging.current = false
+  }
+
+  const handleWheel = (e: React.WheelEvent) => {
+    const zoomFactor = 0.15
+    const newScale = e.deltaY < 0 ? scale + zoomFactor : scale - zoomFactor
+    const clampedScale = Math.max(1, Math.min(4, newScale))
+    setScale(clampedScale)
+    if (clampedScale === 1) {
+      setPosition({ x: 0, y: 0 })
+    }
+  }
+
+  // Handle double-tap/double-click zoom
+  const handleDoubleTap = useCallback((clientX: number, clientY: number) => {
+    if (scale > 1) {
+      setScale(1)
+      setPosition({ x: 0, y: 0 })
+    } else {
+      setScale(2.5)
+      setPosition({ x: 0, y: 0 })
+    }
+  }, [scale])
+
+  const handleImageClick = (e: React.MouseEvent) => {
+    if (e.detail === 2) {
+      handleDoubleTap(e.clientX, e.clientY)
+    }
+  }
+
+  // Mobile Touch Handlers
+  const getTouchDistance = (e: React.TouchEvent) => {
+    const t1 = e.touches[0]
+    const t2 = e.touches[1]
+    return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY)
+  }
+
+  const handleTouchStartCustom = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = getTouchDistance(e)
+      initialTouchDistance.current = dist
+      initialScale.current = scale
+      isTouchDragging.current = false
+    } else if (e.touches.length === 1) {
+      const touch = e.touches[0]
+      touchStartY.current = touch.clientY
+      touchStartX.current = touch.clientX
+      
+      const now = Date.now()
+      const DOUBLE_TAP_DELAY = 300
+      if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+        handleDoubleTap(touch.clientX, touch.clientY)
+        lastTap.current = 0 // Reset
+        return
+      }
+      lastTap.current = now
+
+      if (scale > 1) {
+        isTouchDragging.current = true
+        touchDragStart.current = {
+          x: touch.clientX - position.x,
+          y: touch.clientY - position.y
+        }
+      }
+    }
+  }
+
+  const handleTouchMoveCustom = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && initialTouchDistance.current !== null) {
+      const dist = getTouchDistance(e)
+      const factor = dist / initialTouchDistance.current
+      const newScale = initialScale.current * factor
+      const clampedScale = Math.max(1, Math.min(4, newScale))
+      setScale(clampedScale)
+      if (clampedScale === 1) {
+        setPosition({ x: 0, y: 0 })
+      }
+    } else if (e.touches.length === 1 && isTouchDragging.current && scale > 1) {
+      const touch = e.touches[0]
+      const newX = touch.clientX - touchDragStart.current.x
+      const newY = touch.clientY - touchDragStart.current.y
+      setPosition(clampPosition(newX, newY, scale))
+      
+      if (e.cancelable) {
+        e.preventDefault()
+      }
+    }
+  }
+
+  const handleTouchEndCustom = (e: React.TouchEvent) => {
+    initialTouchDistance.current = null
+    isTouchDragging.current = false
+    
+    // Swipe down to close (only when not zoomed in)
+    if (scale === 1 && touchStartY.current !== null) {
+      const touch = e.changedTouches[0]
+      const diffY = touch.clientY - touchStartY.current
+      const diffX = touch.clientX - touchStartX.current!
+      
+      if (diffY > 75 && Math.abs(diffY) > Math.abs(diffX)) {
+        setSelectedImage(null)
+      }
+    }
+    
+    touchStartY.current = null
+    touchStartX.current = null
+  }
+
   // Close modal on escape key and handle body scroll
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelectedImage(null)
-      if (e.key === 'ArrowRight') nextImage()
-      if (e.key === 'ArrowLeft') prevImage()
+      if (e.key === 'ArrowRight' && scale === 1) nextImage()
+      if (e.key === 'ArrowLeft' && scale === 1) prevImage()
     }
 
     if (selectedImage !== null) {
@@ -229,30 +387,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
         document.removeEventListener('keydown', handleKeyDown)
       }
     }
-  }, [selectedImage, totalImages, nextImage, prevImage])
-
-  // Handle touch gestures for mobile
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0]
-    setTouchStart(touch.clientY)
-  }
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStart) return
-    
-    const touch = e.changedTouches[0]
-    const diff = touchStart - touch.clientY
-    
-    // Swipe down to close (threshold: 50px)
-    if (diff < -50) {
-      setSelectedImage(null)
-    }
-    
-    setTouchStart(null)
-  }
-
-  // Track touch position for swipe gesture
-  const [touchStart, setTouchStart] = useState<number | null>(null)
+  }, [selectedImage, totalImages, nextImage, prevImage, scale])
 
   // Force refresh image gallery after upload
   const refreshImageGallery = async () => {
@@ -719,8 +854,13 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
               setSelectedImage(null)
             }
           }}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
+          onTouchStart={handleTouchStartCustom}
+          onTouchMove={handleTouchMoveCustom}
+          onTouchEnd={handleTouchEndCustom}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUpOrLeave}
+          onMouseLeave={handleMouseUpOrLeave}
+          onWheel={handleWheel}
         >
           <div className="max-w-7xl max-h-full w-full h-full flex flex-col p-4 sm:p-6" onClick={(e) => e.stopPropagation()}>
             {/* Enhanced Header */}
@@ -766,7 +906,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
             <div className="flex-1 flex items-center justify-center relative rounded-2xl overflow-hidden">
               {filteredImages[selectedImage].imageUrl && (
                 <>
-                  {/* Image with enhanced styling */}
+                  {/* Image with enhanced styling and zoom/pan */}
                   <Image
                     src={filteredImages[selectedImage].imageUrl}
                     alt={`Tree photo ${selectedImage + 1}`}
@@ -774,11 +914,15 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                     width={800}
                     height={600}
                     style={{
-                      touchAction: 'pan-x pan-y pinch-zoom',
+                      transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                      transition: isDragging.current || isTouchDragging.current ? 'none' : 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                      touchAction: 'none',
                       userSelect: 'none'
                     }}
                     draggable={false}
                     unoptimized
+                    onMouseDown={handleMouseDown}
+                    onClick={handleImageClick}
                   />
                   
                   {/* Subtle glow effect around image */}
@@ -786,8 +930,20 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                 </>
               )}
 
+              {/* Floating Close Button */}
+              <div className="absolute right-6 bottom-8 sm:bottom-12 z-30">
+                <button
+                  onClick={() => setSelectedImage(null)}
+                  className="bg-black/60 backdrop-blur-md border border-white/20 text-white rounded-2xl p-4 hover:bg-black/80 hover:border-white/40 transition-all active:scale-95 shadow-xl flex items-center justify-center group"
+                  title="Thoát xem ảnh"
+                  aria-label="Thoát xem ảnh"
+                >
+                  <XMarkIcon className="h-6 w-6 group-hover:scale-110 transition-transform" />
+                </button>
+              </div>
+
               {/* Enhanced Navigation buttons */}
-              {totalImages > 1 && (
+              {totalImages > 1 && scale === 1 && (
                 <>
                   <button
                     onClick={prevImage}
@@ -809,14 +965,6 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
               {/* Enhanced counter overlay */}
               <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-bold border border-white/20 shadow-lg">
                 {selectedImage + 1} / {totalImages}
-              </div>
-
-              {/* Enhanced mobile instructions */}
-              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-6 py-3 rounded-full text-sm font-medium text-center border border-white/20 sm:hidden">
-                <div className="flex items-center space-x-2">
-                  <span>👆</span>
-                  <span>Chạm bên ngoài hoặc vuốt xuống để đóng</span>
-                </div>
               </div>
             </div>
 
