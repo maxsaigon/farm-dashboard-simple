@@ -25,10 +25,13 @@ const API_CACHE_PATTERNS = [
 
 // Image patterns to cache
 const IMAGE_PATTERNS = [
-  /\.(jpg|jpeg|png|gif|webp|svg)$/i,
+  /\.(jpg|jpeg|png|gif|webp|svg)($|\?)/i, // Match file extension at end or followed by query params
   /\/photos\//,
   /\/images\//,
-  /\/icons\//
+  /\/icons\//,
+  /firebasestorage\.googleapis\.com/i, // Match Firebase Storage images
+  /tile\.openstreetmap\.org/i, // Match OpenStreetMap tiles
+  /arcgisonline\.com/i // Match Esri Satellite tiles
 ]
 
 // Install event - cache static assets
@@ -112,7 +115,8 @@ async function handleImageRequest(request) {
     
     const networkResponse = await fetch(request)
     
-    if (networkResponse.ok) {
+    // Support caching opaque responses (status 0) for cross-origin resources
+    if (networkResponse.ok || networkResponse.status === 0) {
       console.log('[SW] Caching new image:', request.url)
       cache.put(request, networkResponse.clone())
     }
@@ -370,5 +374,12 @@ self.addEventListener('notificationclick', event => {
     event.waitUntil(
       clients.openWindow('/')
     )
+  }
+})
+
+// Listen for messages from client (e.g. SKIP_WAITING)
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting()
   }
 })

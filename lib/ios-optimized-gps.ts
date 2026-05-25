@@ -26,6 +26,7 @@ export interface IOSGPSOptions {
   timeout?: number
   maximumAge?: number
   distanceFilter?: number // Minimum distance in meters to trigger update
+  accuracyFilter?: number // Minimum accuracy threshold in meters
 }
 
 export interface IOSGPSCallbacks {
@@ -259,6 +260,13 @@ class IOSOptimizedGPS {
       timestamp: position.timestamp
     }
 
+    // Apply accuracy filter
+    const maxAccuracy = this.options.accuracyFilter ?? 50 // 50m default fallback to filter out bad cell tower locations
+    if (newPosition.accuracy > maxAccuracy) {
+      console.log(`⏭️ [iOS-GPS] Position update skipped (accuracy too poor: ${newPosition.accuracy.toFixed(1)}m > ${maxAccuracy}m)`)
+      return
+    }
+
     // Apply distance filter if specified
     if (this.options.distanceFilter && this.lastPosition) {
       const distance = this.calculateDistance(this.lastPosition, newPosition)
@@ -377,6 +385,78 @@ class IOSOptimizedGPS {
       )
     })
   }
+
+  // Perform a burst of multiple GPS reads and return a weighted average position (calibrated)
+  async getGPSBurst(samplesCount = 4, intervalMs = 600, options: IOSGPSOptions = {}): Promise<IOSGPSPosition> {
+    console.log(`🚀 [iOS-GPS] Starting GPS Burst: taking ${samplesCount} samples...`)
+    const samples: IOSGPSPosition[] = []
+    
+    for (let i = 0; i < samplesCount; i++) {
+      try {
+        const pos = await this.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 2500,
+          maximumAge: 0,
+          ...options
+        })
+        console.log(`📍 [iOS-GPS] Burst sample ${i + 1}/${samplesCount}: accuracy = ${pos.accuracy.toFixed(1)}m`)
+        
+        // Filter out extreme outliers (e.g. accuracy > 100m)
+        if (pos.accuracy <= 100) {
+          samples.push(pos)
+        }
+      } catch (err) {
+        console.warn(`⚠️ [iOS-GPS] Burst sample ${i + 1} failed:`, err)
+      }
+      
+      if (i < samplesCount - 1) {
+        await new Promise(resolve => setTimeout(resolve, intervalMs))
+      }
+    }
+    
+    if (samples.length === 0) {
+      throw new Error('All GPS burst samples failed or were too inaccurate')
+    }
+    
+    // Compute weighted average based on inverse variance of accuracy
+    let totalWeight = 0
+    let weightedLat = 0
+    let weightedLng = 0
+    let bestAccuracy = Infinity
+    
+    samples.forEach(pos => {
+      const acc = Math.max(pos.accuracy, 0.1) // Prevent division by zero
+      const weight = 1 / (acc * acc)
+      
+      totalWeight += weight
+      weightedLat += pos.latitude * weight
+      weightedLng += pos.longitude * weight
+      if (pos.accuracy < bestAccuracy) {
+        bestAccuracy = pos.accuracy
+      }
+    })
+    
+    const finalLat = weightedLat / totalWeight
+    const finalLng = weightedLng / totalWeight
+    const latestSample = samples[samples.length - 1]
+    
+    const calibratedPos: IOSGPSPosition = {
+      ...latestSample,
+      latitude: finalLat,
+      longitude: finalLng,
+      accuracy: bestAccuracy, // Best accuracy represents our confidence limit
+      timestamp: Date.now()
+    }
+    
+    console.log('✅ [iOS-GPS] Burst calibration complete:', {
+      samplesCollected: samples.length,
+      origAccuracy: latestSample.accuracy.toFixed(1) + 'm',
+      calibratedAccuracy: calibratedPos.accuracy.toFixed(1) + 'm',
+      coords: { lat: finalLat.toFixed(6), lng: finalLng.toFixed(6) }
+    })
+    
+    return calibratedPos
+  }
 }
 
 // Export singleton instance
@@ -391,6 +471,8 @@ export function useIOSOptimizedGPS() {
     requestPermission: () => iosOptimizedGPS.requestPermission(),
     checkPermission: () => iosOptimizedGPS.checkPermission(),
     getCurrentPosition: (options?: IOSGPSOptions) => iosOptimizedGPS.getCurrentPosition(options),
+    getGPSBurst: (samplesCount?: number, intervalMs?: number, options?: IOSGPSOptions) =>
+      iosOptimizedGPS.getGPSBurst(samplesCount, intervalMs, options),
     getStatus: () => iosOptimizedGPS.getStatus(),
     getLastPosition: () => iosOptimizedGPS.getLastPosition(),
     isSupported: () => iosOptimizedGPS.isSupported()

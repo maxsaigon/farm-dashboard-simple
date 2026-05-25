@@ -186,7 +186,8 @@ const useIOSGPSTracking = (enabled: boolean = true) => {
         enableHighAccuracy: true,
         timeout: 5000,
         maximumAge: 0,
-        distanceFilter: 5 // Only update if moved 5 meters
+        distanceFilter: 5, // Only update if moved 5 meters
+        accuracyFilter: 25 // Filter inaccurate coordinates (>25m error)
       }).catch(error => {
         console.error('❌ [UnifiedMap] Failed to start GPS tracking:', error)
       })
