@@ -49,9 +49,9 @@ export default function HomePage() {
         // Don't redirect yet, wait for next render with currentFarm set
         return
       } else {
-        // Multiple farms, show selector (redirect to map which has farm selector)
-        console.log('[HomePage] 🏗️ Multiple farms, redirecting to /map for selection')
-        router.push('/map')
+        // Multiple farms, show selector
+        console.log('[HomePage] 🏗️ Multiple farms, redirecting to /select-farm for selection')
+        router.push('/select-farm')
         return
       }
     }
