@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
+import { subscribeToTrees } from '@/lib/firestore'
+import { subscribeToInvestments } from '@/lib/investment-service'
+import { AuditService } from '@/lib/audit-service'
+import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import { 
   HomeIcon,
   CameraIcon,
@@ -32,7 +37,7 @@ interface TreeStats {
 
 interface FarmActivity {
   id: string
-  type: 'tree_added' | 'photo_uploaded' | 'investment_added' | 'tree_updated'
+  type: 'tree_added' | 'photo_uploaded' | 'investment_added' | 'tree_updated' | string
   description: string
   timestamp: Date
   userId: string
@@ -46,10 +51,11 @@ interface QuickStats {
   thisMonthInvestment: number
   activeFarms: number
   teamMembers: number
+  totalFruits: number
 }
 
 export default function EnhancedDashboard() {
-  const { user, hasPermission, currentFarm } = useSimpleAuth()
+  const { user, hasPermission, currentFarm, selectedSeasonYear } = useSimpleAuth()
   const [treeStats, setTreeStats] = useState<TreeStats>({
     total: 0,
     healthy: 0,
@@ -64,7 +70,8 @@ export default function EnhancedDashboard() {
     totalInvestment: 0,
     thisMonthInvestment: 0,
     activeFarms: 1,
-    teamMembers: 1
+    teamMembers: 1,
+    totalFruits: 0
   })
   const [recentActivity, setRecentActivity] = useState<FarmActivity[]>([])
   const [loading, setLoading] = useState(true)
@@ -77,78 +84,157 @@ export default function EnhancedDashboard() {
   }, [])
 
   useEffect(() => {
-    loadDashboardData()
-  }, [currentFarm])
+    if (!currentFarm?.id || !user?.uid) return
 
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true)
-      await Promise.all([
-        loadTreeStats(),
-        loadQuickStats(),
-        loadRecentActivity()
-      ])
-    } catch (error) {
-      console.error('Error loading dashboard data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    setLoading(true)
 
-  const loadTreeStats = async () => {
-    // Load tree statistics from Firebase
-    // This would query the trees collection and aggregate data
-    setTreeStats({
-      total: 125,
-      healthy: 98,
-      needsAttention: 12,
-      young: 45,
-      mature: 65,
-      diseased: 15
+    // 1. Subscribe to Trees
+    const unsubscribeTrees = subscribeToTrees(currentFarm.id, user.uid, (loadedTrees) => {
+      let total = loadedTrees.length
+      let healthy = 0
+      let needsAttention = 0
+      let young = 0
+      let mature = 0
+      let diseased = 0
+      let totalFruitCount = 0
+
+      loadedTrees.forEach(tree => {
+        // Resolve seasonal values
+        const seasonal = tree.seasonalStats?.[selectedSeasonYear]
+        const health = seasonal?.healthStatus !== undefined 
+          ? seasonal.healthStatus 
+          : (selectedSeasonYear === 2025 ? (tree.healthStatus || 'Good') : 'Good')
+          
+        const fruitCount = seasonal?.manualFruitCount !== undefined
+          ? seasonal.manualFruitCount
+          : (selectedSeasonYear === 2025 ? (tree.manualFruitCount || 0) : 0)
+          
+        totalFruitCount += fruitCount
+
+        // Aggregate health status
+        if (health === 'Excellent' || health === 'Good') {
+          healthy++
+        } else if (health === 'Fair') {
+          needsAttention++
+        } else if (health === 'Poor') {
+          diseased++
+        }
+
+        // Aggregate tree status
+        const status = tree.treeStatus || 'Mature'
+        if (status === 'Young Tree' || status === 'Cây Non') {
+          young++
+        } else {
+          mature++
+        }
+      })
+
+      setTreeStats({
+        total,
+        healthy,
+        needsAttention,
+        young,
+        mature,
+        diseased
+      })
+
+      setQuickStats(prev => ({
+        ...prev,
+        totalTrees: total,
+        totalFruits: totalFruitCount
+      }))
     })
-  }
 
-  const loadQuickStats = async () => {
-    // Load quick statistics from Firebase
-    setQuickStats({
-      totalTrees: 125,
-      totalPhotos: 456,
-      totalInvestment: 45000000,
-      thisMonthInvestment: 2500000,
-      activeFarms: 2,
-      teamMembers: 5
+    // 2. Subscribe to Investments
+    const unsubscribeInvestments = subscribeToInvestments(user.uid, currentFarm.id, (loadedInvestments) => {
+      const currentSeasonInvestments = loadedInvestments.filter(inv => {
+        const date = inv.date instanceof Date ? inv.date : new Date(inv.date)
+        return date.getFullYear() === selectedSeasonYear
+      })
+
+      const totalInvestment = currentSeasonInvestments.reduce((sum, inv) => sum + inv.amount, 0)
+
+      const now = new Date()
+      const thisMonthInvestments = currentSeasonInvestments.filter(inv => {
+        const date = inv.date instanceof Date ? inv.date : new Date(inv.date)
+        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
+      })
+      const thisMonthInvestment = thisMonthInvestments.reduce((sum, inv) => sum + inv.amount, 0)
+
+      setQuickStats(prev => ({
+        ...prev,
+        totalInvestment,
+        thisMonthInvestment
+      }))
     })
-  }
 
-  const loadRecentActivity = async () => {
-    // Load recent activity from Firebase
-    setRecentActivity([
-      {
-        id: '1',
-        type: 'tree_added',
-        description: 'Thêm cây mới vào vùng A-12',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        userId: 'user1',
-        userName: 'Nguyễn Văn A'
-      },
-      {
-        id: '2',
-        type: 'photo_uploaded',
-        description: 'Tải ảnh cho cây DUR-001',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-        userId: 'user2',
-        userName: 'Trần Thị B'
-      },
-      {
-        id: '3',
-        type: 'investment_added',
-        description: 'Thêm chi phí phân bón',
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
-        userId: 'user1',
-        userName: 'Nguyễn Văn A'
+    // 3. Subscribe to Photos
+    const photosRef = collection(db, 'photos')
+    const photosQuery = query(photosRef, where('farmId', '==', currentFarm.id))
+    const unsubscribePhotos = onSnapshot(photosQuery, (snapshot) => {
+      const loadedPhotos = snapshot.docs.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          seasonYear: data.seasonYear,
+          timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.timestamp),
+          ...data
+        }
+      })
+
+      const currentSeasonPhotos = loadedPhotos.filter(photo => {
+        const photoSeason = photo.seasonYear || photo.timestamp?.getFullYear() || 2025
+        return photoSeason === selectedSeasonYear
+      })
+
+      setQuickStats(prev => ({
+        ...prev,
+        totalPhotos: currentSeasonPhotos.length
+      }))
+    }, (error) => {
+      console.error('Error fetching photos for dashboard:', error)
+    })
+
+    // 4. Fetch recent activity (non-realtime is fine for performance)
+    const loadRecentActivity = async () => {
+      try {
+        const { logs } = await AuditService.getAuditLogs(10)
+        const mappedActivity: FarmActivity[] = logs.map(log => {
+          let description = log.action
+          if (log.action === 'TREE_CREATED') {
+            description = `Thêm cây mới ${log.resourceId}`
+          } else if (log.action === 'TREE_UPDATE') {
+            description = `Cập nhật thông tin cây ${log.resourceId}`
+          } else if (log.action === 'PHOTO_UPLOADED') {
+            description = `Tải lên ảnh mới cho cây ${log.resourceId}`
+          } else if (log.action === 'INVESTMENT_ADDED') {
+            description = `Thêm khoản chi phí đầu tư`
+          }
+          
+          return {
+            id: log.id,
+            type: log.action.toLowerCase(),
+            description: description,
+            timestamp: log.timestamp,
+            userId: log.userId,
+            userName: log.userEmail || 'Thành viên'
+          }
+        })
+        setRecentActivity(mappedActivity)
+      } catch (error) {
+        console.error('Error loading recent activity:', error)
       }
-    ])
-  }
+    }
+
+    loadRecentActivity()
+    setLoading(false)
+
+    return () => {
+      if (typeof unsubscribeTrees === 'function') unsubscribeTrees()
+      if (typeof unsubscribeInvestments === 'function') unsubscribeInvestments()
+      if (typeof unsubscribePhotos === 'function') unsubscribePhotos()
+    }
+  }, [currentFarm, selectedSeasonYear, user])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -158,13 +244,10 @@ export default function EnhancedDashboard() {
   }
 
   const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'tree_added': return <BeakerIcon className="h-4 w-4 text-green-600" />
-      case 'photo_uploaded': return <PhotoIcon className="h-4 w-4 text-blue-600" />
-      case 'investment_added': return <CurrencyDollarIcon className="h-4 w-4 text-yellow-600" />
-      case 'tree_updated': return <PlusIcon className="h-4 w-4 text-purple-600" />
-      default: return <ClockIcon className="h-4 w-4 text-gray-600" />
-    }
+    if (type.includes('tree_created') || type.includes('tree_added')) return <BeakerIcon className="h-4 w-4 text-green-600" />
+    if (type.includes('photo')) return <PhotoIcon className="h-4 w-4 text-blue-600" />
+    if (type.includes('investment')) return <CurrencyDollarIcon className="h-4 w-4 text-yellow-600" />
+    return <ClockIcon className="h-4 w-4 text-gray-600" />
   }
 
   if (loading) {
@@ -243,28 +326,28 @@ export default function EnhancedDashboard() {
           title="Tổng số cây"
           value={quickStats.totalTrees.toString()}
           icon={<BeakerIcon className="h-8 w-8 text-green-600" />}
-          change="+5 tuần này"
-          changeType="positive"
+          change={`Niên vụ ${selectedSeasonYear}`}
+          changeType="neutral"
         />
         <StatsCard
           title="Hình ảnh"
           value={quickStats.totalPhotos.toString()}
           icon={<PhotoIcon className="h-8 w-8 text-blue-600" />}
-          change="+23 hôm nay"
-          changeType="positive"
+          change={`Niên vụ ${selectedSeasonYear}`}
+          changeType="neutral"
         />
         <StatsCard
-          title="Đầu tư tháng này"
-          value={formatCurrency(quickStats.thisMonthInvestment)}
+          title="Chi phí niên vụ"
+          value={formatCurrency(quickStats.totalInvestment)}
           icon={<CurrencyDollarIcon className="h-8 w-8 text-yellow-600" />}
-          change="+15% so với tháng trước"
-          changeType="positive"
+          change={`Tháng này: ${formatCurrency(quickStats.thisMonthInvestment)}`}
+          changeType="neutral"
         />
         <StatsCard
-          title="Thành viên"
-          value={quickStats.teamMembers.toString()}
-          icon={<HomeIcon className="h-8 w-8 text-purple-600" />}
-          change="Đang hoạt động"
+          title="Sản lượng đếm"
+          value={`${quickStats.totalFruits.toLocaleString('vi-VN')} trái`}
+          icon={<ChartBarIcon className="h-8 w-8 text-emerald-600" />}
+          change={`Niên vụ ${selectedSeasonYear}`}
           changeType="neutral"
         />
       </div>

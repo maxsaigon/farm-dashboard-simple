@@ -25,7 +25,17 @@ export function Navigation() {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showFarmSelector, setShowFarmSelector] = useState(false)
-  const { user, signOut, isAdmin, loading, farms, currentFarm } = useSimpleAuth()
+  const { 
+    user, 
+    signOut, 
+    isAdmin, 
+    loading, 
+    farms, 
+    currentFarm, 
+    selectedSeasonYear, 
+    setSelectedSeasonYear, 
+    startNewSeason 
+  } = useSimpleAuth()
 
   const navigation = [
     {
@@ -96,6 +106,42 @@ export function Navigation() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
+              )}
+
+              {/* Season Selector - Desktop */}
+              {user && currentFarm && (
+                <div className="flex items-center space-x-1">
+                  <span className="text-xs text-gray-500 font-medium">Niên vụ:</span>
+                  <select
+                    value={selectedSeasonYear}
+                    onChange={async (e) => {
+                      const val = e.target.value
+                      if (val === 'NEW') {
+                        const yearStr = prompt('Nhập năm cho niên vụ mới (ví dụ: 2026):')
+                        if (!yearStr) return
+                        const year = parseInt(yearStr, 10)
+                        if (isNaN(year) || year < 2000 || year > 2100) {
+                          alert('Năm không hợp lệ!')
+                          return
+                        }
+                        try {
+                          await startNewSeason(year)
+                          alert(`Đã khởi tạo thành công niên vụ ${year}!`)
+                        } catch (err) {
+                          alert('Lỗi khởi tạo niên vụ mới: ' + (err instanceof Error ? err.message : String(err)))
+                        }
+                      } else {
+                        setSelectedSeasonYear(parseInt(val, 10))
+                      }
+                    }}
+                    className="text-sm font-semibold px-2 py-1.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    {(currentFarm.seasons || [2025]).map(y => (
+                      <option key={y} value={y}>Năm {y}</option>
+                    ))}
+                    <option value="NEW">➕ Niên vụ mới...</option>
+                  </select>
+                </div>
               )}
 
               {allNavigation.map((item) => {
@@ -175,6 +221,41 @@ export function Navigation() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
+              )}
+              
+              {/* Season Selector - Mobile */}
+              {user && currentFarm && (
+                <div className="flex items-center">
+                  <select
+                    value={selectedSeasonYear}
+                    onChange={async (e) => {
+                      const val = e.target.value
+                      if (val === 'NEW') {
+                        const yearStr = prompt('Nhập năm cho niên vụ mới (ví dụ: 2026):')
+                        if (!yearStr) return
+                        const year = parseInt(yearStr, 10)
+                        if (isNaN(year) || year < 2000 || year > 2100) {
+                          alert('Năm không hợp lệ!')
+                          return
+                        }
+                        try {
+                          await startNewSeason(year)
+                          alert(`Đã khởi tạo thành công niên vụ ${year}!`)
+                        } catch (err) {
+                          alert('Lỗi khởi tạo niên vụ mới: ' + (err instanceof Error ? err.message : String(err)))
+                        }
+                      } else {
+                        setSelectedSeasonYear(parseInt(val, 10))
+                      }
+                    }}
+                    className="text-xs font-bold px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  >
+                    {(currentFarm.seasons || [2025]).map(y => (
+                      <option key={y} value={y}>Mùa {y}</option>
+                    ))}
+                    <option value="NEW">➕ Mới...</option>
+                  </select>
+                </div>
               )}
             </div>
 

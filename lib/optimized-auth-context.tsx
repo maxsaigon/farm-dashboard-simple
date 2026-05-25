@@ -19,7 +19,8 @@ import {
   query, 
   where, 
   getDocs,
-  serverTimestamp 
+  serverTimestamp,
+  writeBatch
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
 
@@ -54,6 +55,8 @@ export interface SimpleFarm {
   centerLongitude?: number
   isActive: boolean
   organizationId?: string
+  currentSeasonYear?: number
+  seasons?: number[]
 }
 
 export interface SimpleUser {
@@ -130,6 +133,11 @@ interface SimpleAuthContextType {
 
   // Utility
   refreshUserData: () => Promise<void>
+
+  // Season management
+  selectedSeasonYear: number
+  setSelectedSeasonYear: (year: number) => void
+  startNewSeason: (year: number) => Promise<void>
 }
 
 const SimpleAuthContext = createContext<SimpleAuthContextType | null>(null)
@@ -145,6 +153,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   const [farms, setFarms] = useState<SimpleFarm[]>([])
   const [currentFarm, setCurrentFarmState] = useState<SimpleFarm | null>(null)
   const [farmAccess, setFarmAccess] = useState<FarmAccess[]>([])
+  const [selectedSeasonYear, setSelectedSeasonYearState] = useState<number>(2025)
 
   // Cache for auth data to prevent repeated Firestore queries
   const authCache = useRef({
@@ -374,6 +383,136 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       }
     }
   }, [user, farms, currentFarm])
+
+  // Sync selected season when current farm changes
+  useEffect(() => {
+    if (currentFarm) {
+      const farmSeason = currentFarm.currentSeasonYear || 2025
+      setSelectedSeasonYearState(farmSeason)
+    }
+  }, [currentFarm])
+
+  // Trigger background season migration check when a farm is selected
+  useEffect(() => {
+    if (!currentFarm?.id || !user?.uid) return
+
+    const runSeasonMigration = async () => {
+      try {
+        console.log('[SeasonMigration] 🚀 Starting client-side season migration for farm:', currentFarm.id)
+        
+        // 1. Migrate Farm configuration
+        const currentSeasons = currentFarm.seasons || [2025]
+        let farmUpdated = false
+        if (!currentFarm.currentSeasonYear || !currentFarm.seasons || !currentSeasons.includes(2025)) {
+          const updatedSeasons = Array.from(new Set([...currentSeasons, 2025])).sort((a, b) => b - a)
+          const farmRef = doc(db, 'farms', currentFarm.id)
+          await setDoc(farmRef, {
+            currentSeasonYear: currentFarm.currentSeasonYear || 2025,
+            seasons: updatedSeasons
+          }, { merge: true })
+          
+          currentFarm.currentSeasonYear = currentFarm.currentSeasonYear || 2025
+          currentFarm.seasons = updatedSeasons
+          farmUpdated = true
+        }
+
+        // 2. Migrate Trees
+        const treesRef = collection(db, 'farms', currentFarm.id, 'trees')
+        const treesSnapshot = await getDocs(treesRef)
+        let treesMigrated = 0
+        let batch = writeBatch(db)
+        let opCount = 0
+
+        for (const treeDoc of treesSnapshot.docs) {
+          const treeData = treeDoc.data()
+          const seasonalStats = treeData.seasonalStats || {}
+          if (!seasonalStats[2025]) {
+            seasonalStats[2025] = {
+              manualFruitCount: treeData.manualFruitCount || 0,
+              aiFruitCount: treeData.aiFruitCount || 0,
+              healthStatus: treeData.healthStatus || 'Good',
+              notes: treeData.notes || '',
+              updatedAt: treeData.updatedAt || new Date()
+            }
+
+            batch.update(doc(db, 'farms', currentFarm.id, 'trees', treeDoc.id), {
+              seasonalStats
+            })
+            opCount++
+            treesMigrated++
+
+            if (opCount >= 400) {
+              await batch.commit()
+              batch = writeBatch(db)
+              opCount = 0
+            }
+          }
+        }
+
+        if (opCount > 0) {
+          await batch.commit()
+        }
+
+        // 3. Migrate Photos
+        const photosRef = collection(db, 'photos')
+        const photosQuery = query(photosRef, where('farmId', '==', currentFarm.id))
+        const photosSnapshot = await getDocs(photosQuery)
+        let photosMigrated = 0
+        let batchWrite = writeBatch(db)
+        let opCountPhotos = 0
+
+        for (const photoDoc of photosSnapshot.docs) {
+          const photoData = photoDoc.data()
+          if (photoData.seasonYear === undefined) {
+            let seasonYear = 2025
+            let photoDate: Date | null = null
+            if (photoData.timestamp) {
+              if (photoData.timestamp.toDate) {
+                photoDate = photoData.timestamp.toDate()
+              } else {
+                photoDate = new Date(photoData.timestamp)
+              }
+            }
+
+            if (photoDate && photoDate.getFullYear() >= 2026) {
+              seasonYear = photoDate.getFullYear()
+            }
+
+            batchWrite.update(doc(db, 'photos', photoDoc.id), {
+              seasonYear
+            })
+            opCountPhotos++
+            photosMigrated++
+
+            if (opCountPhotos >= 400) {
+              await batchWrite.commit()
+              batchWrite = writeBatch(db)
+              opCountPhotos = 0
+            }
+          }
+        }
+
+        if (opCountPhotos > 0) {
+          await batchWrite.commit()
+        }
+
+        if (farmUpdated || treesMigrated > 0 || photosMigrated > 0) {
+          console.log('[SeasonMigration] ✅ Season migration completed client-side.', {
+            farmUpdated,
+            treesMigrated,
+            photosMigrated
+          })
+          if (farmUpdated) {
+            setCurrentFarmState({ ...currentFarm })
+          }
+        }
+      } catch (err) {
+        console.error('[SeasonMigration] ❌ Error migrating season data:', err)
+      }
+    }
+
+    runSeasonMigration()
+  }, [currentFarm?.id, user?.uid])
 
   // Helper functions
   const loadOrCreateUserProfile = async (firebaseUser: FirebaseUser): Promise<SimpleUser> => {
@@ -727,6 +866,34 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     }
   }
 
+  const startNewSeason = async (year: number): Promise<void> => {
+    if (!currentFarm || !user) return
+    
+    const currentSeasons = currentFarm.seasons || [2025]
+    const updatedSeasons = Array.from(new Set([...currentSeasons, year])).sort((a, b) => b - a)
+    
+    try {
+      const farmRef = doc(db, 'farms', currentFarm.id)
+      await setDoc(farmRef, {
+        currentSeasonYear: year,
+        seasons: updatedSeasons
+      }, { merge: true })
+      
+      const updatedFarm = {
+        ...currentFarm,
+        currentSeasonYear: year,
+        seasons: updatedSeasons
+      }
+      
+      setCurrentFarmState(updatedFarm)
+      setSelectedSeasonYearState(year)
+      setFarms(prev => prev.map(f => f.id === currentFarm.id ? updatedFarm : f))
+    } catch (error) {
+      console.error('Error starting new season:', error)
+      throw error
+    }
+  }
+
   // Compute roles and permissions
   const roles: FarmRole[] = Array.from(new Set(farmAccess.filter(a => a.isActive).map(a => a.role)))
   const permissions: Permission[] = Array.from(new Set(
@@ -773,7 +940,12 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     isOrganizationAdmin: () => false, // Not implemented in simple auth
 
     // Utility
-    refreshUserData
+    refreshUserData,
+
+    // Season management
+    selectedSeasonYear,
+    setSelectedSeasonYear: setSelectedSeasonYearState,
+    startNewSeason
   }
 
   return (

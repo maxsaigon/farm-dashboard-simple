@@ -32,7 +32,7 @@ interface TreeDetailProps {
 }
 
 export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, className = '', fullScreen = false, disableMobileFullscreen = false }: TreeDetailProps) {
-  const { user, currentFarm } = useSimpleAuth()
+  const { user, currentFarm, selectedSeasonYear } = useSimpleAuth()
   const { showSuccess, showError, ToastContainer } = useToast()
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -73,24 +73,44 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     }
   }, [tree, isMobile])
 
+  // Resolve seasonal stats for display when not editing
+  const seasonalStats = useMemo(() => {
+    if (!tree) return null
+    const seasonal = tree.seasonalStats?.[selectedSeasonYear]
+    
+    const manualFruitCount = seasonal !== undefined 
+      ? seasonal.manualFruitCount 
+      : (selectedSeasonYear === 2025 ? (tree.manualFruitCount || 0) : 0)
+      
+    const healthStatus = seasonal !== undefined 
+      ? seasonal.healthStatus 
+      : (selectedSeasonYear === 2025 ? (tree.healthStatus || 'Good') : 'Good')
+      
+    const notes = seasonal !== undefined 
+      ? (seasonal.notes || '') 
+      : (selectedSeasonYear === 2025 ? (tree.notes || '') : '')
+      
+    return { manualFruitCount, healthStatus, notes }
+  }, [tree, selectedSeasonYear])
+
   // Memoize form data initialization to prevent unnecessary re-renders
   const initialFormData = useMemo(() => {
-    if (!tree) return {}
+    if (!tree || !seasonalStats) return {}
     return {
       name: tree.name || '',
       variety: tree.variety || '',
       zoneCode: tree.zoneCode || '',
       plantingDate: tree.plantingDate,
-      healthStatus: tree.healthStatus || 'Good',
+      healthStatus: seasonalStats.healthStatus as Tree['healthStatus'],
       treeHeight: tree.treeHeight || 0,
       trunkDiameter: tree.trunkDiameter || 0,
-      manualFruitCount: tree.manualFruitCount || 0,
-      notes: tree.notes || '',
+      manualFruitCount: seasonalStats.manualFruitCount,
+      notes: seasonalStats.notes,
       healthNotes: tree.healthNotes || '',
       diseaseNotes: tree.diseaseNotes || '',
       needsAttention: tree.needsAttention || false
     }
-  }, [tree])
+  }, [tree, seasonalStats])
 
   useEffect(() => {
     if (tree) {
@@ -139,12 +159,40 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     setSaveStatus('saving')
     
     try {
-      await updateTree(currentFarm.id, tree.id, user.uid, {
-        ...formData,
-        updatedAt: new Date()
-      })
+      const newSeasonalStats = {
+        ...(tree.seasonalStats || {}),
+        [selectedSeasonYear]: {
+          manualFruitCount: formData.manualFruitCount || 0,
+          aiFruitCount: formData.aiFruitCount || 0,
+          healthStatus: formData.healthStatus || 'Good',
+          notes: formData.notes || '',
+          updatedAt: new Date()
+        }
+      }
 
-      const updatedTree = { ...tree, ...formData, updatedAt: new Date() }
+      const treeUpdates: Partial<Tree> = {
+        ...formData,
+        seasonalStats: newSeasonalStats,
+        updatedAt: new Date()
+      }
+
+      // For backward compatibility and simplified query displays,
+      // if we are updating the current active season, we ALSO sync to root fields
+      const farmActiveSeason = currentFarm.currentSeasonYear || 2025
+      if (selectedSeasonYear === farmActiveSeason) {
+        treeUpdates.manualFruitCount = formData.manualFruitCount || 0
+        treeUpdates.healthStatus = formData.healthStatus || 'Good'
+        treeUpdates.notes = formData.notes || ''
+      } else {
+        // If we are editing a PAST season, we DO NOT overwrite active season's root fields
+        delete treeUpdates.manualFruitCount
+        delete treeUpdates.healthStatus
+        delete treeUpdates.notes
+      }
+
+      await updateTree(currentFarm.id, tree.id, user.uid, treeUpdates)
+
+      const updatedTree = { ...tree, ...treeUpdates }
       onTreeUpdate?.(updatedTree)
       
       setSaveStatus('success')
@@ -165,7 +213,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     } finally {
       setLoading(false)
     }
-  }, [user, currentFarm, tree, formData, showSuccess, showError, onTreeUpdate])
+  }, [user, currentFarm, tree, formData, showSuccess, showError, onTreeUpdate, selectedSeasonYear])
 
   const handleDelete = useCallback(async () => {
     // Authentication check
@@ -308,7 +356,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
             </button>
           )}
           <div className="flex items-center space-x-3">
-            {getHealthIcon(tree.healthStatus)}
+            {getHealthIcon(seasonalStats?.healthStatus)}
             <div>
               <h2 className="text-xl font-bold text-gray-900">
                 {tree.name || `Cây ${tree.variety || tree.zoneName || tree.id.slice(0, 8)}`}
@@ -319,8 +367,8 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
                     {tree.variety}
                   </span>
                 )}
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getHealthStatusColor(tree.healthStatus)}`}>
-                  {tree.healthStatus || 'Chưa đánh giá'}
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getHealthStatusColor(seasonalStats?.healthStatus)}`}>
+                  {getHealthStatusText(seasonalStats?.healthStatus)}
                 </span>
                 {tree.needsAttention && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
@@ -491,9 +539,9 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
                     <option value="Poor">🔴 Cần chăm sóc</option>
                   </select>
                 ) : (
-                  <div className={`inline-flex px-4 py-2 rounded-full font-semibold text-lg ${getHealthStatusColor(tree.healthStatus)}`}>
-                    {getHealthIcon(tree.healthStatus)}
-                    <span className="ml-2">{getHealthStatusText(tree.healthStatus)}</span>
+                  <div className={`inline-flex px-4 py-2 rounded-full font-semibold text-lg ${getHealthStatusColor(seasonalStats?.healthStatus)}`}>
+                    {getHealthIcon(seasonalStats?.healthStatus)}
+                    <span className="ml-2">{getHealthStatusText(seasonalStats?.healthStatus)}</span>
                   </div>
                 )}
               </div>
@@ -514,7 +562,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
                 ) : (
                   <div className="bg-white rounded-lg p-4 border-2 border-green-200">
                     <div className="text-3xl font-bold text-green-600 text-center">
-                      {(tree.manualFruitCount || 0).toLocaleString()} trái
+                      {(seasonalStats?.manualFruitCount || 0).toLocaleString()} trái
                     </div>
                     <p className="text-sm text-gray-500 text-center mt-1">Đếm thủ công</p>
                   </div>
@@ -524,10 +572,10 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
           </div>
 
           {/* Simple Notes Section - Only if needed */}
-          {(tree.notes || isEditing) && (
+          {((seasonalStats?.notes) || isEditing) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center mb-3">
-                📝 Ghi chú
+                📝 Ghi chú ({selectedSeasonYear})
               </h3>
               {isEditing ? (
                 <div className="space-y-4">
@@ -555,7 +603,7 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
                 </div>
               ) : (
                 <p className="text-gray-900 text-lg leading-relaxed whitespace-pre-wrap">
-                  {tree.notes}
+                  {seasonalStats?.notes}
                 </p>
               )}
             </div>

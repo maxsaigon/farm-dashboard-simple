@@ -66,7 +66,7 @@ function AutoCenterMap({ userPosition }: { userPosition: { lat: number, lng: num
 }
 
 export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, onTreeCreated, onTreeUpdated, farmId }: OnFarmWorkModeProps) {
-  const { user } = useSimpleAuth()
+  const { user, selectedSeasonYear } = useSimpleAuth()
   const gps = useIOSOptimizedGPS()
   
   // Keep device screen active during active farm work
@@ -527,12 +527,20 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
         longitude: activeLng,
         gpsAccuracy: activeAccuracy,
         plantingDate: new Date(),
-        healthStatus: 'Good',
         manualFruitCount: 0,
         aiFruitCount: 0,
         needsAttention: false,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        seasonalStats: {
+          [selectedSeasonYear]: {
+            manualFruitCount: 0,
+            aiFruitCount: 0,
+            healthStatus: 'Good',
+            notes: '',
+            updatedAt: new Date()
+          }
+        }
       }
 
       const treeId = await createTree(farmId, user.uid, newTree as Omit<Tree, 'id' | 'farmId'>)
@@ -584,7 +592,8 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
                 compressedPath: storagePath,
                 originalPath: storagePath,
                 localPath: downloadURL,
-                createdAt: serverTimestamp()
+                createdAt: serverTimestamp(),
+                seasonYear: selectedSeasonYear
               }
               
               await setDoc(doc(db, 'farms', farmId, 'photos', photoId), photoDoc)
@@ -683,7 +692,7 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
     } finally {
       setCreating(false)
     }
-  }, [user, userPosition, newTreeData, farmId, capturedPhotos, onTreeCreated])
+  }, [user, userPosition, newTreeData, farmId, capturedPhotos, onTreeCreated, selectedSeasonYear])
 
   // Get tree marker icon
   const getTreeMarkerIcon = (tree: NearbyTree) => {
