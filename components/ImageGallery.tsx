@@ -35,12 +35,6 @@ const storageImagesCache = new Map<string, { general: string[], health: string[]
 export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
    const { user, currentFarm, selectedSeasonYear } = useSimpleAuth()
    const [filterSeason, setFilterSeason] = useState<string>('all')
-
-   useEffect(() => {
-     if (selectedSeasonYear) {
-       setFilterSeason(selectedSeasonYear.toString())
-     }
-   }, [selectedSeasonYear])
    const { showSuccess, showError } = useToast()
    const fileInputRef = useRef<HTMLInputElement>(null)
    const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -248,7 +242,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
 
   const displayedImagesCount = displayedImages.length
   const filteredImages = displayedImages
-  const totalImages = displayedImages.length
+  const totalImages = allCombinedImages.length
 
   // Modal navigation
   const nextImage = useCallback(() => {

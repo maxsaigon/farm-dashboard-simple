@@ -282,8 +282,21 @@ function SeasonInvestmentCard({ farmId, currentSeasonYear }: { farmId: string, c
 }
 
 // Durian Season Status Component
-function DurianSeasonStatus({ lastSeason }: { lastSeason: { name?: string; perTreeCount: number; endDate?: any } | null }) {
+function DurianSeasonStatus({ 
+  lastSeason, 
+  tree, 
+  selectedSeasonYear 
+}: { 
+  lastSeason: { name?: string; perTreeCount: number; endDate?: any } | null;
+  tree: Tree | null;
+  selectedSeasonYear: number;
+}) {
   const status = getDurianSeasonStatus(lastSeason)
+  
+  // Check if data for the selected season (e.g. 2026) has been entered
+  const currentSeasonStats = tree?.seasonalStats?.[selectedSeasonYear]
+  const hasCurrentSeasonData = currentSeasonStats !== undefined && currentSeasonStats.manualFruitCount !== undefined
+  const currentSeasonCount = currentSeasonStats?.manualFruitCount || 0
 
   return (
     <div>
@@ -309,11 +322,18 @@ function DurianSeasonStatus({ lastSeason }: { lastSeason: { name?: string; perTr
             </span>
             <span className="font-bold text-amber-800">{status.lastCount.toLocaleString()} trái</span>
           </div>
-          {status.expectedNextSeason && (
+          {hasCurrentSeasonData ? (
             <div className="flex justify-between items-center">
-              <span className="text-sm text-amber-700">Mùa tiếp theo:</span>
-              <span className="text-sm font-medium text-amber-800">{status.expectedNextSeason}</span>
+              <span className="text-sm text-amber-700">Mùa hiện tại ({selectedSeasonYear}):</span>
+              <span className="font-bold text-amber-800">{currentSeasonCount.toLocaleString()} trái</span>
             </div>
+          ) : (
+            status.expectedNextSeason && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-amber-700">Mùa tiếp theo:</span>
+                <span className="text-sm font-medium text-amber-800">{status.expectedNextSeason}</span>
+              </div>
+            )
           )}
         </div>
       )}
@@ -329,7 +349,7 @@ interface Props {
 }
 
 export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved }: Props) {
-  const { user, currentFarm } = useSimpleAuth()
+  const { user, currentFarm, selectedSeasonYear } = useSimpleAuth()
   const { showSuccess, showError, ToastContainer } = useToast()
   const router = useRouter()
   const [showShareModal, setShowShareModal] = useState(false)
@@ -347,19 +367,16 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
   const [gpsError, setGpsError] = useState<string>('')
   const [confirmLargeDistance, setConfirmLargeDistance] = useState<boolean>(false)
 
-  // Initialize fruit count when tree changes, considering durian season status
+  // Initialize fruit count when tree changes, considering selectedSeasonYear
   useEffect(() => {
-    if (tree) {
-      // Check if we're in a new season that should reset count to 0
-      const shouldResetCount = lastSeason && getDurianSeasonStatus(lastSeason)?.expectedNextSeason === 'Mùa hiện tại'
-
-      if (shouldResetCount) {
-        setCount(0)
-      } else {
-        setCount(tree.manualFruitCount || 0)
-      }
+    if (tree && selectedSeasonYear) {
+      const seasonal = tree.seasonalStats?.[selectedSeasonYear]
+      const countForSeason = seasonal !== undefined
+        ? seasonal.manualFruitCount
+        : (selectedSeasonYear === 2025 ? (tree.manualFruitCount || 0) : 0)
+      setCount(countForSeason)
     }
-  }, [tree, lastSeason])
+  }, [tree, selectedSeasonYear])
 
   // Handle fullscreen mode
   useEffect(() => {
@@ -470,9 +487,32 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
     try {
       setSaving(true)
 
-      await updateTree(currentFarm.id, tree.id, user.uid, { manualFruitCount: count })
+      const currentSeasonal = tree.seasonalStats?.[selectedSeasonYear]
+      const newSeasonalStats = {
+        ...(tree.seasonalStats || {}),
+        [selectedSeasonYear]: {
+          manualFruitCount: count,
+          aiFruitCount: currentSeasonal?.aiFruitCount || 0,
+          healthStatus: currentSeasonal?.healthStatus || tree.healthStatus || 'Good',
+          notes: currentSeasonal?.notes || tree.notes || '',
+          updatedAt: new Date()
+        }
+      }
 
-      onSaved?.({ ...tree, manualFruitCount: count })
+      const treeUpdates: Partial<Tree> = {
+        seasonalStats: newSeasonalStats,
+        updatedAt: new Date()
+      }
+
+      // Sync to root if updating the current active season
+      const farmActiveSeason = currentFarm.currentSeasonYear || 2025
+      if (selectedSeasonYear === farmActiveSeason) {
+        treeUpdates.manualFruitCount = count
+      }
+
+      await updateTree(currentFarm.id, tree.id, user.uid, treeUpdates)
+
+      onSaved?.({ ...tree, ...treeUpdates })
 
       showSuccess('Đã lưu', 'Số lượng trái đã được cập nhật')
 
@@ -736,7 +776,11 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
                     <span className="text-amber-600 text-sm">Đang tải...</span>
                   </div>
                 ) : (
-                  <DurianSeasonStatus lastSeason={lastSeason} />
+                  <DurianSeasonStatus 
+                    lastSeason={lastSeason} 
+                    tree={tree}
+                    selectedSeasonYear={selectedSeasonYear}
+                  />
                 )}
               </div>
             </div>
@@ -750,7 +794,7 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
                 <label className="block text-lg font-semibold text-green-800 mb-3">Số lượng trái hiện tại</label>
                 <input
                   type="number"
-                  value={count || ''}
+                  value={count}
                   onChange={(e) => {
                     const newValue = parseInt(e.target.value) || 0
                     setCount(newValue)

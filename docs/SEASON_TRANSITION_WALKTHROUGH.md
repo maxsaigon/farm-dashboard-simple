@@ -19,9 +19,16 @@ Tài liệu này tổng hợp toàn bộ các thay đổi, giải pháp kỹ thu
 
 ### 3. Giao diện & Component
 - **Bộ chọn Mùa vụ**: Tích hợp Selector dropdown trên thanh điều hướng `components/Navigation.tsx` cho cả giao diện máy tính và điện thoại di động, hỗ trợ nút bấm cứng thêm niên vụ mới thủ công.
-- **Chi tiết cây**: Cập nhật `components/TreeDetail.tsx` để đọc/ghi số lượng trái, sức khỏe cây tương ứng với `selectedSeasonYear` được chọn. Hỗ trợ cơ chế tương thích ngược (fallback) về trường root nếu xem niên vụ 2025.
+- **Chi tiết cây (`components/TreeDetail.tsx`)**: Đọc/ghi số lượng trái, sức khỏe cây tương ứng với `selectedSeasonYear` được chọn. Hỗ trợ cơ chế tương thích ngược (fallback) về trường root nếu xem niên vụ 2025.
+- **Trang trình chiếu cây (`components/FullscreenTreeShowcase.tsx`)**:
+  - Tải và đồng bộ hóa số lượng trái hiện tại theo `selectedSeasonYear`. Khi chuyển sang mùa vụ mới (ví dụ: 2026), giá trị mặc định được reset về `0` (thay vì lấy nhầm data của mùa vụ 2025 cũ).
+  - Tích hợp lưu số lượng trái trực tiếp vào bản đồ lịch sử `seasonalStats` của mùa vụ đang được chọn. Chỉ đồng bộ ra trường root khi niên vụ được chọn trùng với niên vụ hiện hành của farm.
+  - Cập nhật thẻ trạng thái sầu riêng: Nếu nông dân đã nhập dữ liệu mùa vụ mới, hệ thống sẽ tự động hiển thị mục **"Mùa hiện tại (2026): X trái"** thay thế cho thông báo ước lượng **"Mùa tiếp theo: X tháng nữa"**.
 - **Vận hành tại vườn**: Tích hợp `components/OnFarmWorkMode.tsx` để tự động khởi tạo bản đồ lịch sử `seasonalStats` khi thêm cây mới, và gán tag `seasonYear` khi chụp/tải ảnh.
-- **Thư viện ảnh**: Refactor `components/ImageGallery.tsx` hỗ trợ bộ lọc tab thông minh (Tất cả, Mùa 2026, Mùa 2025) và gắn thẻ nhãn Badges màu ngọc lục bảo nổi bật ghi rõ niên vụ tương ứng của mỗi hình ảnh.
+- **Thư viện ảnh (`components/ImageGallery.tsx`)**: 
+  - Mặc định chọn tab **"Tất cả"** ở lần tải đầu tiên để người dùng có cái nhìn tổng quan về mọi hình ảnh sinh trưởng của cây.
+  - Sửa lỗi đếm số lượng của tab "Tất cả" hiển thị không chính xác khi đang áp dụng bộ lọc mùa vụ.
+  - Hỗ trợ bộ lọc tab thông minh (Tất cả, Mùa 2026, Mùa 2025) và gắn thẻ nhãn Badges màu ngọc lục bảo nổi bật ghi rõ niên vụ tương ứng của mỗi hình ảnh.
 
 ### 4. Quản lý Ảnh nâng cao (Photo Management)
 - **Tập tin**: `components/PhotoManagement.tsx`
