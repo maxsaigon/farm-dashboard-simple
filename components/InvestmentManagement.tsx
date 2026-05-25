@@ -85,7 +85,7 @@ interface InvestmentSummary {
 }
 
 export default function InvestmentManagement() {
-  const { user, hasPermission, currentFarm } = useSimpleAuth()
+  const { user, hasPermission, currentFarm, selectedSeasonYear } = useSimpleAuth()
   const [investments, setInvestments] = useState<Investment[]>([])
   const [farmMembers, setFarmMembers] = useState<Array<{userId: string, displayName?: string, email?: string}>>([])
   const [loading, setLoading] = useState(true)
@@ -164,7 +164,7 @@ export default function InvestmentManagement() {
 
   useEffect(() => {
     calculateSummary()
-  }, [investments, filterDateRange])
+  }, [investments, filterDateRange, selectedSeasonYear])
 
   const loadInvestments = async () => {
     try {
@@ -251,25 +251,26 @@ export default function InvestmentManagement() {
   const calculateSummary = () => {
     const now = new Date()
     const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
     
-    let filteredInvestments = investments
+    // Filter investments by selectedSeasonYear first
+    const seasonInvestments = investments.filter(inv => {
+      const invDate = inv.date instanceof Date ? inv.date : new Date(inv.date)
+      return invDate.getFullYear() === selectedSeasonYear
+    })
+    
+    let filteredInvestments = seasonInvestments
     
     if (filterDateRange === 'thisMonth') {
-      filteredInvestments = investments.filter(inv => {
-        const invDate = new Date(inv.date)
-        return invDate.getMonth() === currentMonth && invDate.getFullYear() === currentYear
-      })
-    } else if (filterDateRange === 'thisYear') {
-      filteredInvestments = investments.filter(inv => {
-        return new Date(inv.date).getFullYear() === currentYear
+      filteredInvestments = seasonInvestments.filter(inv => {
+        const invDate = inv.date instanceof Date ? inv.date : new Date(inv.date)
+        return invDate.getMonth() === currentMonth
       })
     }
 
     const totalInvestment = filteredInvestments.reduce((sum, inv) => sum + inv.amount, 0)
-    const thisMonthInvestment = investments.filter(inv => {
-      const invDate = new Date(inv.date)
-      return invDate.getMonth() === currentMonth && invDate.getFullYear() === currentYear
+    const thisMonthInvestment = seasonInvestments.filter(inv => {
+      const invDate = inv.date instanceof Date ? inv.date : new Date(inv.date)
+      return invDate.getMonth() === currentMonth
     }).reduce((sum, inv) => sum + inv.amount, 0)
 
     const categoryBreakdown: {[key: string]: number} = {}
@@ -277,17 +278,16 @@ export default function InvestmentManagement() {
       categoryBreakdown[inv.category] = (categoryBreakdown[inv.category] || 0) + inv.amount
     })
 
-    // Calculate monthly trend for the last 6 months
+    // Calculate monthly trend for the selected season year
     const monthlyTrend = []
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date()
-      date.setMonth(date.getMonth() - i)
-      const month = date.toLocaleDateString('vi-VN', { month: 'short', year: '2-digit' })
-      const amount = investments.filter(inv => {
-        const invDate = new Date(inv.date)
-        return invDate.getMonth() === date.getMonth() && invDate.getFullYear() === date.getFullYear()
+    const monthNames = ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12']
+    for (let m = 0; m < 12; m++) {
+      const monthLabel = `${monthNames[m]} ${selectedSeasonYear.toString().substring(2)}`
+      const amount = seasonInvestments.filter(inv => {
+        const invDate = inv.date instanceof Date ? inv.date : new Date(inv.date)
+        return invDate.getMonth() === m
       }).reduce((sum, inv) => sum + inv.amount, 0)
-      monthlyTrend.push({ month, amount })
+      monthlyTrend.push({ month: monthLabel, amount })
     }
 
     setSummary({
@@ -318,14 +318,15 @@ export default function InvestmentManagement() {
   const filteredInvestments = investments.filter(investment => {
     if (filterCategory !== 'all' && investment.category !== filterCategory) return false
     
+    const invDate = investment.date instanceof Date ? investment.date : new Date(investment.date)
+    const invYear = invDate.getFullYear()
+    
+    // By default, only show investments matching the selected season year
+    if (invYear !== selectedSeasonYear) return false
+    
     if (filterDateRange === 'thisMonth') {
       const now = new Date()
-      const invDate = new Date(investment.date)
-      return invDate.getMonth() === now.getMonth() && invDate.getFullYear() === now.getFullYear()
-    }
-    if (filterDateRange === 'thisYear') {
-      const invDate = new Date(investment.date)
-      return invDate.getFullYear() === new Date().getFullYear()
+      return invDate.getMonth() === now.getMonth()
     }
     
     return true
@@ -492,9 +493,8 @@ export default function InvestmentManagement() {
                 onChange={(e) => setFilterDateRange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">Tất cả thời gian</option>
+                <option value="all">Cả niên vụ {selectedSeasonYear}</option>
                 <option value="thisMonth">Tháng này</option>
-                <option value="thisYear">Năm này</option>
               </select>
             </div>
           </div>
@@ -651,7 +651,7 @@ export default function InvestmentManagement() {
           {/* Season Investment Card */}
           <SeasonInvestmentCard
             investments={investments}
-            currentSeasonYear={getSeasonFromDate(new Date()).year}
+            currentSeasonYear={selectedSeasonYear}
           />
           <InvestmentSummaryView summary={summary} />
         </div>

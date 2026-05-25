@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Tree } from '@/lib/types'
 import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PhotoIcon, EyeIcon, CalendarDaysIcon, MapPinIcon, CameraIcon, PlusIcon, TrashIcon, MagnifyingGlassPlusIcon, MagnifyingGlassMinusIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
@@ -33,7 +33,14 @@ type DisplayImage = PhotoWithUrls | StorageImage
 const storageImagesCache = new Map<string, { general: string[], health: string[], fruitCount: string[] }>()
 
 export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
-   const { user, currentFarm } = useSimpleAuth()
+   const { user, currentFarm, selectedSeasonYear } = useSimpleAuth()
+   const [filterSeason, setFilterSeason] = useState<string>('all')
+
+   useEffect(() => {
+     if (selectedSeasonYear) {
+       setFilterSeason(selectedSeasonYear.toString())
+     }
+   }, [selectedSeasonYear])
    const { showSuccess, showError } = useToast()
    const fileInputRef = useRef<HTMLInputElement>(null)
    const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -195,21 +202,66 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     return result
   }
 
-  const filteredImages = getFilteredImages()
-  const totalImages = filteredImages.length
+  const getSeasonLabel = (image: DisplayImage): string => {
+    if ('seasonYear' in image && image.seasonYear) {
+      return `${image.seasonYear}`
+    }
+    if ('timestamp' in image && image.timestamp) {
+      const year = new Date(image.timestamp).getFullYear()
+      return `${year}`
+    }
+    return ''
+  }
+
+  const availableSeasonsForTree = useMemo(() => {
+    const seasonsSet = new Set<number>()
+    photos.forEach(p => {
+      if (p.seasonYear) {
+        seasonsSet.add(p.seasonYear)
+      } else if (p.timestamp) {
+        seasonsSet.add(new Date(p.timestamp).getFullYear())
+      }
+    })
+    return Array.from(seasonsSet).sort((a, b) => b - a)
+  }, [photos])
+
+  const allCombinedImages = useMemo(() => {
+    return getFilteredImages()
+  }, [photos, storageImages])
+
+  const filteredImagesBySeason = useCallback((season: number | 'all') => {
+    if (season === 'all') return allCombinedImages
+    return allCombinedImages.filter(img => {
+      if ('seasonYear' in img && img.seasonYear) {
+        return img.seasonYear === season
+      }
+      if ('timestamp' in img && img.timestamp) {
+        return new Date(img.timestamp).getFullYear() === season
+      }
+      return false
+    })
+  }, [allCombinedImages])
+
+  const displayedImages = useMemo(() => {
+    return filterSeason === 'all' ? allCombinedImages : filteredImagesBySeason(parseInt(filterSeason, 10))
+  }, [filterSeason, allCombinedImages, filteredImagesBySeason])
+
+  const displayedImagesCount = displayedImages.length
+  const filteredImages = displayedImages
+  const totalImages = displayedImages.length
 
   // Modal navigation
   const nextImage = useCallback(() => {
     if (selectedImage !== null) {
-      setSelectedImage((selectedImage + 1) % totalImages)
+      setSelectedImage((selectedImage + 1) % displayedImagesCount)
     }
-  }, [selectedImage, totalImages])
+  }, [selectedImage, displayedImagesCount])
 
   const prevImage = useCallback(() => {
     if (selectedImage !== null) {
-      setSelectedImage((selectedImage - 1 + totalImages) % totalImages)
+      setSelectedImage((selectedImage - 1 + displayedImagesCount) % displayedImagesCount)
     }
-  }, [selectedImage, totalImages])
+  }, [selectedImage, displayedImagesCount])
 
   // Zoom and pan states for full screen view
   const [scale, setScale] = useState(1)
@@ -560,7 +612,8 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
         originalPath: storagePath,
         uploadedToServer: true,
         needsAIAnalysis: photoType === 'fruit_count',
-        farmName: currentFarm.name || 'Unknown Farm'
+        farmName: currentFarm.name || 'Unknown Farm',
+        seasonYear: selectedSeasonYear
       }
       
       const photosRef = collection(db, 'photos')
@@ -737,9 +790,41 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
           />
         </div>
 
+        {/* Season Filter Tabs */}
+        {availableSeasonsForTree.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4 px-6 pt-2">
+            <button
+              onClick={() => setFilterSeason('all')}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                filterSeason === 'all'
+                  ? 'bg-green-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Tất cả ({totalImages})
+            </button>
+            {availableSeasonsForTree.map(y => {
+              const count = filteredImagesBySeason(y).length
+              return (
+                <button
+                  key={y}
+                  onClick={() => setFilterSeason(String(y))}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    filterSeason === String(y)
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Niên vụ {y} ({count})
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         {/* Enhanced Image Grid */}
         <div className="p-6 bg-gradient-to-b from-gray-50 to-white">
-          {filteredImages.length === 0 ? (
+          {displayedImages.length === 0 ? (
             <div className="text-center py-16">
               <div className="relative mb-6">
                 <div className="w-24 h-24 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full mx-auto flex items-center justify-center shadow-inner">
@@ -762,7 +847,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredImages.map((image, index) => (
+              {displayedImages.map((image, index) => (
                 <div
                   key={index}
                   className="group relative aspect-square bg-gray-100 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
@@ -835,9 +920,18 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                   )}
 
                   {/* Image number indicator */}
-                  <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
                     {index + 1}
                   </div>
+
+                  {/* Season Badge */}
+                  {getSeasonLabel(image) && (
+                    <div className="absolute bottom-3 left-3 z-10">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-black/60 text-white backdrop-blur-sm">
+                        📅 Mùa {getSeasonLabel(image)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

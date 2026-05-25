@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
+import { getFarmPhotos, getPhotosWithUrls } from '@/lib/photo-service'
+import { db } from '@/lib/firebase'
+import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import {
   PhotoIcon,
   CameraIcon,
@@ -55,6 +58,7 @@ interface Photo {
     growthStage?: string
     healthScore: number
   }
+  seasonYear?: number
 }
 
 interface PhotoFilters {
@@ -63,6 +67,7 @@ interface PhotoFilters {
   needsAIAnalysis?: boolean
   uploadedToServer?: boolean
   hasAIResults?: boolean
+  seasonYear?: number
   dateRange?: {
     start: Date
     end: Date
@@ -70,7 +75,7 @@ interface PhotoFilters {
 }
 
 export default function PhotoManagement() {
-  const { user, hasPermission, currentFarm } = useSimpleAuth()
+  const { user, hasPermission, currentFarm, selectedSeasonYear } = useSimpleAuth()
   const [photos, setPhotos] = useState<Photo[]>([])
   const [filteredPhotos, setFilteredPhotos] = useState<Photo[]>([])
   const [trees, setTrees] = useState<{id: string, name: string}[]>([])
@@ -98,6 +103,12 @@ export default function PhotoManagement() {
   ]
 
   useEffect(() => {
+    if (selectedSeasonYear) {
+      setFilters(prev => ({ ...prev, seasonYear: selectedSeasonYear }))
+    }
+  }, [selectedSeasonYear])
+
+  useEffect(() => {
     if (hasPermission('read')) {
       loadPhotos()
       loadTrees()
@@ -111,10 +122,28 @@ export default function PhotoManagement() {
   const loadPhotos = async () => {
     try {
       setLoading(true)
-      // Load photos from Firebase
-      // Load real photos data from API - no mock data
-      // TODO: Implement actual API call to load photos
-      setPhotos([])
+      if (!currentFarm?.id) {
+        setPhotos([])
+        return
+      }
+      const farmPhotos = await getFarmPhotos(currentFarm.id)
+      const photosWithUrls = await getPhotosWithUrls(farmPhotos, currentFarm.id)
+      
+      // Enrich with tree names
+      const treesRef = collection(db, 'farms', currentFarm.id, 'trees')
+      const treesSnapshot = await getDocs(treesRef)
+      const treeMap = new Map<string, string>()
+      treesSnapshot.forEach(doc => {
+        const data = doc.data()
+        treeMap.set(doc.id, data.name || data.qrCode || `Cây ${doc.id.substring(0, 5)}`)
+      })
+      
+      const enrichedPhotos = photosWithUrls.map(photo => ({
+        ...photo,
+        treeName: photo.treeId ? treeMap.get(photo.treeId) || 'Cây không xác định' : 'Ảnh chung'
+      })) as Photo[]
+      
+      setPhotos(enrichedPhotos)
     } catch (error) {
       console.error('Error loading photos:', error)
     } finally {
@@ -124,9 +153,21 @@ export default function PhotoManagement() {
 
   const loadTrees = async () => {
     try {
-      // Load tree list for filtering from API - no mock data
-      // TODO: Implement actual API call to load trees for filtering
-      setTrees([])
+      if (!currentFarm?.id) {
+        setTrees([])
+        return
+      }
+      const treesRef = collection(db, 'farms', currentFarm.id, 'trees')
+      const q = query(treesRef, orderBy('name', 'asc'))
+      const querySnapshot = await getDocs(q)
+      const treesList = querySnapshot.docs.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          name: data.name || data.qrCode || `Cây ${doc.id.substring(0, 5)}`
+        }
+      })
+      setTrees(treesList)
     } catch (error) {
       console.error('Error loading trees:', error)
     }
@@ -161,6 +202,12 @@ export default function PhotoManagement() {
       filtered = filtered.filter(photo => 
         filters.hasAIResults ? !!photo.aiAnalysisResult : !photo.aiAnalysisResult
       )
+    }
+    if (filters.seasonYear) {
+      filtered = filtered.filter(photo => {
+        const photoSeason = photo.seasonYear || (photo.timestamp ? new Date(photo.timestamp).getFullYear() : 2025)
+        return photoSeason === filters.seasonYear
+      })
     }
 
     // Apply sorting
@@ -443,7 +490,7 @@ export default function PhotoManagement() {
         {/* Advanced Filters */}
         {showFilters && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Loại ảnh
@@ -471,6 +518,21 @@ export default function PhotoManagement() {
                   <option value="">Tất cả cây</option>
                   {trees.map(tree => (
                     <option key={tree.id} value={tree.id}>{tree.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Niên vụ
+                </label>
+                <select
+                  value={filters.seasonYear || ''}
+                  onChange={(e) => setFilters({...filters, seasonYear: e.target.value ? parseInt(e.target.value) : undefined})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Tất cả niên vụ</option>
+                  {(currentFarm?.seasons || [2025]).map(year => (
+                    <option key={year} value={year}>Niên vụ {year}</option>
                   ))}
                 </select>
               </div>
@@ -689,11 +751,16 @@ function PhotoCard({
           )}
         </div>
         
-        {/* Photo Type Badge */}
-        <div className="absolute bottom-2 left-2">
+        {/* Photo Type & Season Badges */}
+        <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
           <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-${typeInfo.color}-100 text-${typeInfo.color}-800`}>
             {typeInfo.label}
           </span>
+          {photo.seasonYear && (
+            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-100 text-emerald-800 shadow-sm border border-emerald-200">
+              Mùa {photo.seasonYear}
+            </span>
+          )}
         </div>
       </div>
 
@@ -789,6 +856,11 @@ function PhotoListItem({
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-${typeInfo.color}-100 text-${typeInfo.color}-800`}>
                 {typeInfo.label}
               </span>
+              {photo.seasonYear && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Mùa {photo.seasonYear}
+                </span>
+              )}
               {photo.aiAnalysisResult && (
                 <CheckCircleIcon className="h-4 w-4 text-green-500" />
               )}
@@ -893,6 +965,14 @@ function PhotoDetailModal({
                       {typeInfo.label}
                     </span>
                   </div>
+                  {photo.seasonYear && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Niên vụ:</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        Niên vụ {photo.seasonYear}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Ngày chụp:</span>
                     <span className="text-sm text-gray-900">

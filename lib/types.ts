@@ -35,6 +35,17 @@ export interface Tree {
   createdAt?: Date
   updatedAt?: Date
   farmName?: string // Added by admin service for cross-farm displays
+  seasonalStats?: {
+    [seasonYear: number]: TreeSeasonalStats
+  }
+}
+
+export interface TreeSeasonalStats {
+  manualFruitCount: number
+  aiFruitCount: number
+  healthStatus: 'Excellent' | 'Good' | 'Fair' | 'Poor' | 'Cây Non' | 'Cây Trưởng Thành' | 'Cây Già' | string
+  notes?: string
+  updatedAt: Date
 }
 
 export interface Photo {
@@ -61,6 +72,7 @@ export interface Photo {
   totalLocalSize?: number
   treeId?: string
   farmName?: string // Added by admin service for cross-farm displays
+  seasonYear?: number
 }
 
 export interface Farm {
