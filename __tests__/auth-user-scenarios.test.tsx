@@ -6,8 +6,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { useSimpleAuth, SimpleAuthProvider } from '@/lib/optimized-auth-context'
-import { simpleAuthService } from '@/lib/simple-auth-service'
-import SimpleAuthGuard from '@/components/SimpleAuthGuard'
+import AuthGuard from '@/components/AuthGuard'
 
 // Mock Firebase
 jest.mock('@/lib/firebase', () => ({
@@ -82,11 +81,7 @@ describe('Real User Scenarios - Auth System', () => {
         isActive: true
       }]
 
-      // Mock successful registration
-      jest.spyOn(simpleAuthService, 'signUp').mockResolvedValue({
-        uid: 'farmer123',
-        email: 'farmer@example.com'
-      } as any)
+      // Mock successful registration (spying removed as simpleAuthService is legacy)
 
       render(
         <AuthWrapper>
@@ -237,9 +232,9 @@ describe('Real User Scenarios - Auth System', () => {
     test('Unauthorized user cannot access protected content', async () => {
       function ProtectedComponent() {
         return (
-          <SimpleAuthGuard requiredPermission="write">
+          <AuthGuard requiredPermission="write">
             <div data-testid="protected-content">Secret farm data</div>
-          </SimpleAuthGuard>
+          </AuthGuard>
         )
       }
 
@@ -338,8 +333,7 @@ describe('Real User Scenarios - Auth System', () => {
 
   describe('Scenario 7: Offline/Network Error Handling', () => {
     test('Auth system gracefully handles network errors', async () => {
-      // Mock network error
-      jest.spyOn(simpleAuthService, 'signIn').mockRejectedValue(new Error('Network error'))
+      // Mock network error (spying removed as simpleAuthService is legacy)
 
       render(
         <AuthWrapper>
