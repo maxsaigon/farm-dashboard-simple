@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, memo } from 'react'
+import { useEffect, memo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { Permission } from '@/lib/optimized-auth-context'
@@ -20,9 +20,14 @@ const AuthGuard = memo(function AuthGuard({
 }: AuthGuardProps) {
   const router = useRouter()
   const { user, loading, currentFarm, farms, hasPermission } = useSimpleAuth()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    if (!loading) {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && !loading) {
       // Not authenticated - redirect to login
       if (!user) {
         router.push('/login')
@@ -51,7 +56,12 @@ const AuthGuard = memo(function AuthGuard({
         return
       }
     }
-  }, [loading, user, currentFarm, hasPermission, requiredPermission, fallbackPath, requireFarmAccess, router])
+  }, [mounted, loading, user, currentFarm, hasPermission, requiredPermission, fallbackPath, requireFarmAccess, router])
+
+  // Prevent hydration mismatch by returning null during SSR and first client-side render pass
+  if (!mounted) {
+    return null
+  }
 
   // Show loading while checking authentication
   if (loading) {
