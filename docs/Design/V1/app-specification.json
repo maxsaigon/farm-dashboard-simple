@@ -1,0 +1,501 @@
+{
+  "appName": "FarmManager",
+  "version": "1.0.0",
+  "techStack": {
+    "framework": "Next.js 14.2 (App Router)",
+    "styling": "Tailwind CSS",
+    "database": "Firebase Firestore",
+    "authentication": "Firebase Auth",
+    "mapping": "Leaflet + OpenStreetMap"
+  },
+  "globalWrappers": {
+    "MobileOnlyWrapper": {
+      "purpose": "Restricts access to mobile screens and touch-enabled devices",
+      "threshold": "Width < 768px and touch capability detected"
+    },
+    "AuthGuard": {
+      "purpose": "Enforces user authentication status",
+      "redirection": {
+        "unauthenticated": "/login",
+        "authenticatedWithoutFarm": "/select-farm",
+        "authenticatedWithFarmNoReadPermission": "/no-access"
+      }
+    }
+  },
+  "routes": [
+    {
+      "path": "/login",
+      "name": "Login",
+      "access": "Public",
+      "components": [
+        "LoginPage",
+        "LoginForm"
+      ],
+      "states": {
+        "email": {
+          "type": "string",
+          "default": ""
+        },
+        "password": {
+          "type": "string",
+          "default": ""
+        },
+        "error": {
+          "type": "string",
+          "default": "null"
+        },
+        "loading": {
+          "type": "boolean",
+          "default": "false"
+        }
+      },
+      "interactions": [
+        {
+          "element": "Email Input",
+          "trigger": "onChange",
+          "action": "Updates local 'email' state"
+        },
+        {
+          "element": "Password Input",
+          "trigger": "onChange",
+          "action": "Updates local 'password' state"
+        },
+        {
+          "element": "Submit Button",
+          "trigger": "onClick",
+          "action": "Triggers Firebase signInWithEmailAndPassword",
+          "successEffect": "Redirects to root '/' for auth check",
+          "errorEffect": "Sets 'error' state, displays error text"
+        }
+      ]
+    },
+    {
+      "path": "/select-farm",
+      "name": "Select Farm",
+      "access": "Authenticated User",
+      "components": [
+        "SelectFarmPage",
+        "FarmSelector"
+      ],
+      "states": {
+        "selectedFarm": {
+          "type": "FarmObject | null",
+          "default": "null"
+        },
+        "showCreateModal": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "newFarmName": {
+          "type": "string",
+          "default": ""
+        },
+        "newFarmArea": {
+          "type": "number",
+          "default": "0"
+        }
+      },
+      "interactions": [
+        {
+          "element": "Farm Card",
+          "trigger": "onClick",
+          "action": "Sets 'selectedFarm' state, adds highlight style wrapper"
+        },
+        {
+          "element": "Confirm Button ('Vào Nông Trại')",
+          "trigger": "onClick",
+          "action": "Saves currentFarm to Context Auth, writes 'currentFarm_{uid}' to localStorage, redirects to '/map'"
+        },
+        {
+          "element": "Create Farm Button",
+          "trigger": "onClick",
+          "action": "Sets 'showCreateModal' to true"
+        },
+        {
+          "element": "New Farm Submission (Modal)",
+          "trigger": "onSubmit",
+          "action": "Invokes FarmService.createFarm(newFarmName, newFarmArea) on Firestore, adds document, re-fetches farm list, auto-selects newly created farm"
+        }
+      ]
+    },
+    {
+      "path": "/map",
+      "name": "Main Map Dashboard",
+      "access": "Authenticated User with 'read' role for current farm",
+      "components": [
+        "MapPageContent",
+        "UnifiedMap",
+        "OnFarmWorkMode",
+        "BottomSheet"
+      ],
+      "states": {
+        "showTrees": {
+          "type": "boolean",
+          "default": "true",
+          "description": "Toggles rendering Leaflet CircleMarkers for trees"
+        },
+        "showZones": {
+          "type": "boolean",
+          "default": "true",
+          "description": "Toggles rendering Leaflet Polygons for farm zones"
+        },
+        "selectedTree": {
+          "type": "TreeObject | null",
+          "default": "null"
+        },
+        "selectedZone": {
+          "type": "ZoneObject | null",
+          "default": "null"
+        },
+        "workModeActive": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Toggles full screen GPS field navigation overlay"
+        },
+        "mapLayer": {
+          "type": "string",
+          "options": ["auto", "street", "hybrid"],
+          "default": "auto"
+        },
+        "filterByStatus": {
+          "type": "object",
+          "properties": {
+            "youngTree": "boolean",
+            "mature": "boolean",
+            "old": "boolean"
+          },
+          "default": "{ youngTree: true, mature: true, old: true }"
+        },
+        "showAdvancedSettings": {
+          "type": "boolean",
+          "default": "false"
+        }
+      },
+      "interactions": [
+        {
+          "element": "Work Mode Button ('Làm việc')",
+          "trigger": "onClick",
+          "action": "Sets 'workModeActive' to true, loading OnFarmWorkMode component"
+        },
+        {
+          "element": "Trees Toggle Button",
+          "trigger": "onClick",
+          "action": "Toggles 'showTrees' state, hide/show tree icons on Leaflet canvas"
+        },
+        {
+          "element": "Zones Toggle Button",
+          "trigger": "onClick",
+          "action": "Toggles 'showZones' state, hide/show zone boundaries"
+        },
+        {
+          "element": "Settings Gear Icon",
+          "trigger": "onClick",
+          "action": "Toggles 'showAdvancedSettings' to reveal map layer options and status filters"
+        },
+        {
+          "element": "Leaflet Tree Marker",
+          "trigger": "onClick",
+          "action": "Sets 'selectedTree', opens FullscreenTreeShowcase overlay"
+        },
+        {
+          "element": "Leaflet Zone Polygon",
+          "trigger": "onClick",
+          "action": "Sets 'selectedZone', opens bottom drawer showing zone name, calculated area, and number of trees inside"
+        },
+        {
+          "element": "Season Dropdown Select",
+          "trigger": "onChange",
+          "action": "Updates 'selectedSeasonYear' in auth context, re-fetches stats from Firestore for the specific season"
+        }
+      ]
+    },
+    {
+      "path": "/trees",
+      "name": "Trees Inventory Directory",
+      "access": "Authenticated User with 'read' role",
+      "components": [
+        "TreesPage",
+        "TreeList",
+        "FullscreenTreeShowcase",
+        "EnhancedSearch"
+      ],
+      "states": {
+        "searchQuery": {
+          "type": "string",
+          "default": ""
+        },
+        "healthFilter": {
+          "type": "string",
+          "options": ["all", "Excellent", "Good", "Fair", "Poor"],
+          "default": "all"
+        },
+        "selectedTree": {
+          "type": "TreeObject | null",
+          "default": "null"
+        },
+        "isEditing": {
+          "type": "boolean",
+          "default": "false"
+        }
+      },
+      "interactions": [
+        {
+          "element": "Search Input",
+          "trigger": "onChange",
+          "action": "Updates 'searchQuery', filters list of trees matching name or QR code"
+        },
+        {
+          "element": "Health Filter Chips",
+          "trigger": "onClick",
+          "action": "Filters list to display only trees matching selected status"
+        },
+        {
+          "element": "Tree Row/Card (Virtualized Scroll)",
+          "trigger": "onClick",
+          "action": "Sets 'selectedTree' to open details card"
+        },
+        {
+          "element": "Edit Button (Tree details)",
+          "trigger": "onClick",
+          "action": "Sets 'isEditing' to true, swaps text nodes for form inputs"
+        },
+        {
+          "element": "Manual Fruit Count Input (Edit mode)",
+          "trigger": "onChange",
+          "action": "Updates 'manualFruitCount' in form draft"
+        },
+        {
+          "element": "GPS Recalibrate / Update Button",
+          "trigger": "onClick",
+          "action": "Invokes GPS tracking service to replace tree coordinate values",
+          "validation": "If coordinates difference > 30 meters from original position, prompts user confirmation to avoid typo errors"
+        },
+        {
+          "element": "Save Button (Edit mode)",
+          "trigger": "onClick",
+          "action": "Writes updated tree attributes to Firestore `/farms/{farmId}/trees/{treeId}` and updates local cache",
+          "successEffect": "Exits edit mode, triggers success toast message"
+        }
+      ]
+    },
+    {
+      "path": "/camera",
+      "name": "AI Camera scanner",
+      "access": "Authenticated User",
+      "components": [
+        "CameraPage",
+        "MobileCameraCapture"
+      ],
+      "states": {
+        "imageStream": {
+          "type": "MediaStream | null",
+          "default": "null"
+        },
+        "capturedBlob": {
+          "type": "Blob | null",
+          "default": "null"
+        },
+        "aiResult": {
+          "type": "object | null",
+          "default": "null",
+          "properties": {
+            "fruitCount": "number",
+            "accuracy": "number"
+          }
+        },
+        "isSyncing": {
+          "type": "boolean",
+          "default": "false"
+        }
+      },
+      "interactions": [
+        {
+          "element": "Shutter Button",
+          "trigger": "onClick",
+          "action": "Captures canvas frame as image blob",
+          "offlineFlow": "Saves photo blob to IndexedDB via `savePendingPhoto` queue, triggers background sync",
+          "onlineFlow": "Triggers Mock AI API to count fruits, compresses image, uploads to Firebase Storage, sets 'aiResult'"
+        }
+      ]
+    },
+    {
+      "path": "/money",
+      "name": "Investment and Expenses Tracker",
+      "access": "Authenticated User with read/write access",
+      "components": [
+        "MoneyPage",
+        "InvestmentManagement"
+      ],
+      "states": {
+        "viewMode": {
+          "type": "string",
+          "options": ["list", "summary"],
+          "default": "list"
+        },
+        "filterCategory": {
+          "type": "string",
+          "options": ["All", "Phân bón", "Thuốc BVTV", "Công cụ", "Lao động", "Khác"],
+          "default": "All"
+        },
+        "investmentsList": {
+          "type": "Array<Investment>",
+          "default": "[]"
+        }
+      },
+      "interactions": [
+        {
+          "element": "Toggle View Tabs",
+          "trigger": "onClick",
+          "action": "Changes 'viewMode' state to switch between list of expense records and monthly/seasonal bar charts"
+        },
+        {
+          "element": "Category Filter Chips",
+          "trigger": "onClick",
+          "action": "Updates 'filterCategory', filters records list dynamically"
+        },
+        {
+          "element": "Add Expense Button",
+          "trigger": "onClick",
+          "action": "Opens expense registration dialog (amount, category, date, description, receipt photo)"
+        },
+        {
+          "element": "Save Expense Button",
+          "trigger": "onSubmit",
+          "action": "Writes to Firestore collection `/farms/{farmId}/investments`, updates stats and triggers offline caching queue"
+        }
+      ]
+    },
+    {
+      "path": "/admin",
+      "name": "Super Admin System Settings",
+      "access": "Super Admin role",
+      "components": [
+        "AdminDashboard",
+        "UserManagementTab",
+        "FarmManagementTab",
+        "RoleManagementTab",
+        "SystemSettingsTab"
+      ],
+      "states": {
+        "activeTab": {
+          "type": "string",
+          "options": ["dashboard", "users", "farms", "roles", "settings"],
+          "default": "dashboard"
+        },
+        "users": {
+          "type": "Array<UserObject>",
+          "default": "[]"
+        },
+        "farms": {
+          "type": "Array<FarmObject>",
+          "default": "[]"
+        }
+      },
+      "interactions": [
+        {
+          "element": "Navigation Tab Button",
+          "trigger": "onClick",
+          "action": "Sets 'activeTab' to switch components"
+        },
+        {
+          "element": "Approve Registration Button (Users Tab)",
+          "trigger": "onClick",
+          "action": "Calls `AdminService.approveUserRegistration(userId)`, updates Firestore user role status"
+        },
+        {
+          "element": "Invite Member Button (Users Tab)",
+          "trigger": "onClick",
+          "action": "Opens modal to input invitee email, generates Firebase invite token"
+        },
+        {
+          "element": "Assign Owner (Farms Tab)",
+          "trigger": "onClick",
+          "action": "Links Farm UID to user profile UID in Firestore, updating user permissions mappings"
+        },
+        {
+          "element": "Trigger Sync Button (Settings Tab)",
+          "trigger": "onClick",
+          "action": "Purges local storage map cache, downloads fresh snapshots of Trees/Zones from Firestore"
+        }
+      ]
+    }
+  ],
+  "dbSchema": {
+    "users": {
+      "path": "/users/{userId}",
+      "fields": {
+        "uid": "string",
+        "email": "string",
+        "displayName": "string",
+        "accountStatus": "'active' | 'suspended' | 'pending'",
+        "preferences": {
+          "theme": "'light' | 'dark'",
+          "language": "string"
+        }
+      }
+    },
+    "userRoles": {
+      "path": "/userRoles/{roleId}",
+      "fields": {
+        "id": "string",
+        "userId": "string",
+        "roleType": "'super_admin' | 'owner' | 'manager' | 'worker' | 'viewer'",
+        "scopeType": "'system' | 'farm' | 'org'",
+        "permissions": "Array<string>",
+        "isActive": "boolean"
+      }
+    },
+    "farms": {
+      "path": "/farms/{farmId}",
+      "fields": {
+        "id": "string",
+        "name": "string",
+        "area": "number",
+        "seasons": "Array<number>"
+      }
+    },
+    "trees": {
+      "path": "/farms/{farmId}/trees/{treeId}",
+      "fields": {
+        "id": "string",
+        "name": "string",
+        "qrCode": "string",
+        "variety": "string",
+        "zoneCode": "string",
+        "healthStatus": "'Excellent' | 'Good' | 'Fair' | 'Poor'",
+        "needsAttention": "boolean",
+        "latitude": "number",
+        "longitude": "number",
+        "gpsAccuracy": "number",
+        "seasonalStats": {
+          "type": "map",
+          "description": "Year indexed map holding fruit counts and health status records per season"
+        }
+      }
+    },
+    "zones": {
+      "path": "/farms/{farmId}/zones/{zoneId}",
+      "fields": {
+        "id": "string",
+        "name": "string",
+        "code": "string",
+        "color": "string",
+        "area": "number",
+        "treeCount": "number",
+        "boundaries": "Array<{latitude: number, longitude: number}>"
+      }
+    },
+    "investments": {
+      "path": "/farms/{farmId}/investments/{investmentId}",
+      "fields": {
+        "id": "string",
+        "amount": "number",
+        "category": "string",
+        "date": "timestamp",
+        "notes": "string",
+        "quantity": "number",
+        "unit": "string"
+      }
+    }
+  }
+}
