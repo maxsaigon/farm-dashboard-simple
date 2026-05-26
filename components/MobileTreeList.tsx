@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { MobileTreeCard } from './MobileCards'
 import MobileLayout from './MobileLayout'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
@@ -29,6 +30,7 @@ interface FilterState {
 }
 
 export default function MobileTreeList() {
+  const router = useRouter()
   const { user, currentFarm } = useSimpleAuth()
   const [trees, setTrees] = useState<Tree[]>([])
   const [loading, setLoading] = useState(true)
@@ -110,18 +112,18 @@ export default function MobileTreeList() {
 
   const handleQuickPhoto = (tree: Tree) => {
     // Navigate to camera with tree context
-    window.location.href = `/camera?treeId=${tree.id}`
+    router.push(`/camera?treeId=${tree.id}`)
   }
 
   const handleViewLocation = (tree: Tree) => {
     if (tree.latitude && tree.longitude) {
       // Open in maps app or navigate to map view
-      window.location.href = `/map?lat=${tree.latitude}&lng=${tree.longitude}&treeId=${tree.id}`
+      router.push(`/map?lat=${tree.latitude}&lng=${tree.longitude}&treeId=${tree.id}`)
     }
   }
 
   const handleTreeSelect = (tree: Tree) => {
-    window.location.href = `/trees/${tree.id}`
+    router.push(`/trees/${tree.id}`)
   }
 
   const clearAllFilters = () => {
@@ -312,7 +314,7 @@ export default function MobileTreeList() {
         <div className="fixed bottom-20 right-4 space-y-3 lg:bottom-6">
           {/* Quick Camera */}
           <button
-            onClick={() => window.location.href = '/camera'}
+            onClick={() => router.push('/camera')}
             className="w-14 h-14 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-full shadow-lg flex items-center justify-center transition-colors touch-manipulation"
             aria-label="Chụp ảnh nhanh"
           >
@@ -321,7 +323,7 @@ export default function MobileTreeList() {
 
           {/* QR Scanner */}
           <button
-            onClick={() => window.location.href = '/qr-scanner'}
+            onClick={() => router.push('/qr-scanner')}
             className="w-14 h-14 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-full shadow-lg flex items-center justify-center transition-colors touch-manipulation"
             aria-label="Quét QR"
           >

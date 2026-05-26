@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -63,6 +64,7 @@ interface Zone {
 }
 
 export default function SimplifiedZoneManagement() {
+  const router = useRouter()
   const { user, currentFarm } = useSimpleAuth()
   const [zones, setZones] = useState<Zone[]>([])
   const [loading, setLoading] = useState(true)
@@ -236,9 +238,9 @@ export default function SimplifiedZoneManagement() {
         if (zone.boundaries && zone.boundaries.length > 0) {
           const centerLat = zone.boundaries.reduce((sum, p) => sum + p.latitude, 0) / zone.boundaries.length
           const centerLng = zone.boundaries.reduce((sum, p) => sum + p.longitude, 0) / zone.boundaries.length
-          window.location.href = `/map?lat=${centerLat}&lng=${centerLng}&zoom=16&zone=${zone.id}`
+          router.push(`/map?lat=${centerLat}&lng=${centerLng}&zoom=16&zone=${zone.id}`)
         } else {
-          window.location.href = `/map?zone=${zone.id}`
+          router.push(`/map?zone=${zone.id}`)
         }
         break
       case 'inspect':
@@ -340,7 +342,7 @@ export default function SimplifiedZoneManagement() {
             </p>
             {!searchTerm && (
               <button
-                onClick={() => window.location.href = '/map'}
+                onClick={() => router.push('/map')}
                 className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors inline-flex items-center space-x-2"
               >
                 <PlusIcon className="h-5 w-5" />

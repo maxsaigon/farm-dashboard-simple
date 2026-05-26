@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import {
   BeakerIcon,
@@ -72,6 +73,7 @@ interface TreeFilters {
 }
 
 export default function TreeManagement() {
+  const router = useRouter()
   const { user, hasPermission, currentFarm } = useSimpleAuth()
   const [trees, setTrees] = useState<Tree[]>([])
   const [filteredTrees, setFilteredTrees] = useState<Tree[]>([])
@@ -231,13 +233,18 @@ export default function TreeManagement() {
     try {
       switch (action) {
         case 'view_location':
-          // Open map with tree location
+          const targetTree = trees.find(t => t.id === treeId)
+          if (targetTree && targetTree.latitude && targetTree.longitude) {
+            router.push(`/map?lat=${targetTree.latitude}&lng=${targetTree.longitude}&treeId=${targetTree.id}`)
+          } else {
+            alert('Cây này chưa có tọa độ GPS!')
+          }
           break
         case 'take_photo':
-          // Open camera for this tree
+          router.push(`/camera?treeId=${treeId}`)
           break
         case 'scan_qr':
-          // Open QR scanner
+          router.push(`/qr-scanner`)
           break
         case 'delete':
           if (confirm('Bạn có chắc chắn muốn xóa cây này?')) {
@@ -726,6 +733,7 @@ function TreeDetailModal({ tree, isOpen, onClose, onSave, onAction }: {
   onSave: () => void,
   onAction: (action: string, treeId: string) => void
 }) {
+  const router = useRouter()
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -825,7 +833,7 @@ function TreeDetailModal({ tree, isOpen, onClose, onSave, onAction }: {
             Đóng
           </button>
           <button
-            onClick={() => window.location.href = `/trees/${tree.id}`}
+            onClick={() => router.push(`/trees/${tree.id}`)}
             className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition-all active:scale-95 shadow-lg"
           >
             Xem chi tiết đầy đủ

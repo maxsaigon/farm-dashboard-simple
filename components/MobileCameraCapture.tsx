@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { MobileInput, MobileSelect } from './MobileCards'
 import MobileLayout from './MobileLayout'
 import { 
@@ -43,6 +44,7 @@ interface CameraError {
 }
 
 export default function MobileCameraCapture() {
+  const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -204,7 +206,7 @@ export default function MobileCameraCapture() {
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       // Navigate back to trees or photos page
-      window.location.href = '/photos'
+      router.push('/photos')
       
     } catch (err) {
       setError({

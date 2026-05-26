@@ -239,10 +239,23 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         setUser(restoredState.user)
         setFarms(restoredState.farms)
         setFarmAccess(restoredState.farmAccess)
+        
+        let farmToSelect = null
         if (restoredState.currentFarmId) {
-          const current = restoredState.farms.find((f: any) => f.id === restoredState.currentFarmId)
-          if (current) setCurrentFarmState(current)
+          farmToSelect = restoredState.farms.find((f: any) => f.id === restoredState.currentFarmId)
         }
+        
+        if (!farmToSelect && restoredState.user?.uid) {
+          const storedFarmId = localStorage.getItem(`currentFarm_${restoredState.user.uid}`)
+          if (storedFarmId) {
+            farmToSelect = restoredState.farms.find((f: any) => f.id === storedFarmId)
+          }
+        }
+        
+        if (farmToSelect) {
+          setCurrentFarmState(farmToSelect)
+        }
+        
         setLoading(false)
         initialUser = restoredState.user
       }
@@ -368,6 +381,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   useEffect(() => {
     if (currentFarm && user) {
       localStorage.setItem(`currentFarm_${user.uid}`, currentFarm.id)
+      saveAuthState()
     }
   }, [currentFarm, user])
 

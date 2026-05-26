@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import FarmSelectorModal from './FarmSelectorModal'
 import { 
@@ -23,6 +23,7 @@ import {
 
 export function Navigation() {
   const pathname = usePathname()
+  const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showFarmSelector, setShowFarmSelector] = useState(false)
   const { 
@@ -366,7 +367,7 @@ export function Navigation() {
                   <button 
                     onClick={() => {
                       setIsMobileMenuOpen(false)
-                      window.location.href = '/map'
+                      router.push('/map')
                     }}
                     className="flex flex-col items-center p-4 bg-green-50 rounded-xl hover:bg-green-100 active:bg-green-200 transition-colors min-touch"
                     style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -377,7 +378,7 @@ export function Navigation() {
                   <button 
                     onClick={() => {
                       setIsMobileMenuOpen(false)
-                      window.location.href = '/zones'
+                      router.push('/zones')
                     }}
                     className="flex flex-col items-center p-4 bg-blue-50 rounded-xl hover:bg-blue-100 active:bg-blue-200 transition-colors min-touch"
                     style={{ WebkitTapHighlightColor: 'transparent' }}
