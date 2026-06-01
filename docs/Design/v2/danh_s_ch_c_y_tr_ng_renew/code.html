@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Danh sách cây trồng</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#191c1e",
+                        "status-warning": "#f97316",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#68dba9",
+                        "secondary-container": "#d5e3fc",
+                        "tertiary-container": "#a36700",
+                        "on-primary-fixed": "#002114",
+                        "on-tertiary-fixed": "#2a1700",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-surface": "#191c1e",
+                        "outline": "#6d7a72",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "tertiary-fixed": "#ffddb8",
+                        "primary": "#006948",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "secondary-fixed": "#d5e3fc",
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-fixed": "#85f8c4",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#00855d",
+                        "tertiary": "#825100",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#68dba9",
+                        "info-blue": "#3b82f6",
+                        "surface-bright": "#f7f9fb",
+                        "secondary": "#515f74",
+                        "on-primary-fixed-variant": "#005137",
+                        "background": "#f7f9fb",
+                        "on-secondary-container": "#57657a",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "inverse-surface": "#2d3133",
+                        "status-error": "#ef4444",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-container": "#eceef0",
+                        "on-surface-variant": "#3d4a42",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#f5fff7",
+                        "outline-variant": "#bccac0",
+                        "status-success": "#10b981",
+                        "surface-tint": "#006c4a",
+                        "surface-variant": "#e0e3e5",
+                        "map-zone": "rgba(5, 150, 105, 0.2)",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "surface-container-low": "#f2f4f6",
+                        "on-tertiary-container": "#fffbff",
+                        "surface": "#f7f9fb",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "20px",
+                        "stack-md": "16px",
+                        "touch-target": "48px",
+                        "gutter": "16px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "safe-area-bottom": "32px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "caption": ["Inter"],
+                        "body-base": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "hero-fruit": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "caption": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "body-base": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "26px", "fontWeight": "400"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                        "hero-fruit": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-base min-h-screen pb-24">
+<!-- Top App Bar -->
+<header class="bg-surface/80 backdrop-blur-md text-primary font-headline-md docked full-width top-0 sticky z-40 border-b border-outline-variant/30 flex justify-between items-center w-full px-margin-mobile h-touch-target">
+<div class="flex items-center gap-3">
+<img alt="Profile" class="w-8 h-8 rounded-full object-cover" data-alt="A close-up portrait of a mature Vietnamese farmer wearing a straw hat. The lighting is bright and natural, reflecting an outdoor agricultural setting. The mood is trustworthy and experienced, fitting a modern farm management application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0qNUUL01zgPRZh-mwUZFd0vBA4nV1gKrbzDWkTOIf5WFYD0gUdgydm-BMSEMOSpP_mO-kIufaKLQkM4Em3VDP2LNT2o7sfWUNmbv28EXR1NRfZ7bY-g5iO5pX6uFdrLlhU63LtSuX6xzcFMhD5UgV8XOvRLcKjkIIDk3FjWaUhBe60KQdAFiJu1uaASORf7HpHP7kINDazgtHtRlCqPhhGjd965M4UdT49J6t3AIM-1b993jhY2XuCpnA8BgC0Bwn3O776mPwzgub"/>
+<h1 class="font-headline-md text-primary font-bold">Trang trại Sầu riêng</h1>
+</div>
+<div class="text-primary font-label-md">
+            Niên vụ 2026
+        </div>
+</header>
+<!-- Main Content Canvas -->
+<main class="px-margin-mobile pt-stack-md flex flex-col gap-stack-lg">
+<!-- Search & Filter Area -->
+<section class="flex flex-col gap-stack-sm sticky top-16 z-30 bg-background/95 backdrop-blur py-2">
+<!-- Search Bar -->
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full h-touch-target pl-10 pr-12 rounded-lg border border-outline-variant bg-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-base text-on-surface" placeholder="Tìm theo tên hoặc mã QR..." type="text"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-primary p-1">
+<span class="material-symbols-outlined">qr_code_scanner</span>
+</button>
+</div>
+<!-- Filter Chips (Horizontal Scroll) -->
+<div class="flex gap-2 overflow-x-auto no-scrollbar py-2">
+<button class="shrink-0 h-8 px-4 rounded-full border border-outline-variant bg-surface text-on-surface font-label-md flex items-center gap-1 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                    Bộ lọc
+                </button>
+<div class="h-8 w-px bg-outline-variant mx-1 shrink-0 mt-0.5"></div>
+<!-- Giống -->
+<button class="shrink-0 h-8 px-4 rounded-full border border-primary bg-primary-container text-on-primary-container font-label-md hover:opacity-90 transition-opacity">
+                    Ri6
+                </button>
+<button class="shrink-0 h-8 px-4 rounded-full border border-outline-variant bg-surface text-on-surface font-label-md hover:bg-surface-container-high transition-colors">
+                    Monthong
+                </button>
+<div class="h-8 w-px bg-outline-variant mx-1 shrink-0 mt-0.5"></div>
+<!-- Sức khỏe -->
+<button class="shrink-0 h-8 px-4 rounded-full border border-outline-variant bg-surface text-on-surface font-label-md hover:bg-surface-container-high transition-colors">
+                    Tốt
+                </button>
+<button class="shrink-0 h-8 px-4 rounded-full border border-status-warning text-status-warning bg-status-warning/10 font-label-md">
+                    Cần chú ý
+                </button>
+<button class="shrink-0 h-8 px-4 rounded-full border border-outline-variant bg-surface text-on-surface font-label-md hover:bg-surface-container-high transition-colors">
+                    Yếu
+                </button>
+</div>
+</section>
+<!-- Tree Cards Grid (Bento-style layout for visual interest) -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-stack-md pb-20">
+<!-- Card 1: Needs Attention -->
+<div class="bg-surface-container-lowest rounded-2xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)] border border-status-warning/20 relative overflow-hidden flex flex-col gap-stack-sm active:scale-[0.98] transition-transform">
+<div class="absolute top-0 right-0 w-16 h-16 bg-status-warning/10 rounded-bl-full -z-10"></div>
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-on-surface">Ri6-001</h3>
+<p class="font-caption text-on-surface-variant flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">grid_view</span>
+                            Khu vực A - Lô 1
+                        </p>
+</div>
+<span class="inline-flex items-center px-2 py-1 rounded-md bg-status-warning/10 text-status-warning font-label-md text-xs border border-status-warning/30">
+                        Cần chú ý
+                    </span>
+</div>
+<div class="flex justify-between items-end mt-2 pt-2 border-t border-surface-container-high">
+<div class="flex flex-col">
+<span class="font-caption text-on-surface-variant">Trạng thái</span>
+<span class="font-label-md text-on-surface">Đang ra hoa</span>
+</div>
+<div class="flex items-center gap-1 text-primary font-label-md">
+<span class="material-symbols-outlined text-[18px]">near_me</span>
+                        8m
+                    </div>
+</div>
+</div>
+<!-- Card 2: Good Health -->
+<div class="bg-surface-container-lowest rounded-2xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)] border border-surface-container-high flex flex-col gap-stack-sm active:scale-[0.98] transition-transform">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-on-surface">Ri6-002</h3>
+<p class="font-caption text-on-surface-variant flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">grid_view</span>
+                            Khu vực A - Lô 1
+                        </p>
+</div>
+<span class="inline-flex items-center px-2 py-1 rounded-md bg-status-success/10 text-status-success font-label-md text-xs border border-status-success/30">
+                        Tốt
+                    </span>
+</div>
+<div class="flex justify-between items-end mt-2 pt-2 border-t border-surface-container-high">
+<div class="flex flex-col">
+<span class="font-caption text-on-surface-variant">Trạng thái</span>
+<span class="font-label-md text-on-surface">Đang ra hoa</span>
+</div>
+<div class="flex items-center gap-1 text-primary font-label-md">
+<span class="material-symbols-outlined text-[18px]">near_me</span>
+                        12m
+                    </div>
+</div>
+</div>
+<!-- Card 3: Good Health -->
+<div class="bg-surface-container-lowest rounded-2xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)] border border-surface-container-high flex flex-col gap-stack-sm active:scale-[0.98] transition-transform">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-on-surface">Mon-015</h3>
+<p class="font-caption text-on-surface-variant flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">grid_view</span>
+                            Khu vực B - Lô 3
+                        </p>
+</div>
+<span class="inline-flex items-center px-2 py-1 rounded-md bg-status-success/10 text-status-success font-label-md text-xs border border-status-success/30">
+                        Tốt
+                    </span>
+</div>
+<div class="flex justify-between items-end mt-2 pt-2 border-t border-surface-container-high">
+<div class="flex flex-col">
+<span class="font-caption text-on-surface-variant">Trạng thái</span>
+<span class="font-label-md text-on-surface">Dưỡng đọt</span>
+</div>
+<div class="flex items-center gap-1 text-primary font-label-md">
+<span class="material-symbols-outlined text-[18px]">near_me</span>
+                        45m
+                    </div>
+</div>
+</div>
+<!-- Card 4: Weak Health -->
+<div class="bg-surface-container-lowest rounded-2xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)] border border-status-error/20 flex flex-col gap-stack-sm active:scale-[0.98] transition-transform relative overflow-hidden">
+<div class="absolute top-0 right-0 w-16 h-16 bg-status-error/10 rounded-bl-full -z-10"></div>
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-on-surface">Mon-016</h3>
+<p class="font-caption text-on-surface-variant flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">grid_view</span>
+                            Khu vực B - Lô 3
+                        </p>
+</div>
+<span class="inline-flex items-center px-2 py-1 rounded-md bg-status-error/10 text-status-error font-label-md text-xs border border-status-error/30">
+                        Yếu
+                    </span>
+</div>
+<div class="flex justify-between items-end mt-2 pt-2 border-t border-surface-container-high">
+<div class="flex flex-col">
+<span class="font-caption text-on-surface-variant">Vấn đề</span>
+<span class="font-label-md text-status-error">Sâu đục thân</span>
+</div>
+<div class="flex items-center gap-1 text-primary font-label-md">
+<span class="material-symbols-outlined text-[18px]">near_me</span>
+                        52m
+                    </div>
+</div>
+</div>
+</section>
+</main>
+<!-- FAB: Thêm cây mới -->
+<button class="fixed right-margin-mobile bottom-28 w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-lg flex items-center justify-center hover:bg-primary-container transition-colors z-40 active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+</button>
+<!-- Bottom Navigation Bar -->
+<nav class="bg-surface text-primary font-label-md fixed bottom-0 w-full z-50 pb-safe-area-bottom bg-surface shadow-[0_-4px_12px_rgba(0,0,0,0.08)] flex justify-around items-center w-full px-2 pt-2 md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:opacity-80">
+<span class="material-symbols-outlined">map</span>
+<span class="text-[12px] mt-1">Bản đồ</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 hover:opacity-80 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">forest</span>
+<span class="text-[12px] mt-1 font-bold">Cây trồng</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:opacity-80">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="text-[12px] mt-1">Khu vực</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:opacity-80">
+<span class="material-symbols-outlined">payments</span>
+<span class="text-[12px] mt-1">Tài chính</span>
+</button>
+</nav>
+</body></html>

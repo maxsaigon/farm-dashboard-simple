@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Chọn Nông Trại</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#191c1e",
+                        "status-warning": "#f97316",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#68dba9",
+                        "secondary-container": "#d5e3fc",
+                        "tertiary-container": "#a36700",
+                        "on-primary-fixed": "#002114",
+                        "on-tertiary-fixed": "#2a1700",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-surface": "#191c1e",
+                        "outline": "#6d7a72",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "tertiary-fixed": "#ffddb8",
+                        "primary": "#006948",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "secondary-fixed": "#d5e3fc",
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-fixed": "#85f8c4",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#00855d",
+                        "tertiary": "#825100",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#68dba9",
+                        "info-blue": "#3b82f6",
+                        "surface-bright": "#f7f9fb",
+                        "secondary": "#515f74",
+                        "on-primary-fixed-variant": "#005137",
+                        "background": "#f7f9fb",
+                        "on-secondary-container": "#57657a",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "inverse-surface": "#2d3133",
+                        "status-error": "#ef4444",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-container": "#eceef0",
+                        "on-surface-variant": "#3d4a42",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#f5fff7",
+                        "outline-variant": "#bccac0",
+                        "status-success": "#10b981",
+                        "surface-tint": "#006c4a",
+                        "surface-variant": "#e0e3e5",
+                        "map-zone": "rgba(5, 150, 105, 0.2)",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "surface-container-low": "#f2f4f6",
+                        "on-tertiary-container": "#fffbff",
+                        "surface": "#f7f9fb",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "20px",
+                        "stack-md": "16px",
+                        "touch-target": "48px",
+                        "gutter": "16px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "safe-area-bottom": "32px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "caption": ["Inter"],
+                        "body-base": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "hero-fruit": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-base": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "hero-fruit": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-base antialiased min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-surface/80 backdrop-blur-md sticky top-0 z-40 w-full full-width docked border-b border-outline-variant/30 flat no shadows flex justify-between items-center px-margin-mobile h-touch-target">
+<div class="flex items-center gap-4 w-full">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="menu">menu</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary flex-1 text-center">Chọn Nông Trại</h1>
+<div class="w-6"></div> <!-- Spacer for centering -->
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 px-margin-mobile py-stack-lg flex flex-col gap-stack-lg pb-safe-area-bottom">
+<!-- Farm Selection Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<!-- Farm Card 1 (Selected) -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-2 border-primary overflow-hidden flex flex-col transition-transform hover:scale-[1.01] cursor-pointer">
+<div class="h-32 bg-primary-container relative overflow-hidden">
+<img alt="Farm" class="w-full h-full object-cover opacity-80 mix-blend-overlay" data-alt="A lush, vibrant green durian orchard illuminated by bright morning sunlight. The scene captures rows of healthy trees with rich emerald foliage, set against a clear blue sky. The composition emphasizes natural growth and agricultural vitality, reflecting a high-contrast, modern organic aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2f9e2CGUS10Kgj1E_eZnViwxZLedIWGjn4CjvpGULKrfsNIRhTRT9rPEebftl4Xwa-yri8d32ahO160Xe8x_tJGmrZsbZbCmOlRgrqxeyFKXGfwoBA77oW1zkA_YqFmCL_VAI2TEzPYS8UAbdRQ7XqZ_c54YtsncPmP5wE5YTJrcseteug60dspzCoVFNrqKe4CM-bxwgUDoVTsEcVRw3iARkPlfNpxGs_xbneahClenOnc99sONGAGNQNnOI2LH2rGMTbI1q085D"/>
+<div class="absolute top-4 right-4 bg-primary text-on-primary rounded-full p-1 shadow-sm">
+<span class="material-symbols-outlined" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<div class="p-4 flex flex-col gap-stack-sm flex-1">
+<div class="flex justify-between items-start">
+<h2 class="font-headline-md text-headline-md text-on-surface">Trang trại Bảo Lộc</h2>
+<span class="bg-secondary-container text-on-secondary-container font-caption text-caption px-2 py-1 rounded-md uppercase tracking-wider">Chủ trại</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-base text-body-base mt-2">
+<span class="material-symbols-outlined text-outline" data-icon="straighten">straighten</span>
+<span>15 Ha</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-base text-body-base">
+<span class="material-symbols-outlined text-outline" data-icon="location_on">location_on</span>
+<span>Lâm Đồng, Việt Nam</span>
+</div>
+<div class="mt-auto pt-4">
+<button class="w-full bg-primary text-on-primary font-label-md text-label-md rounded-full h-touch-target flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" data-icon="login">login</span>
+                            Vào Nông Trại
+                        </button>
+</div>
+</div>
+</div>
+<!-- Farm Card 2 -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-outline-variant/50 overflow-hidden flex flex-col transition-transform hover:scale-[1.01] cursor-pointer hover:shadow-[0_8px_16px_rgba(0,0,0,0.08)]">
+<div class="h-32 bg-surface-container-highest relative overflow-hidden">
+<img alt="Farm" class="w-full h-full object-cover opacity-60 grayscale-[20%]" data-alt="A sprawling agricultural landscape viewed from a slightly elevated angle, showing neatly arranged rows of crops under a soft, diffused daylight. The muted earthy tones of brown soil and soft green leaves convey a sense of calm reliability. The overall mood is grounded and functional, fitting a trustworthy corporate agricultural style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFK4So7K3qED8xk8eYIdeJbtXU_vUZo2u_fzbMgmbt3uc6FBFZhKdiS9N_yBaoALpJ0xhv4jddQM0QV6s25nJzECfHrCZZWM43eIboXShAc7q9PL3UMDtTFKekvL3zqqh59KE7zEw6Iv3qgbZNsF1ZmlO-Z6PCo4c7XelG9_RxEhr_y4yTowOxKmNhUKUZwcYiptsbPdd3xIzFsMZOiprBLr7wUqAS2zR0HjW3OQNpq8WY8ul50JKoYzQych5_jW5uJQgV5EsJJU0y"/>
+</div>
+<div class="p-4 flex flex-col gap-stack-sm flex-1">
+<div class="flex justify-between items-start">
+<h2 class="font-headline-md text-headline-md text-on-surface">Trang trại Đắk Lắk</h2>
+<span class="bg-surface-container text-on-surface-variant font-caption text-caption px-2 py-1 rounded-md uppercase tracking-wider">Quản lý</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-base text-body-base mt-2">
+<span class="material-symbols-outlined text-outline" data-icon="straighten">straighten</span>
+<span>42 Ha</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-base text-body-base">
+<span class="material-symbols-outlined text-outline" data-icon="location_on">location_on</span>
+<span>Đắk Lắk, Việt Nam</span>
+</div>
+</div>
+</div>
+<!-- Farm Card 3 -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-outline-variant/50 overflow-hidden flex flex-col transition-transform hover:scale-[1.01] cursor-pointer hover:shadow-[0_8px_16px_rgba(0,0,0,0.08)]">
+<div class="h-32 bg-surface-container-highest relative overflow-hidden">
+<img alt="Farm" class="w-full h-full object-cover opacity-60 grayscale-[20%]" data-alt="A close-up view of young saplings planted in rich, dark soil, bathed in warm golden hour sunlight. The focus is on the delicate leaves, highlighting potential and future growth. The surrounding environment is slightly blurred, emphasizing the sturdy organic resilience of the agricultural setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhjkjAVrp1aQ4TGL_elBT0Zhdes5BXWpHlI48G5DvWnSEw6EVpZ_ymqbWzrfsODyFkpjXYZO3MdkRyhxwBocsTOohg09r4bjtJ_3foMUjLnnn2LTN5mKvRNQpWxIe7xOr8C3V97yH1ut-bGJozA6SrcnvwIt41WZDT6LYYnHo-7fFnGvfz7n5T8rySa1KiXuqFHnYldxMQ8H-6yfwKaQmfG989ldd5ZcGufvzV1P_26PUx400fvlx2yDmbAZ4rVpLwBCTcNsdATHWp"/>
+</div>
+<div class="p-4 flex flex-col gap-stack-sm flex-1">
+<div class="flex justify-between items-start">
+<h2 class="font-headline-md text-headline-md text-on-surface">Vườn Ươm Cần Thơ</h2>
+<span class="bg-surface-container text-on-surface-variant font-caption text-caption px-2 py-1 rounded-md uppercase tracking-wider">Nhân viên</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-base text-body-base mt-2">
+<span class="material-symbols-outlined text-outline" data-icon="straighten">straighten</span>
+<span>5 Ha</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-base text-body-base">
+<span class="material-symbols-outlined text-outline" data-icon="location_on">location_on</span>
+<span>Cần Thơ, Việt Nam</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Action Area -->
+<div class="fixed bottom-0 w-full bg-surface/90 backdrop-blur-md border-t border-outline-variant/20 p-margin-mobile pb-safe-area-bottom z-40">
+<button class="w-full bg-surface-container-high text-primary font-label-md text-label-md rounded-full h-touch-target flex items-center justify-center gap-2 shadow-sm border border-outline-variant/30 hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+            Tạo Nông Trại Mới
+        </button>
+</div>
+</body></html>

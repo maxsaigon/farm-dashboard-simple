@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Chi tiết cây trồng - Ri6-001</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#191c1e",
+                      "status-warning": "#f97316",
+                      "on-secondary": "#ffffff",
+                      "primary-fixed-dim": "#68dba9",
+                      "secondary-container": "#d5e3fc",
+                      "tertiary-container": "#a36700",
+                      "on-primary-fixed": "#002114",
+                      "on-tertiary-fixed": "#2a1700",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-surface": "#191c1e",
+                      "outline": "#6d7a72",
+                      "tertiary-fixed-dim": "#ffb95f",
+                      "tertiary-fixed": "#ffddb8",
+                      "primary": "#006948",
+                      "on-secondary-fixed-variant": "#3a485b",
+                      "secondary-fixed": "#d5e3fc",
+                      "error-container": "#ffdad6",
+                      "surface-container-highest": "#e0e3e5",
+                      "primary-fixed": "#85f8c4",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-container": "#00855d",
+                      "tertiary": "#825100",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "inverse-primary": "#68dba9",
+                      "info-blue": "#3b82f6",
+                      "surface-bright": "#f7f9fb",
+                      "secondary": "#515f74",
+                      "on-primary-fixed-variant": "#005137",
+                      "background": "#f7f9fb",
+                      "on-secondary-container": "#57657a",
+                      "secondary-fixed-dim": "#b9c7df",
+                      "inverse-surface": "#2d3133",
+                      "status-error": "#ef4444",
+                      "surface-dim": "#d8dadc",
+                      "on-secondary-fixed": "#0d1c2e",
+                      "surface-container-high": "#e6e8ea",
+                      "surface-container": "#eceef0",
+                      "on-surface-variant": "#3d4a42",
+                      "on-error": "#ffffff",
+                      "on-primary-container": "#f5fff7",
+                      "outline-variant": "#bccac0",
+                      "status-success": "#10b981",
+                      "surface-tint": "#006c4a",
+                      "surface-variant": "#e0e3e5",
+                      "map-zone": "rgba(5, 150, 105, 0.2)",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-fixed-variant": "#653e00",
+                      "surface-container-low": "#f2f4f6",
+                      "on-tertiary-container": "#fffbff",
+                      "surface": "#f7f9fb",
+                      "error": "#ba1a1a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "20px",
+                      "stack-md": "16px",
+                      "touch-target": "48px",
+                      "gutter": "16px",
+                      "stack-lg": "24px",
+                      "stack-sm": "8px",
+                      "safe-area-bottom": "32px"
+              },
+              "fontFamily": {
+                      "headline-md": ["Inter"],
+                      "caption": ["Inter"],
+                      "body-base": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "label-md": ["Inter"],
+                      "hero-fruit": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "caption": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "body-base": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-lg": ["18px", {"lineHeight": "26px", "fontWeight": "400"}],
+                      "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                      "hero-fruit": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .card-shadow {
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        /* Hide scrollbar for tabs */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-base antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- Header: Task-focused sub-page, standard nav suppressed per Semantic Shell Mandate -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 px-margin-mobile flex justify-between items-center h-[64px]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-status-success" style="font-variation-settings: 'FILL' 1;">eco</span>
+<h1 class="font-headline-md text-headline-md text-on-surface tracking-tight">Ri6-001</h1>
+</div>
+<button aria-label="Close" class="h-touch-target w-touch-target flex items-center justify-end text-on-surface-variant hover:text-on-surface transition-colors rounded-full">
+<span class="material-symbols-outlined">close</span>
+</button>
+</header>
+<main class="pt-[84px] pb-[calc(100px+32px)] px-margin-mobile flex flex-col gap-stack-lg">
+<!-- Section 1: Image Gallery -->
+<section class="flex flex-col gap-stack-md">
+<!-- Tabs -->
+<div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md transition-colors">Tất cả</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md transition-colors">Niên vụ 2026</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md transition-colors">Niên vụ 2025</button>
+</div>
+<!-- Grid -->
+<div class="grid grid-cols-2 gap-stack-sm">
+<img alt="Durian fruit" class="w-full aspect-square object-cover rounded-xl bg-surface-container-high" data-alt="A close-up photograph of a healthy durian tree branch heavily laden with young, spiky green fruits. The scene is shot in a sunlit outdoor orchard during the day, capturing the vibrant green tones of the leaves and the robust texture of the bark. The lighting is natural and bright, conveying a sense of organic growth and high agricultural utility, fitting a modern farm management application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVwSpl1Pz1_1LaB9oBgnYj3BqRL5GDwt6vjSLYx03VDd5VrjvlfcJRFPgUyjEMLU8xPC2ULSLb9bbHCROja8O0JrARVnvdfiHzONF988iVVdW_66LDBfO2NcCCYdzJdKJDGu7ocr23twtIDMag_FeWv6QRf4nRxhrMGaY97_JLr62_8w1klDQZOR0IUKL7cbBrpztsotYC4U8tKyNTiXjPOByE8faimBvQ-M_KwI1ORcAohNdA_3nqcAd6xMzfyReoA9ezvww3Eg58"/>
+<img alt="Tree trunk" class="w-full aspect-square object-cover rounded-xl bg-surface-container-high" data-alt="A detailed view of a durian tree trunk showing healthy, rugged bark with a small, weather-resistant plastic QR code tag attached. The setting is a tropical orchard with dappled sunlight filtering through the canopy. The color palette emphasizes natural browns and greens, highlighting the integration of modern tracking technology in a traditional outdoor farming environment. The mood is trustworthy and reliable." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAH7VLDEnJHjUOelNK1M8oA4avG7Hvb6StC6ZJt6DwkhqK3ISuvHD6xe8ssTUdxK26MKc8Sdn6UOfXwOwfjdFgrfv1lt9N_17Tgilyz4LZzXbYNTX9ZlIlyFmQPJRzjwXl0JjlxGwJ0CfJh72Hr5fnrwcumT8GLOYztCBDnqhWmbJ84-QojSTu8ryeVeuOME032yi5klzGxHhocLVhk7M3Dj55ZTCZul-5Q6tGzTuq4G1WcbbAC6n1eqFuJ5BWlkvydY636skSxnpaJ"/>
+<img alt="Orchard view" class="w-full aspect-[2/1] col-span-2 object-cover rounded-xl bg-surface-container-high" data-alt="A wide-angle shot of a meticulously organized durian orchard with rows of mature trees under a clear blue sky. The ground is covered with short, neat green grass. Bright sunlight casts strong, clear shadows, creating a high-contrast outdoor scene. The aesthetic is clean, corporate, and modern, reflecting a well-managed agricultural operation with a focus on high utility and clear boundaries." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcKfRYPmvjt1xAJkcpS8p_aSl4mIJvZHOFd1xcsbszHAWwzTwRgScqfdWvfYuLx9IWOD0DK2kRb6FTe7Eo991iZ2IcecUcaoSJXWtDRKAroKIYFDONXXvyNbR6bp9fytlEkrgIgX7kqb2kVgyd0TOqduoo7IPJRr1Qg6_J36LRl6Lld-cVS64E8-dwNuXQ0nVa3dMFtZp_CtLzJ39K4x_yaQXbOJk76mySXWZwcjXAEWcVpjdWJfOav4ca9xhmTyUBzDEzI_s_ZboP"/>
+</div>
+</section>
+<!-- Section 4: Tree Info (Bento Grid) - Placed higher for context -->
+<section class="grid grid-cols-2 gap-stack-sm">
+<div class="bg-surface-container-lowest p-4 rounded-2xl card-shadow flex flex-col gap-1">
+<span class="font-caption text-caption text-on-surface-variant">Giống cây</span>
+<span class="font-headline-md text-headline-md text-on-surface">Sầu Riêng Ri6</span>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-2xl card-shadow flex flex-col gap-1">
+<span class="font-caption text-caption text-on-surface-variant">Sức khỏe</span>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-status-success" style="font-variation-settings: 'FILL' 1; font-size: 20px;">check_circle</span>
+<span class="font-label-md text-label-md text-status-success">Phát triển tốt</span>
+</div>
+</div>
+<div class="col-span-2 bg-surface-container-lowest p-4 rounded-2xl card-shadow flex flex-col gap-1">
+<span class="font-caption text-caption text-on-surface-variant">Khu vực canh tác</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-size: 20px;">grid_view</span>
+<span class="font-body-base text-body-base text-on-surface">Khu A - Hàng 4 - Cột 12</span>
+</div>
+</div>
+<div class="col-span-2 bg-surface-container-lowest p-4 rounded-2xl card-shadow flex justify-between items-center">
+<div class="flex flex-col gap-1">
+<span class="font-caption text-caption text-on-surface-variant">Tọa độ GPS</span>
+<span class="font-body-base text-body-base text-on-surface">10.7626° N, 106.6601° E</span>
+</div>
+<button class="h-10 px-4 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">edit_location</span>
+                    Sửa
+                </button>
+</div>
+</section>
+<!-- Section 5: Financials -->
+<section class="bg-surface-container-lowest rounded-2xl p-stack-md card-shadow border border-outline-variant/20">
+<h3 class="font-label-md text-label-md text-on-surface-variant mb-2">Chi phí đầu tư (Niên vụ 2026)</h3>
+<div class="flex justify-between items-end">
+<div class="font-headline-lg text-headline-lg text-on-surface">1,450,000 ₫</div>
+<div class="flex items-center gap-1 text-status-warning bg-status-warning/10 px-2 py-1 rounded-md">
+<span class="material-symbols-outlined" style="font-size: 16px;">trending_up</span>
+<span class="font-caption text-caption">+15% vs 2025</span>
+</div>
+</div>
+<div class="mt-4 w-full bg-surface-container h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[65%] rounded-full"></div>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-2 text-right">Đã giải ngân 65%</p>
+</section>
+<!-- Section 3: TreeNoteSystem Timeline -->
+<section class="flex flex-col gap-stack-md">
+<h2 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">history</span>
+                Nhật ký canh tác
+            </h2>
+<div class="relative ml-4 pl-6 border-l-2 border-outline-variant/30 flex flex-col gap-stack-lg">
+<!-- Note 1 -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 h-4 w-4 rounded-full bg-primary ring-4 ring-surface-container-lowest"></div>
+<div class="bg-surface-container-lowest p-4 rounded-2xl card-shadow">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-tertiary-container flex items-center justify-center text-on-tertiary-container font-label-md text-label-md">H</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Hoàng Văn A</span>
+<span class="font-caption text-caption text-on-surface-variant">Hôm nay, 08:30</span>
+</div>
+</div>
+<span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded font-caption text-caption">Phân bón</span>
+</div>
+<p class="font-body-base text-body-base text-on-surface">Đã bón 2kg phân NPK 20-20-15 quanh gốc. Đất tơi xốp, giữ ẩm tốt.</p>
+</div>
+</div>
+<!-- Note 2 -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 h-4 w-4 rounded-full bg-surface-variant ring-4 ring-surface-container-lowest border border-outline-variant"></div>
+<div class="bg-surface-container-lowest p-4 rounded-2xl card-shadow">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-label-md text-label-md">T</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Trần Thị B</span>
+<span class="font-caption text-caption text-on-surface-variant">12/05/2024</span>
+</div>
+</div>
+<span class="bg-error-container text-on-error-container px-2 py-0.5 rounded font-caption text-caption">Sâu bệnh</span>
+</div>
+<p class="font-body-base text-body-base text-on-surface mb-2">Phát hiện vết xì mủ nhỏ trên cành cấp 1. Đã cạo và bôi thuốc trị nấm Phytophthora.</p>
+<img alt="Note attachment" class="w-24 h-24 object-cover rounded-lg" data-alt="A quick documentary-style photo showing a close up of tree bark being treated. The lighting is direct outdoor daylight. This image represents practical, high-utility farming activities, capturing the ruggedness of outdoor orchard management in a clear, high-contrast manner with a focus on plant health." src="https://lh3.googleusercontent.com/aida-public/AB6AXuABSAATaEruM48tHOylp7Tn3e7lsmEmgIy_X4Hrn3fmTpn4ue7eikv0VET567fmGBwbJNk_g_CGesci1ZKBOKywYDTsiV_lB81_Rq_LNEHD9b1YKfczvcLTwAi3ZuhnIog64v1ZeJaJSh-x-F7sNN2_9xQ_mONlTrHuIzra4M7XOZuech6zo2ctZ_UdOY-MpZ92dgjuWppCwh3FVA4UFCPq4ojJwb43yPAW8p60Z54oeCfOGjKw_F_0eW9IZd4rIGfsy2HD7obV54T5"/>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Section 2: Fruit Count (Bottom-Heavy / Fixed for one-handed operation) -->
+<section class="fixed bottom-0 w-full bg-surface-container-lowest rounded-t-[32px] card-shadow z-40 p-margin-mobile pb-safe-area-bottom">
+<div class="flex flex-col gap-stack-md">
+<div class="flex justify-between items-center">
+<h2 class="font-label-md text-label-md text-on-surface-variant">Số lượng trái dự kiến</h2>
+<span class="bg-primary-container/20 text-primary-container px-2 py-1 rounded font-caption text-caption flex items-center gap-1">
+<span class="material-symbols-outlined" style="font-size: 14px;">psychiatry</span>
+                    Giai đoạn nuôi trái
+                </span>
+</div>
+<!-- Stepper Control -->
+<div class="flex items-center justify-between bg-surface-container p-2 rounded-2xl border border-outline-variant/30">
+<button aria-label="Giảm" class="h-12 w-12 rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-center text-on-surface active:scale-95 transition-transform">
+<span class="material-symbols-outlined" style="font-size: 28px;">remove</span>
+</button>
+<div class="flex items-baseline gap-1">
+<span class="font-hero-fruit text-hero-fruit text-primary tabular-nums tracking-tighter" id="fruit-count">42</span>
+<span class="font-body-base text-body-base text-on-surface-variant">trái</span>
+</div>
+<button aria-label="Tăng" class="h-12 w-12 rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-center text-on-surface active:scale-95 transition-transform">
+<span class="material-symbols-outlined" style="font-size: 28px;">add</span>
+</button>
+</div>
+<!-- Primary Action -->
+<button class="w-full h-touch-target bg-primary text-on-primary rounded-xl font-headline-md text-headline-md flex items-center justify-center gap-2 active:bg-primary-container active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">save</span>
+                Lưu số lượng
+            </button>
+</div>
+</section>
+<script>
+        // Simple stepper interaction for demonstration
+        document.addEventListener('DOMContentLoaded', () => {
+            const countDisplay = document.getElementById('fruit-count');
+            const buttons = document.querySelectorAll('.bg-surface-container button');
+            
+            let count = 42;
+            
+            buttons[0].addEventListener('click', () => {
+                if(count > 0) {
+                    count--;
+                    countDisplay.textContent = count;
+                }
+            });
+            
+            buttons[1].addEventListener('click', () => {
+                count++;
+                countDisplay.textContent = count;
+            });
+        });
+    </script>
+</body></html>

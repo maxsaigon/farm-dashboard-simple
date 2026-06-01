@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Chụp ảnh AI (Camera)</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#191c1e",
+                      "status-warning": "#f97316",
+                      "on-secondary": "#ffffff",
+                      "primary-fixed-dim": "#68dba9",
+                      "secondary-container": "#d5e3fc",
+                      "tertiary-container": "#a36700",
+                      "on-primary-fixed": "#002114",
+                      "on-tertiary-fixed": "#2a1700",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-surface": "#191c1e",
+                      "outline": "#6d7a72",
+                      "tertiary-fixed-dim": "#ffb95f",
+                      "tertiary-fixed": "#ffddb8",
+                      "primary": "#006948",
+                      "on-secondary-fixed-variant": "#3a485b",
+                      "secondary-fixed": "#d5e3fc",
+                      "error-container": "#ffdad6",
+                      "surface-container-highest": "#e0e3e5",
+                      "primary-fixed": "#85f8c4",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-container": "#00855d",
+                      "tertiary": "#825100",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "inverse-primary": "#68dba9",
+                      "info-blue": "#3b82f6",
+                      "surface-bright": "#f7f9fb",
+                      "secondary": "#515f74",
+                      "on-primary-fixed-variant": "#005137",
+                      "background": "#f7f9fb",
+                      "on-secondary-container": "#57657a",
+                      "secondary-fixed-dim": "#b9c7df",
+                      "inverse-surface": "#2d3133",
+                      "status-error": "#ef4444",
+                      "surface-dim": "#d8dadc",
+                      "on-secondary-fixed": "#0d1c2e",
+                      "surface-container-high": "#e6e8ea",
+                      "surface-container": "#eceef0",
+                      "on-surface-variant": "#3d4a42",
+                      "on-error": "#ffffff",
+                      "on-primary-container": "#f5fff7",
+                      "outline-variant": "#bccac0",
+                      "status-success": "#10b981",
+                      "surface-tint": "#006c4a",
+                      "surface-variant": "#e0e3e5",
+                      "map-zone": "rgba(5, 150, 105, 0.2)",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-fixed-variant": "#653e00",
+                      "surface-container-low": "#f2f4f6",
+                      "on-tertiary-container": "#fffbff",
+                      "surface": "#f7f9fb",
+                      "error": "#ba1a1a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "20px",
+                      "stack-md": "16px",
+                      "touch-target": "48px",
+                      "gutter": "16px",
+                      "stack-lg": "24px",
+                      "stack-sm": "8px",
+                      "safe-area-bottom": "32px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "caption": [
+                              "Inter"
+                      ],
+                      "body-base": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "hero-fruit": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "caption": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-base": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "26px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "hero-fruit": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-black text-on-secondary h-full overflow-hidden font-body-base antialiased">
+<!-- Camera Viewfinder Background -->
+<div class="absolute inset-0 z-0">
+<img alt="Durian tree orchard view through a camera lens" class="w-full h-full object-cover opacity-90" data-alt="A first-person point-of-view shot looking through a smartphone camera viewfinder at a lush durian orchard in bright daylight. The focus is on a specific, healthy durian tree trunk and its surrounding foliage, capturing the rugged, organic texture of the farm environment. The lighting is harsh outdoor sunlight, casting strong shadows, typical of tropical agricultural settings. The image should convey a sense of high-utility field work." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjjiWbncFrGIt6QBH8a2sZ4TgM-rOdnYmrKZGrgZvEhjQQ_F2YTWaNPJmgIbfyUQ10Tu6_ij1MH2W5UfhLb2ORrVsYjUWvLDL0C3XUno8SSm2pxc8ZcXBTfZjMsNmEaHgjb12ZpdBG11tXc4XFqUbiCl_DeryGEVw9_d95ubEkYR2YB3CK-7o6rbLNl6SoVlKaxA6O0sppwaC43XVZ7r8AVhXfyeVFvTAMkts0J6Okqshirq2Ys2kXHEX9_DS-atO5EN4ihWcczXxq"/>
+<!-- Viewfinder Overlay Elements -->
+<div class="absolute inset-0 border-[1px] border-white/20 m-4 rounded-xl flex items-center justify-center pointer-events-none">
+<!-- Center Focus Reticle -->
+<div class="w-24 h-24 border-2 border-primary-fixed border-dashed rounded-lg opacity-80 animate-pulse"></div>
+<!-- Corner Brackets -->
+<div class="absolute top-8 left-8 w-8 h-8 border-t-2 border-l-2 border-white/50"></div>
+<div class="absolute top-8 right-8 w-8 h-8 border-t-2 border-r-2 border-white/50"></div>
+<div class="absolute bottom-8 left-8 w-8 h-8 border-b-2 border-l-2 border-white/50"></div>
+<div class="absolute bottom-8 right-8 w-8 h-8 border-b-2 border-r-2 border-white/50"></div>
+</div>
+</div>
+<!-- Top Controls Area -->
+<div class="absolute top-0 w-full z-10 bg-gradient-to-b from-black/60 to-transparent pt-safe-area-top pb-6 px-margin-mobile flex justify-between items-start">
+<button class="flex items-center justify-center w-touch-target h-touch-target rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors" type="button">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+<!-- Contextual Info Badge -->
+<div class="bg-black/50 backdrop-blur-md rounded-full px-4 py-2 mt-2 border border-white/10 flex items-center gap-2 shadow-lg">
+<span class="material-symbols-outlined text-primary-fixed-dim text-[18px]" style="font-variation-settings: 'FILL' 1;">park</span>
+<span class="font-label-md text-label-md text-white">Cây gần nhất: Ri6-001 (8m)</span>
+</div>
+<button class="flex items-center justify-center w-touch-target h-touch-target rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors" type="button">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">flash_off</span>
+</button>
+</div>
+<!-- Bottom Controls Area -->
+<div class="absolute bottom-0 w-full z-10 bg-gradient-to-t from-black via-black/80 to-transparent pb-safe-area-bottom pt-12 px-margin-mobile flex flex-col items-center gap-stack-lg">
+<!-- AI Photo Mode Selector -->
+<div class="flex bg-black/60 backdrop-blur-md rounded-full p-1 border border-white/10 w-full max-w-sm overflow-x-auto snap-x hide-scrollbar">
+<button class="flex-1 min-w-max px-4 py-2 rounded-full font-label-md text-label-md text-white hover:bg-white/10 transition-colors snap-center" type="button">
+                Tổng quan
+            </button>
+<button class="flex-1 min-w-max px-4 py-2 rounded-full font-label-md text-label-md bg-primary text-on-primary shadow-md snap-center" type="button">
+                Sức khỏe
+            </button>
+<button class="flex-1 min-w-max px-4 py-2 rounded-full font-label-md text-label-md text-white hover:bg-white/10 transition-colors snap-center" type="button">
+                Đếm trái
+            </button>
+</div>
+<!-- Primary Camera Actions -->
+<div class="flex items-center justify-between w-full max-w-sm mb-4">
+<!-- Gallery / Last Photo Thumbnail -->
+<button class="w-12 h-12 rounded-lg bg-surface-container-high border border-white/20 overflow-hidden flex-shrink-0" type="button">
+<div class="w-full h-full bg-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">photo_library</span>
+</div>
+</button>
+<!-- Main Shutter Button -->
+<button class="relative flex items-center justify-center w-20 h-20 rounded-full border-4 border-white focus:outline-none focus:ring-4 focus:ring-primary-fixed/50 transition-transform active:scale-95 group" type="button">
+<div class="w-16 h-16 rounded-full bg-white group-active:bg-surface-variant transition-colors"></div>
+</button>
+<!-- Switch Camera Button -->
+<button class="flex items-center justify-center w-12 h-12 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors flex-shrink-0" type="button">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">cameraswitch</span>
+</button>
+</div>
+</div>
+<style>
+        /* Utility to hide scrollbar but keep functionality for horizontal scroll */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</body></html>

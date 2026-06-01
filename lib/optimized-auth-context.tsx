@@ -188,7 +188,12 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
           ownerName: f.ownerName,
           totalArea: f.totalArea,
           createdDate: f.createdDate,
-          isActive: f.isActive
+          isActive: f.isActive,
+          centerLatitude: f.centerLatitude,
+          centerLongitude: f.centerLongitude,
+          organizationId: f.organizationId,
+          currentSeasonYear: f.currentSeasonYear,
+          seasons: f.seasons
         })),
         currentFarmId: currentFarm?.id,
         farmAccess: farmAccess.map(a => ({
@@ -415,21 +420,25 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       try {
         console.log('[SeasonMigration] 🚀 Starting client-side season migration for farm:', currentFarm.id)
         
-        // 1. Migrate Farm configuration
-        const currentSeasons = currentFarm.seasons || [2025]
-        const cleanSeasons = currentSeasons.filter(y => y >= 2000)
+        // Fetch the fresh farm document from Firestore to avoid using stale cached state
+        const farmRef = doc(db, 'farms', currentFarm.id)
+        const farmDoc = await getDoc(farmRef)
+        if (!farmDoc.exists()) return
+        
+        const farmData = farmDoc.data()
+        const currentSeasons = farmData.seasons || [2025]
+        const cleanSeasons = currentSeasons.filter((y: number) => y >= 2000)
         if (cleanSeasons.length === 0) {
           cleanSeasons.push(2025)
         }
         
         let farmUpdated = false
-        const isSeasonYearInvalid = !currentFarm.currentSeasonYear || currentFarm.currentSeasonYear < 2000
-        const isSeasonsListInvalid = !currentFarm.seasons || currentFarm.seasons.some(y => y < 2000) || !currentSeasons.includes(2025)
+        const isSeasonYearInvalid = !farmData.currentSeasonYear || farmData.currentSeasonYear < 2000
+        const isSeasonsListInvalid = !farmData.seasons || farmData.seasons.some((y: number) => y < 2000) || !currentSeasons.includes(2025)
 
         if (isSeasonYearInvalid || isSeasonsListInvalid) {
-          const finalSeasonYear = isSeasonYearInvalid ? 2025 : currentFarm.currentSeasonYear
+          const finalSeasonYear = isSeasonYearInvalid ? 2025 : farmData.currentSeasonYear
           const updatedSeasons = Array.from(new Set([...cleanSeasons, 2025])).sort((a, b) => b - a)
-          const farmRef = doc(db, 'farms', currentFarm.id)
           await setDoc(farmRef, {
             currentSeasonYear: finalSeasonYear,
             seasons: updatedSeasons
@@ -438,6 +447,16 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
           currentFarm.currentSeasonYear = finalSeasonYear
           currentFarm.seasons = updatedSeasons
           farmUpdated = true
+        } else {
+          // If the local state is missing the season info (due to cached restoration) but the DB has it, update local state
+          const dbSeasonYear = farmData.currentSeasonYear
+          const dbSeasons = farmData.seasons
+          
+          if (dbSeasonYear && (!currentFarm.currentSeasonYear || currentFarm.currentSeasonYear !== dbSeasonYear || !currentFarm.seasons)) {
+            currentFarm.currentSeasonYear = dbSeasonYear
+            currentFarm.seasons = dbSeasons
+            farmUpdated = true
+          }
         }
 
         // 2. Migrate Trees
@@ -815,8 +834,15 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         console.log('[Auth] ✅ Setting farms:', userFarms.length)
         setFarms(userFarms)
 
-        // Auto-select farm if user has only one
-        if (userFarms.length === 1 && !currentFarm) {
+        // If there is a currently selected farm, update its reference with the fresh version
+        if (currentFarm) {
+          const freshCurrentFarm = userFarms.find(f => f.id === currentFarm.id)
+          if (freshCurrentFarm) {
+            console.log('[Auth] 🎯 Updating current farm with fresh database data:', freshCurrentFarm.name)
+            setCurrentFarmState(freshCurrentFarm)
+          }
+        } else if (userFarms.length === 1) {
+          // Auto-select farm if user has only one and none is selected
           console.log('[Auth] 🎯 Auto-selecting single farm:', userFarms[0].name)
           setCurrentFarmState(userFarms[0])
         }

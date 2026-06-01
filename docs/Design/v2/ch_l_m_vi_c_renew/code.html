@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Trang trại Sầu riêng - Bản đồ</title>
+<!-- Fonts & Icons -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#191c1e",
+                    "status-warning": "#f97316",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed-dim": "#68dba9",
+                    "secondary-container": "#d5e3fc",
+                    "tertiary-container": "#a36700",
+                    "on-primary-fixed": "#002114",
+                    "on-tertiary-fixed": "#2a1700",
+                    "inverse-on-surface": "#eff1f3",
+                    "on-surface": "#191c1e",
+                    "outline": "#6d7a72",
+                    "tertiary-fixed-dim": "#ffb95f",
+                    "tertiary-fixed": "#ffddb8",
+                    "primary": "#006948",
+                    "on-secondary-fixed-variant": "#3a485b",
+                    "secondary-fixed": "#d5e3fc",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#e0e3e5",
+                    "primary-fixed": "#85f8c4",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-container": "#00855d",
+                    "tertiary": "#825100",
+                    "on-primary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "inverse-primary": "#68dba9",
+                    "info-blue": "#3b82f6",
+                    "surface-bright": "#f7f9fb",
+                    "secondary": "#515f74",
+                    "on-primary-fixed-variant": "#005137",
+                    "background": "#f7f9fb",
+                    "on-secondary-container": "#57657a",
+                    "secondary-fixed-dim": "#b9c7df",
+                    "inverse-surface": "#2d3133",
+                    "status-error": "#ef4444",
+                    "surface-dim": "#d8dadc",
+                    "on-secondary-fixed": "#0d1c2e",
+                    "surface-container-high": "#e6e8ea",
+                    "surface-container": "#eceef0",
+                    "on-surface-variant": "#3d4a42",
+                    "on-error": "#ffffff",
+                    "on-primary-container": "#f5fff7",
+                    "outline-variant": "#bccac0",
+                    "status-success": "#10b981",
+                    "surface-tint": "#006c4a",
+                    "surface-variant": "#e0e3e5",
+                    "map-zone": "rgba(5, 150, 105, 0.2)",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed-variant": "#653e00",
+                    "surface-container-low": "#f2f4f6",
+                    "on-tertiary-container": "#fffbff",
+                    "surface": "#f7f9fb",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "20px",
+                    "stack-md": "16px",
+                    "touch-target": "48px",
+                    "gutter": "16px",
+                    "stack-lg": "24px",
+                    "stack-sm": "8px",
+                    "safe-area-bottom": "32px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "caption": ["Inter"],
+                    "body-base": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "hero-fruit": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "caption": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-base": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "26px", "fontWeight": "400"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "hero-fruit": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        /* Hide scrollbar for a clean map view */
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Map Marker Pulse Animation */
+        @keyframes yellow-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+        }
+        .marker-pulse {
+            animation: yellow-pulse 2s infinite;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body-base overflow-hidden h-screen w-screen flex flex-col light">
+<!-- JSON Component: TopAppBar -->
+<header class="bg-surface/80 backdrop-blur-md flex justify-between items-center w-full px-margin-mobile h-touch-target w-full top-0 sticky z-40 border-b border-outline-variant/30 flex-shrink-0">
+<!-- Leading: Avatar -->
+<div class="h-8 w-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
+<img alt="Profile picture of farm owner" class="w-full h-full object-cover" data-alt="A portrait photo of a Vietnamese farmer outdoors on a sunny day. The man is wearing a practical work shirt and a slightly weathered straw hat. The lighting is bright and natural, highlighting a trustworthy and experienced expression. The background is a soft blur of green foliage, indicating an agricultural setting. Modern, high-utility aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDckPxnkgy-vQt9RcZA8JrvOFMczZK-O3TulFyz_SwRU9mvoqC8vIH_uuqD1PHwRhM-uXEPJk09mH4y5vDDwsM67JM--25WLulavnZkiwRFKZ9LzVefrI7K75KPlhBVXmyWdP5wQbQbPcljuqOOARsOZPb6yddITZgJrgIQF2fodmpunnrmQ3bzaXZipr7L25Se6hHiiyd4Po0xk3U2MaZlUoJMMGYwHmfMcj9AQvWxBpLoe1ZGhY2fMTvZnR9y989X-qWOliEf9Vbg"/>
+</div>
+<!-- Headline -->
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Trang trại Sầu riêng</h1>
+<!-- Trailing Action Text -->
+<span class="font-label-md text-label-md text-primary">Niên vụ 2026</span>
+</header>
+<!-- Main Map Container -->
+<main class="flex-1 relative w-full h-full"><div class="absolute inset-0 z-[60] bg-black/10 pointer-events-none flex flex-col" id="work-mode-overlay">
+<!-- Top Status Bar -->
+<div class="flex justify-between items-center px-margin-mobile pt-stack-sm pointer-events-auto">
+<div class="bg-surface/95 backdrop-blur-md rounded-full px-4 py-2 flex items-center gap-2 shadow-lg border border-outline-variant/30">
+<span class="material-symbols-outlined text-status-success text-[20px]">satellite_alt</span>
+<span class="font-label-md text-on-surface">GPS: ±3m (Tốt)</span>
+</div>
+<button class="w-touch-target h-touch-target bg-surface/95 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- User Position Marker (Centered for Demo) -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+<div class="w-40 h-40 rounded-full bg-status-success/10 border-2 border-status-success/30 flex items-center justify-center">
+<div class="w-4 h-4 bg-info-blue rounded-full border-2 border-white shadow-md relative">
+<div class="absolute inset-0 bg-info-blue rounded-full animate-ping opacity-75"></div>
+</div>
+</div>
+</div>
+<!-- Bottom Panel -->
+<div class="mt-auto pointer-events-auto bg-surface rounded-t-3xl shadow-[0_-8px_24px_rgba(0,0,0,0.12)] border-t border-outline-variant/30 p-margin-mobile">
+<div class="w-12 h-1.5 bg-outline-variant/50 rounded-full mx-auto mb-4"></div>
+<div class="flex justify-between items-center mb-stack-md">
+<h2 class="font-headline-md text-on-surface">Cây gần bạn (max 5)</h2>
+<span class="text-primary font-label-md">Bán kính 50m</span>
+</div>
+<div class="space-y-stack-sm mb-stack-lg">
+<!-- Tree 1 -->
+<div class="flex items-center justify-between p-stack-md bg-surface-container-low rounded-2xl border border-outline-variant/20">
+<div class="flex items-center gap-3">
+<span class="text-2xl">🌳</span>
+<div>
+<div class="font-label-md text-on-surface">Cây Ri6-001</div>
+<div class="text-caption text-on-surface-variant">Ri6 • Khu A</div>
+</div>
+</div>
+<div class="text-right">
+<div class="font-label-md text-status-success">8.5m</div>
+<div class="text-caption text-status-success">Rất tốt</div>
+</div>
+</div>
+<!-- Tree 2 -->
+<div class="flex items-center justify-between p-stack-md bg-surface-container-low rounded-2xl border border-outline-variant/20">
+<div class="flex items-center gap-3">
+<span class="text-2xl">🌳</span>
+<div>
+<div class="font-label-md text-on-surface">Cây Monthong B02</div>
+<div class="text-caption text-on-surface-variant">Monthong • Khu B</div>
+</div>
+</div>
+<div class="text-right">
+<div class="font-label-md text-status-success">15.2m</div>
+<div class="text-caption text-status-success">Tốt</div>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="grid grid-cols-2 gap-gutter">
+<button class="h-touch-target bg-surface-container-highest text-primary font-bold rounded-2xl flex items-center justify-center gap-2 border border-outline-variant/50">
+<span class="material-symbols-outlined">photo_camera</span>
+<span>Chụp ảnh</span>
+</button>
+<button class="h-touch-target bg-primary text-on-primary font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md">
+<span class="material-symbols-outlined">add_circle</span>
+<span>Tạo cây mới</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Map Background (Satellite Sim) -->
+<div class="absolute inset-0 w-full h-full bg-surface-container-high">
+<img alt="Satellite Map View" class="w-full h-full object-cover opacity-90" data-alt="A high-resolution, top-down satellite view of a lush, expansive agricultural farm, specifically a mature durian orchard. The landscape features organized, grid-like rows of large, full-canopied trees separated by narrow dirt pathways. The colors are dominated by rich, deep greens of the vegetation, contrasting with the earthy browns of the soil. Bright, even sunlight casts minimal shadows, creating a clear, high-utility map interface aesthetic suitable for precision farming application." data-location="Đắk Lắk, Vietnam" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2NP8kmMNTaC5QZFueB034x9ojnKnHBAo3yjQgeCvnsSLF9BbwzgV5NMcBL3VhLpfVzw8DVeFDT7TB6KOLYhAFL555zM7vtKN-CU63khe6k5VV6jXXgkGYA7T0rsuxmsH1PTowAFcJPqt3roUxN3gK-VfcTjV1mUXNiT1SAkZDiH6zGk4joYQ2AYq5IO3VuAjiJVgtBBr0pTWQJ0LWODtYnmi41Y2lfYIWisGfMchPwso4ape44kUsBaoTwb7mrqqioHED8jx1h2rd"/>
+</div>
+<!-- Zones Overlay (Polygons) -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" preserveaspectratio="none" viewbox="0 0 100 100">
+<!-- Khu vực 1 (Zone A) -->
+<polygon class="text-map-zone fill-current stroke-primary stroke-[0.5]" points="10,10 40,15 35,50 5,45"></polygon>
+<text fill="#ffffff" font-family="Inter" font-size="3" font-weight="bold" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);" x="20" y="30">Khu A</text>
+<!-- Khu vực 2 (Zone B) -->
+<polygon class="text-map-zone fill-current stroke-info-blue stroke-[0.5]" points="45,20 90,10 85,60 40,55"></polygon>
+<text fill="#ffffff" font-family="Inter" font-size="3" font-weight="bold" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);" x="65" y="35">Khu B</text>
+</svg>
+<!-- Tree Markers (Dots) -->
+<!-- Green: Healthy -->
+<div class="absolute top-[20%] left-[25%] w-4 h-4 rounded-full bg-status-success shadow-md border-2 border-white translate-x-[-50%] translate-y-[-50%]"></div>
+<div class="absolute top-[28%] left-[18%] w-4 h-4 rounded-full bg-status-success shadow-md border-2 border-white translate-x-[-50%] translate-y-[-50%]"></div>
+<div class="absolute top-[35%] left-[30%] w-4 h-4 rounded-full bg-status-success shadow-md border-2 border-white translate-x-[-50%] translate-y-[-50%]"></div>
+<div class="absolute top-[25%] left-[55%] w-4 h-4 rounded-full bg-status-success shadow-md border-2 border-white translate-x-[-50%] translate-y-[-50%]"></div>
+<div class="absolute top-[40%] left-[70%] w-4 h-4 rounded-full bg-status-success shadow-md border-2 border-white translate-x-[-50%] translate-y-[-50%]"></div>
+<!-- Orange: Warning (Pulse) -->
+<div class="absolute top-[45%] left-[25%] w-4 h-4 rounded-full bg-status-warning shadow-md border-2 border-white marker-pulse translate-x-[-50%] translate-y-[-50%]"></div>
+<div class="absolute top-[15%] left-[65%] w-4 h-4 rounded-full bg-status-warning shadow-md border-2 border-white marker-pulse translate-x-[-50%] translate-y-[-50%]"></div>
+<!-- Red: Error -->
+<div class="absolute top-[50%] left-[80%] w-4 h-4 rounded-full bg-status-error shadow-md border-2 border-white translate-x-[-50%] translate-y-[-50%]"></div>
+<!-- Interactive Overlays (UI on top of map) -->
+<div class="absolute inset-0 pointer-events-none flex flex-col justify-between hidden">
+<!-- Top Area Overlays -->
+<div class="w-full flex justify-center pt-stack-sm pointer-events-auto">
+<!-- Status Bar: GPS -->
+<div class="bg-surface/90 backdrop-blur-md rounded-full px-4 py-1.5 flex items-center gap-1 shadow-sm border border-outline-variant/20">
+<span class="material-symbols-outlined text-status-success text-[16px]">satellite_alt</span>
+<span class="font-caption text-caption text-on-surface font-semibold">GPS: ±3m (Tốt)</span>
+</div>
+</div>
+<!-- Bottom Area Overlays (Above Nav Bar) -->
+<div class="w-full relative h-full">
+<!-- FAB: Current Location -->
+<button class="absolute bottom-[24px] right-margin-mobile w-touch-target h-touch-target bg-surface text-primary rounded-full shadow-lg flex items-center justify-center pointer-events-auto hover:bg-surface-container-high active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">my_location</span>
+</button>
+<!-- FAB: Start Work Mode -->
+<button class="absolute bottom-[24px] left-1/2 -translate-x-1/2 bg-primary text-on-primary rounded-full px-8 h-touch-target shadow-lg flex items-center justify-center gap-2 pointer-events-auto hover:bg-primary-container active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+<span class="font-label-md text-label-md">Làm việc</span>
+</button>
+</div>
+</div>
+</main>
+<!-- JSON Component: BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 pb-safe-area-bottom bg-surface shadow-[0_-4px_12px_rgba(0,0,0,0.08)] flex justify-around items-center w-full px-2 pt-2 flex-shrink-0 hidden">
+<!-- Tab 1: Bản đồ (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 hover:opacity-80 scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">map</span>
+<span class="font-label-md text-label-md mt-1">Bản đồ</span>
+</a>
+<!-- Tab 2: Cây trồng (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:opacity-80" href="#">
+<span class="material-symbols-outlined">forest</span>
+<span class="font-label-md text-label-md mt-1">Cây trồng</span>
+</a>
+<!-- Tab 3: Khu vực (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:opacity-80" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="font-label-md text-label-md mt-1">Khu vực</span>
+</a>
+<!-- Tab 4: Tài chính (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:opacity-80" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md mt-1">Tài chính</span>
+</a>
+</nav>
+<!-- Buffer for absolute positioned FABs to not overlap with bottom nav content visually if scrolling was present, though this is fullscreen -->
+<div class="h-[80px] w-full flex-shrink-0 hidden"></div>
+</body></html>

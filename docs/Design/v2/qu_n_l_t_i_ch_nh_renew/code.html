@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Quản lý Tài chính - Trang trại</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#191c1e",
+                      "status-warning": "#f97316",
+                      "on-secondary": "#ffffff",
+                      "primary-fixed-dim": "#68dba9",
+                      "secondary-container": "#d5e3fc",
+                      "tertiary-container": "#a36700",
+                      "on-primary-fixed": "#002114",
+                      "on-tertiary-fixed": "#2a1700",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-surface": "#191c1e",
+                      "outline": "#6d7a72",
+                      "tertiary-fixed-dim": "#ffb95f",
+                      "tertiary-fixed": "#ffddb8",
+                      "primary": "#006948",
+                      "on-secondary-fixed-variant": "#3a485b",
+                      "secondary-fixed": "#d5e3fc",
+                      "error-container": "#ffdad6",
+                      "surface-container-highest": "#e0e3e5",
+                      "primary-fixed": "#85f8c4",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-container": "#00855d",
+                      "tertiary": "#825100",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "inverse-primary": "#68dba9",
+                      "info-blue": "#3b82f6",
+                      "surface-bright": "#f7f9fb",
+                      "secondary": "#515f74",
+                      "on-primary-fixed-variant": "#005137",
+                      "background": "#f7f9fb",
+                      "on-secondary-container": "#57657a",
+                      "secondary-fixed-dim": "#b9c7df",
+                      "inverse-surface": "#2d3133",
+                      "status-error": "#ef4444",
+                      "surface-dim": "#d8dadc",
+                      "on-secondary-fixed": "#0d1c2e",
+                      "surface-container-high": "#e6e8ea",
+                      "surface-container": "#eceef0",
+                      "on-surface-variant": "#3d4a42",
+                      "on-error": "#ffffff",
+                      "on-primary-container": "#f5fff7",
+                      "outline-variant": "#bccac0",
+                      "status-success": "#10b981",
+                      "surface-tint": "#006c4a",
+                      "surface-variant": "#e0e3e5",
+                      "map-zone": "rgba(5, 150, 105, 0.2)",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-fixed-variant": "#653e00",
+                      "surface-container-low": "#f2f4f6",
+                      "on-tertiary-container": "#fffbff",
+                      "surface": "#f7f9fb",
+                      "error": "#ba1a1a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "20px",
+                      "stack-md": "16px",
+                      "touch-target": "48px",
+                      "gutter": "16px",
+                      "stack-lg": "24px",
+                      "stack-sm": "8px",
+                      "safe-area-bottom": "32px"
+              },
+              "fontFamily": {
+                      "headline-md": ["Inter"],
+                      "caption": ["Inter"],
+                      "body-base": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "label-md": ["Inter"],
+                      "hero-fruit": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                      "caption": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                      "body-base": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                      "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "400" }],
+                      "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                      "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                      "hero-fruit": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom Doughnut Chart via CSS Conic Gradient */
+        .chart-doughnut {
+            background: conic-gradient(
+                #006948 0% 45%,      /* Primary: Phân bón */
+                #f97316 45% 70%,     /* Warning: Thuốc BVTV */
+                #3b82f6 70% 88%,     /* Info: Lao động */
+                #bccac0 88% 100%     /* Outline Variant: Khác */
+            );
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-base min-h-screen pb-[100px] md:pb-0">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 sticky z-40 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md border-b border-outline-variant/30">
+<div class="flex justify-between items-center w-full px-margin-mobile h-touch-target">
+<!-- Leading: Avatar -->
+<div class="flex-shrink-0">
+<img alt="Profile picture of farm owner" class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A close up portrait of a middle-aged Vietnamese male farmer with a weathered, sun-tanned face, wearing a simple woven straw hat. The lighting is bright, natural daylight casting soft shadows, creating a high-contrast, modern utility aesthetic. Background is out of focus, showing blurred green agricultural foliage. The overall mood is resilient, trustworthy, and organic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6QlYpDW6GcPt4qv9afuRWICkRfatekwe54393G4GBXzEXLrv2MCeC7z6JCHf5OE1rUGS9xTk6lBjKvNZV-7eH2EtExGNAEtK0OkLjW2YNw8FbSa5_68a0yxJUu7Z6yVoJGgEGKr600mjkcOGb4enAIb9AiVvyeix5ofZBTz7bSUZwOsd1_DsZ279iiajtSmH_Kzm6OpOTOyFlFPodQfJytO-9Yrnt4zzL2JVeN0Yaeiussht7LLLuhMkKw3RutWuF5KEKwiMm2f8O"/>
+</div>
+<!-- Headline -->
+<div class="flex-1 text-center truncate px-4">
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim">Trang trại Sầu riêng</h1>
+</div>
+<!-- Trailing: Action Text -->
+<div class="flex-shrink-0">
+<span class="font-label-md text-label-md text-on-surface-variant">Niên vụ 2026</span>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="w-full max-w-md mx-auto relative">
+<!-- Hero: Financial Summary Bento Card -->
+<section class="m-margin-mobile">
+<div class="bg-surface-container-lowest rounded-2xl p-6 shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-outline-variant/20 flex flex-col items-center">
+<h2 class="font-label-md text-label-md text-outline uppercase tracking-wider mb-2 text-center">Tổng chi phí niên vụ 2026</h2>
+<div class="font-hero-fruit text-[40px] leading-[48px] font-bold text-primary mb-6 text-center">
+                    125.5 <span class="text-headline-lg font-normal text-on-surface-variant">Tr</span>
+</div>
+<!-- Doughnut Chart Area -->
+<div class="relative w-48 h-48 mb-8">
+<!-- Chart Ring -->
+<div class="w-full h-full rounded-full chart-doughnut shadow-inner"></div>
+<!-- Inner Cutout -->
+<div class="absolute inset-4 bg-surface-container-lowest rounded-full flex items-center justify-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]">
+<div class="text-center">
+<span class="block font-caption text-caption text-outline">Đã chi</span>
+<span class="block font-headline-md text-headline-md text-on-background">45%</span>
+</div>
+</div>
+</div>
+<!-- Chart Legend Grid -->
+<div class="grid grid-cols-2 gap-x-6 gap-y-3 w-full">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-primary"></div>
+<span class="font-body-base text-body-base text-on-surface">Phân bón</span>
+<span class="ml-auto font-label-md text-label-md text-on-surface-variant">45%</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-status-warning"></div>
+<span class="font-body-base text-body-base text-on-surface">Thuốc</span>
+<span class="ml-auto font-label-md text-label-md text-on-surface-variant">25%</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-info-blue"></div>
+<span class="font-body-base text-body-base text-on-surface">Lao động</span>
+<span class="ml-auto font-label-md text-label-md text-on-surface-variant">18%</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-outline-variant"></div>
+<span class="font-body-base text-body-base text-on-surface">Khác</span>
+<span class="ml-auto font-label-md text-label-md text-on-surface-variant">12%</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Primary Action Button -->
+<div class="px-margin-mobile mb-stack-lg">
+<button class="w-full h-touch-target bg-primary text-on-primary rounded-xl font-label-md text-label-md flex items-center justify-center gap-2 shadow-md active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                Thêm khoản chi
+            </button>
+</div>
+<!-- Recent Expenses List -->
+<section class="px-margin-mobile mb-stack-lg">
+<div class="flex justify-between items-center mb-stack-md">
+<h3 class="font-headline-md text-headline-md text-on-background">Chi tiêu gần đây</h3>
+<button class="font-label-md text-label-md text-primary hover:underline">Xem tất cả</button>
+</div>
+<div class="flex flex-col gap-stack-sm">
+<!-- Item 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center gap-4 border border-outline-variant/20 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+<div class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined">compost</span>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-body-base text-body-base text-on-background truncate font-medium">Phân NPK Hữu cơ</h4>
+<p class="font-caption text-caption text-outline">Khu vực A • 12/10/2023</p>
+</div>
+<div class="text-right flex-shrink-0">
+<span class="block font-label-md text-label-md text-on-background">- 5.200.000 ₫</span>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center gap-4 border border-outline-variant/20 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+<div class="w-12 h-12 rounded-full bg-status-warning/20 flex items-center justify-center text-status-warning flex-shrink-0">
+<span class="material-symbols-outlined">pest_control</span>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-body-base text-body-base text-on-background truncate font-medium">Thuốc trừ rầy rệp</h4>
+<p class="font-caption text-caption text-outline">Khu vực B, C • 10/10/2023</p>
+</div>
+<div class="text-right flex-shrink-0">
+<span class="block font-label-md text-label-md text-on-background">- 1.850.000 ₫</span>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center gap-4 border border-outline-variant/20 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+<div class="w-12 h-12 rounded-full bg-info-blue/20 flex items-center justify-center text-info-blue flex-shrink-0">
+<span class="material-symbols-outlined">group</span>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-body-base text-body-base text-on-background truncate font-medium">Công làm cỏ đợt 3</h4>
+<p class="font-caption text-caption text-outline">Toàn trang trại • 05/10/2023</p>
+</div>
+<div class="text-right flex-shrink-0">
+<span class="block font-label-md text-label-md text-on-background">- 8.000.000 ₫</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 pb-safe-area-bottom bg-surface dark:bg-surface-dim shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+<div class="flex justify-around items-center w-full px-2 pt-2">
+<!-- Inactive Tab 1 -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:opacity-80 w-[72px]">
+<span class="material-symbols-outlined mb-1 text-[24px]">map</span>
+<span class="font-label-md text-[12px] leading-tight">Bản đồ</span>
+</button>
+<!-- Inactive Tab 2 -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:opacity-80 w-[72px]">
+<span class="material-symbols-outlined mb-1 text-[24px]">forest</span>
+<span class="font-label-md text-[12px] leading-tight">Cây trồng</span>
+</button>
+<!-- Inactive Tab 3 -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:opacity-80 w-[72px]">
+<span class="material-symbols-outlined mb-1 text-[24px]">grid_view</span>
+<span class="font-label-md text-[12px] leading-tight">Khu vực</span>
+</button>
+<!-- Active Tab 4 -->
+<button class="flex flex-col items-center justify-center bg-primary-container dark:bg-on-primary-fixed-variant text-on-primary-container dark:text-primary-fixed rounded-2xl px-4 py-2 scale-100 transition-transform w-[80px]">
+<span class="material-symbols-outlined mb-1 text-[24px]" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="font-label-md text-[12px] leading-tight">Tài chính</span>
+</button>
+</div>
+</nav>
+</body></html>
