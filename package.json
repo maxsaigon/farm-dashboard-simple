@@ -26,6 +26,7 @@
     "leaflet-draw": "^1.0.4",
     "next": "^14.2.32",
     "playwright": "^1.54.2",
+    "pocketbase": "^0.27.0",
     "react": "^18",
     "react-dom": "^18",
     "react-leaflet": "^4.2.1",
