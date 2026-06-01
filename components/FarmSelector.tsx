@@ -178,7 +178,7 @@ export function FarmSelector({ selectedFarmId, onFarmChange, className = '' }: F
           <div className="text-sm text-blue-700 mt-1 space-y-1">
             {selectedFarm.ownerName && <p>Owner: {selectedFarm.ownerName}</p>}
             {selectedFarm.totalArea && <p>Area: {selectedFarm.totalArea} hectares</p>}
-            <p>Created: {selectedFarm.createdDate.toLocaleDateString()}</p>
+            <p>Created: {(selectedFarm.createdDate instanceof Date ? selectedFarm.createdDate : new Date(selectedFarm.createdDate)).toLocaleDateString()}</p>
           </div>
         </div>
       )}

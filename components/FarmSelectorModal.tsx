@@ -42,7 +42,8 @@ export default function FarmSelectorModal({ isOpen, onClose }: FarmSelectorModal
 
   const getAccessDate = (farmId: string) => {
     const access = farmAccess.find(a => a.farmId === farmId)
-    return access?.grantedAt || new Date()
+    const val = access?.grantedAt || new Date()
+    return val instanceof Date ? val : new Date(val)
   }
 
   if (!isOpen || farms.length <= 1) return null

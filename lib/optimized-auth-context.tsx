@@ -218,10 +218,20 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         // Only restore if less than 7 days old
         if (Date.now() - state.timestamp < 7 * 24 * 60 * 60 * 1000) {
           return {
-            user: state.user,
-            farms: state.farms,
+            user: state.user ? {
+              ...state.user,
+              createdAt: convertToDate(state.user.createdAt) || new Date(),
+              lastLoginAt: state.user.lastLoginAt ? convertToDate(state.user.lastLoginAt) : undefined
+            } : null,
+            farms: state.farms ? state.farms.map((f: any) => ({
+              ...f,
+              createdDate: convertToDate(f.createdDate) || new Date()
+            })) : [],
             currentFarmId: state.currentFarmId,
-            farmAccess: state.farmAccess
+            farmAccess: state.farmAccess ? state.farmAccess.map((a: any) => ({
+              ...a,
+              grantedAt: convertToDate(a.grantedAt) || new Date()
+            })) : []
           }
         }
       }
