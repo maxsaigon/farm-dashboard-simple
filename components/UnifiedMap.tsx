@@ -393,7 +393,8 @@ export const InteractiveMarker = memo(({
   size,
   zIndex,
   distanceLabel,
-  onSelect
+  onSelect,
+  isClickable = true
 }: {
   tree: Tree
   color: string
@@ -401,12 +402,13 @@ export const InteractiveMarker = memo(({
   zIndex: number
   distanceLabel: string
   onSelect: (tree: Tree) => void
+  isClickable?: boolean
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const el = containerRef.current
-    if (!el) return
+    if (!el || !isClickable) return
 
     const handleNativeClick = (e: MouseEvent | TouchEvent) => {
       console.log('🌳 Native click on marker:', tree.name || tree.id)
@@ -433,7 +435,7 @@ export const InteractiveMarker = memo(({
       el.removeEventListener('pointerdown', preventBubble)
       el.removeEventListener('mousedown', preventBubble)
     }
-  }, [tree, onSelect])
+  }, [tree, onSelect, isClickable])
 
   return (
     <div
@@ -451,8 +453,11 @@ export const InteractiveMarker = memo(({
         color: 'white',
         fontSize: 10,
         fontWeight: 'bold',
-        cursor: 'pointer',
-        zIndex: zIndex
+        cursor: isClickable ? 'pointer' : 'default',
+        zIndex: zIndex,
+        pointerEvents: isClickable ? 'auto' : 'none',
+        opacity: isClickable ? 1.0 : 0.75, // slightly faded when non-clickable
+        transition: 'opacity 0.2s ease, transform 0.2s ease'
       }}
     >
       {distanceLabel}
@@ -492,6 +497,7 @@ const UnifiedMap = memo(({
   const [activeLayer, setActiveLayer] = useState<'street' | 'hybrid'>('hybrid')
   const [selectedZonePopup, setSelectedZonePopup] = useState<Zone | null>(null)
   const [cursor, setCursor] = useState<string>('auto')
+  const [isZoomedIn, setIsZoomedIn] = useState<boolean>((zoom || 16) >= 18)
   
   const [filters, setFilters] = useState({
     showTrees: true,
@@ -519,6 +525,13 @@ const UnifiedMap = memo(({
   useEffect(() => {
     setMapLayer(externalMapLayer)
   }, [externalMapLayer])
+
+
+  const handleZoom = useCallback((e: any) => {
+    const currentZoom = e.target.getZoom()
+    const zoomedIn = currentZoom >= 18
+    setIsZoomedIn(prev => (prev !== zoomedIn ? zoomedIn : prev))
+  }, [])
 
   // Update active layer when manual selection changes
   useEffect(() => {
@@ -557,6 +570,11 @@ const UnifiedMap = memo(({
     }
     return calculateMapBounds(trees, zones)
   }, [trees, zones, center, zoom])
+
+  // Sync isZoomedIn with mapConfig zoom changes
+  useEffect(() => {
+    setIsZoomedIn(mapConfig.zoom >= 18)
+  }, [mapConfig.zoom])
 
   // GPS state management with iOS-Optimized GPS
   const [gpsEnabled, setGpsEnabled] = useState(false)
@@ -914,9 +932,11 @@ const UnifiedMap = memo(({
         style={{ width: '100%', height: '100%', zIndex: 1 }}
         mapLib={maplibregl}
         onZoomEnd={handleZoomEnd}
+        onZoom={handleZoom}
         onClick={handleMapClick}
         onMouseMove={handleMouseMove}
         cursor={cursor}
+        attributionControl={false}
       >
         {/* Base Map Sources */}
         {(mapLayer === 'satellite' || activeLayer === 'hybrid') && (
@@ -1030,6 +1050,7 @@ const UnifiedMap = memo(({
                   zIndex={isSelected ? 15 : isNearby ? 12 : 10}
                   distanceLabel={nearbyTree ? String(Math.round(nearbyTree.distance)) : ''}
                   onSelect={handleTreeSelect}
+                  isClickable={isZoomedIn}
                 />
               </Marker>
             )
@@ -1145,8 +1166,7 @@ const UnifiedMap = memo(({
           />
         )}
 
-        {/* Zoom and Navigation Controls */}
-        <NavigationControl position="bottom-right" showCompass={true} showZoom={true} />
+        {/* Default zoom and compass controls removed for cleaner mobile-first layout */}
 
         {/* Zone Detail Popup */}
         {selectedZonePopup && selectedZonePopupCentroid && (
@@ -1239,7 +1259,7 @@ const UnifiedMap = memo(({
       {/* Locate Me (Center on User) Floating Button */}
       <button
         onClick={centerOnUser}
-        className="absolute bottom-[148px] lg:bottom-24 right-3 lg:right-4 z-10 w-11 h-11 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-gray-200 flex items-center justify-center text-gray-700 active:scale-90 active:bg-gray-100 hover:text-green-600 transition-all"
+        className="absolute bottom-[calc(76px+env(safe-area-inset-bottom))] lg:bottom-6 right-3 lg:right-4 z-10 w-11 h-11 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-gray-200 flex items-center justify-center text-gray-700 active:scale-90 active:bg-gray-100 hover:text-green-600 transition-all"
         title="Định vị vị trí của tôi"
       >
         <svg className="w-5.5 h-5.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

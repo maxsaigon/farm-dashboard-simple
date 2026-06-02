@@ -87,6 +87,13 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
     accuracy: number
   } | null>(null)
   const [isPlacingNewTree, setIsPlacingNewTree] = useState(false)
+  const [isZoomedIn, setIsZoomedIn] = useState<boolean>(true) // Work mode starts at 20 (zoomed in)
+
+  const handleZoom = useCallback((e: any) => {
+    const currentZoom = e.target.getZoom()
+    const zoomedIn = currentZoom >= 18
+    setIsZoomedIn(prev => (prev !== zoomedIn ? zoomedIn : prev))
+  }, [])
   
   // Find nearest zone when user position changes
   useEffect(() => {
@@ -742,6 +749,7 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
             bearing={userPosition.heading ? -userPosition.heading : 0}
             style={{ height: '100%', width: '100%' }}
             mapLib={maplibregl}
+            onZoom={handleZoom}
           >
             {/* Street Map Layer (OpenStreetMap) */}
             <Source
@@ -891,6 +899,7 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
                     zIndex={12}
                     distanceLabel={String(Math.round(tree.distance))}
                     onSelect={handleMarkerClick}
+                    isClickable={isZoomedIn}
                   />
                 </Marker>
               )
