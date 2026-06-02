@@ -199,89 +199,161 @@ export function Navigation() {
       </nav>
 
       {/* Mobile Navigation with Auth Menu */}
-      <nav className="lg:hidden">
+      <nav className={`lg:hidden ${
+        pathname === '/map' 
+          ? 'absolute top-0 left-0 right-0 z-40 bg-transparent pointer-events-none' 
+          : 'bg-white shadow-sm border-b border-gray-200'
+      }`}>
         <div className="px-4 sm:px-6">
-          <div className="flex justify-between items-center h-20">
+          <div className={`flex justify-between items-center ${
+            pathname === '/map'
+              ? 'bg-white/85 backdrop-blur-md border border-white/20 shadow-md rounded-2xl mx-1 mt-3 px-3 py-2 pointer-events-auto h-14'
+              : 'h-20'
+          }`}>
             <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-2">
-                <span className="text-2xl">🌱</span>
-                <div className="flex flex-col">
-                  <span className="text-lg font-bold text-green-700">Nông Trại</span>
-                  <span className="text-xs text-gray-500">{currentFarm?.name || 'Sầu Riêng'}</span>
+              {pathname === '/map' ? (
+                <div className="flex items-center space-x-2">
+                  {/* Compact Farm Selector */}
+                  {user && farms.length > 1 ? (
+                    <button
+                      onClick={() => setShowFarmSelector(true)}
+                      className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 transition-colors text-xs font-semibold"
+                    >
+                      <span>🏡</span>
+                      <span className="max-w-[80px] truncate">{currentFarm?.name || 'Farm'}</span>
+                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <div className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-green-50 text-green-700 text-xs font-semibold">
+                      <span>🏡</span>
+                      <span className="max-w-[90px] truncate">{currentFarm?.name || 'Rẫy'}</span>
+                    </div>
+                  )}
+
+                  {/* Compact Season Selector */}
+                  {user && currentFarm && (
+                    <div className="flex items-center">
+                      <select
+                        value={selectedSeasonYear}
+                        onChange={async (e) => {
+                          const val = e.target.value
+                          if (val === 'NEW') {
+                            const yearStr = prompt('Nhập năm cho niên vụ mới (ví dụ: 2026):')
+                            if (!yearStr) return
+                            const year = parseInt(yearStr, 10)
+                            if (isNaN(year) || year < 2000 || year > 2100) {
+                              alert('Năm không hợp lệ!')
+                              return
+                            }
+                            try {
+                              await startNewSeason(year)
+                              alert(`Đã khởi tạo thành công niên vụ ${year}!`)
+                            } catch (err) {
+                              alert('Lỗi khởi tạo niên vụ mới: ' + (err instanceof Error ? err.message : String(err)))
+                            }
+                          } else {
+                            setSelectedSeasonYear(parseInt(val, 10))
+                          }
+                        }}
+                        className="text-xs font-bold px-2 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                      >
+                        {(currentFarm.seasons || [2025]).map(y => (
+                          <option key={y} value={y}>Mùa {y}</option>
+                        ))}
+                        <option value="NEW">➕ Mới...</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
-              </Link>
-              
-              {/* Farm Selector - Mobile */}
-              {user && farms.length > 1 && (
-                <button
-                  onClick={() => setShowFarmSelector(true)}
-                  className="flex items-center space-x-1 px-2 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
-                >
-                  <span className="text-xs font-medium">Đổi</span>
-                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              )}
-              
-              {/* Season Selector - Mobile */}
-              {user && currentFarm && (
-                <div className="flex items-center">
-                  <select
-                    value={selectedSeasonYear}
-                    onChange={async (e) => {
-                      const val = e.target.value
-                      if (val === 'NEW') {
-                        const yearStr = prompt('Nhập năm cho niên vụ mới (ví dụ: 2026):')
-                        if (!yearStr) return
-                        const year = parseInt(yearStr, 10)
-                        if (isNaN(year) || year < 2000 || year > 2100) {
-                          alert('Năm không hợp lệ!')
-                          return
-                        }
-                        try {
-                          await startNewSeason(year)
-                          alert(`Đã khởi tạo thành công niên vụ ${year}!`)
-                        } catch (err) {
-                          alert('Lỗi khởi tạo niên vụ mới: ' + (err instanceof Error ? err.message : String(err)))
-                        }
-                      } else {
-                        setSelectedSeasonYear(parseInt(val, 10))
-                      }
-                    }}
-                    className="text-xs font-bold px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                  >
-                    {(currentFarm.seasons || [2025]).map(y => (
-                      <option key={y} value={y}>Mùa {y}</option>
-                    ))}
-                    <option value="NEW">➕ Mới...</option>
-                  </select>
-                </div>
+              ) : (
+                <>
+                  <Link href="/" className="flex items-center space-x-2">
+                    <span className="text-2xl">🌱</span>
+                    <div className="flex flex-col">
+                      <span className="text-lg font-bold text-green-700">Nông Trại</span>
+                      <span className="text-xs text-gray-500">{currentFarm?.name || 'Sầu Riêng'}</span>
+                    </div>
+                  </Link>
+                  
+                  {/* Farm Selector - Mobile */}
+                  {user && farms.length > 1 && (
+                    <button
+                      onClick={() => setShowFarmSelector(true)}
+                      className="flex items-center space-x-1 px-2 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                    >
+                      <span className="text-xs font-medium">Đổi</span>
+                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  )}
+                  
+                  {/* Season Selector - Mobile */}
+                  {user && currentFarm && (
+                    <div className="flex items-center">
+                      <select
+                        value={selectedSeasonYear}
+                        onChange={async (e) => {
+                          const val = e.target.value
+                          if (val === 'NEW') {
+                            const yearStr = prompt('Nhập năm cho niên vụ mới (ví dụ: 2026):')
+                            if (!yearStr) return
+                            const year = parseInt(yearStr, 10)
+                            if (isNaN(year) || year < 2000 || year > 2100) {
+                              alert('Năm không hợp lệ!')
+                              return
+                            }
+                            try {
+                              await startNewSeason(year)
+                              alert(`Đã khởi tạo thành công niên vụ ${year}!`)
+                            } catch (err) {
+                              alert('Lỗi khởi tạo niên vụ mới: ' + (err instanceof Error ? err.message : String(err)))
+                            }
+                          } else {
+                            setSelectedSeasonYear(parseInt(val, 10))
+                          }
+                        }}
+                        className="text-xs font-bold px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                      >
+                        {(currentFarm.seasons || [2025]).map(y => (
+                          <option key={y} value={y}>Mùa {y}</option>
+                        ))}
+                        <option value="NEW">➕ Mới...</option>
+                      </select>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-3 rounded-xl text-gray-600 hover:text-gray-800 hover:bg-gray-100 min-touch transition-colors active:scale-95"
+              className="p-2 rounded-xl text-gray-600 hover:text-gray-800 hover:bg-gray-100 min-touch transition-colors active:scale-95"
               data-testid="mobile-menu"
               aria-label="Menu chính"
               style={{
-                minWidth: '52px',
-                minHeight: '52px',
+                minWidth: '44px',
+                minHeight: '44px',
                 WebkitTapHighlightColor: 'transparent'
               }}
             >
               {isMobileMenuOpen ? (
-                <XMarkIcon className="h-7 w-7" />
+                <XMarkIcon className="h-6 w-6" />
               ) : (
-                <Bars3Icon className="h-7 w-7" />
+                <Bars3Icon className="h-6 w-6" />
               )}
             </button>
           </div>
 
           {/* Mobile Menu - Enhanced for Farmers */}
           {isMobileMenuOpen && (
-            <div className="pb-6 space-y-3 border-t border-gray-200 mt-2">
+            <div className={`pb-6 space-y-3 mt-2 pointer-events-auto ${
+              pathname === '/map'
+                ? 'fixed inset-0 top-[72px] bg-white/95 backdrop-blur-lg overflow-y-auto px-4 pt-4 z-50 rounded-b-2xl border-t border-gray-100 shadow-xl'
+                : 'border-t border-gray-200 mt-2'
+            }`}>
               <div className="pt-4">
                 <p className="text-sm text-gray-500 px-3 pb-3 font-medium">CHỌN TRANG</p>
                 {allNavigation.map((item) => {

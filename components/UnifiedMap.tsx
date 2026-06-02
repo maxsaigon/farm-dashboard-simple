@@ -588,6 +588,21 @@ const UnifiedMap = memo(({
 
   const proximityData = useProximityDetection(trees, zones, gpsEnabled ? userPosition : null, proximityRadius)
 
+  const centerOnUser = useCallback(() => {
+    if (userPosition && mapRef.current) {
+      console.log('🎯 [UnifiedMap] Centering map on user position:', userPosition)
+      mapRef.current.easeTo({
+        center: [userPosition.lng, userPosition.lat],
+        zoom: 19,
+        duration: 1000
+      })
+      triggerHapticFeedback()
+    } else {
+      console.log('🎯 [UnifiedMap] User position not available, enabling GPS')
+      setGpsEnabled(true)
+    }
+  }, [userPosition, setGpsEnabled])
+
   // Handle background tracking toggle (only when GPS is enabled)
   useEffect(() => {
     if (backgroundTrackingEnabled && gpsEnabled && farmId) {
@@ -1158,29 +1173,33 @@ const UnifiedMap = memo(({
 
       {/* Current Zone Indicator (only when GPS is enabled) */}
       {gpsEnabled && proximityData.currentZone && (
-        <div className="absolute top-4 right-4 bg-green-600 text-white rounded-lg shadow-lg p-3 z-[10]">
-          <div className="font-bold">📍 Vùng hiện tại</div>
-          <div className="text-sm">{proximityData.currentZone.name}</div>
+        <div className="absolute top-[132px] lg:top-4 right-3 lg:right-4 bg-green-600/90 backdrop-blur-sm text-white rounded-xl shadow-md p-2.5 z-[10] text-xs font-semibold">
+          <div className="font-bold flex items-center">
+            <span className="mr-1">📍</span> Vùng hiện tại
+          </div>
+          <div className="text-[11px] opacity-90">{proximityData.currentZone.name}</div>
         </div>
       )}
 
       {/* Nearby Items Panel (only when GPS is enabled) */}
       {gpsEnabled && (proximityData.trees.length > 0 || proximityData.zones.length > 0) && (
-        <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm z-[10] text-gray-800">
-          <h3 className="font-bold text-green-600 mb-3">🔍 Vật thể gần đây</h3>
+        <div className="absolute bottom-[124px] lg:bottom-16 left-3 lg:left-4 bg-white/95 backdrop-blur-md rounded-2xl shadow-lg p-4 max-w-[280px] z-[10] text-gray-800 border border-gray-100">
+          <h3 className="font-bold text-green-600 mb-2.5 text-xs flex items-center">
+            <span className="mr-1">🔍</span> Vật thể gần đây
+          </h3>
 
           {proximityData.trees.length > 0 && (
-            <div className="mb-3">
-              <h4 className="font-semibold text-sm mb-1">Cây ({proximityData.trees.length})</h4>
-              <div className="space-y-1 max-h-24 overflow-y-auto">
+            <div className="mb-2.5">
+              <h4 className="font-semibold text-[11px] text-gray-500 mb-1">Cây ({proximityData.trees.length})</h4>
+              <div className="space-y-1 max-h-20 overflow-y-auto">
                 {proximityData.trees.slice(0, 3).map(tree => (
                   <div
                     key={tree.id}
-                    className="flex justify-between text-xs cursor-pointer hover:bg-gray-50 p-1 rounded"
+                    className="flex justify-between text-[11px] cursor-pointer hover:bg-gray-50 p-1 rounded"
                     onClick={() => handleTreeSelect(tree)}
                   >
-                    <span>{tree.name || tree.variety}</span>
-                    <span className="text-green-600 font-mono">{tree.distance.toFixed(1)}m</span>
+                    <span className="truncate max-w-[150px]">{tree.name || tree.variety}</span>
+                    <span className="text-green-600 font-mono font-semibold">{tree.distance.toFixed(1)}m</span>
                   </div>
                 ))}
               </div>
@@ -1189,10 +1208,10 @@ const UnifiedMap = memo(({
 
           {proximityData.zones.length > 0 && (
             <div>
-              <h4 className="font-semibold text-sm mb-1">Vùng ({proximityData.zones.length})</h4>
-              <div className="space-y-1 max-h-24 overflow-y-auto">
+              <h4 className="font-semibold text-[11px] text-gray-500 mb-1">Vùng ({proximityData.zones.length})</h4>
+              <div className="space-y-1 max-h-20 overflow-y-auto">
                 {proximityData.zones.slice(0, 3).map(zone => (
-                  <div key={zone.id} className="text-xs">
+                  <div key={zone.id} className="text-[11px] truncate">
                     <span className={zone.isInside ? 'text-green-600 font-semibold' : ''}>
                       {zone.name} {zone.isInside ? '(Bên trong)' : `(${zone.distance.toFixed(1)}m)`}
                     </span>
@@ -1206,14 +1225,27 @@ const UnifiedMap = memo(({
 
       {/* Position Info Panel (only when GPS is enabled) */}
       {gpsEnabled && userPosition && (
-        <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-2 text-xs z-[10] text-gray-800">
-          <div className="font-bold text-green-600">📍 Vị trí</div>
-          <div className="font-mono space-y-0.5">
+        <div className="absolute bottom-[72px] lg:bottom-4 left-3 lg:left-4 bg-white/90 backdrop-blur-sm rounded-xl shadow-md p-2 text-[9px] z-[10] text-gray-800 border border-gray-100">
+          <div className="font-bold text-green-600 flex items-center">
+            <span className="mr-0.5">📍</span> Vị trí GPS
+          </div>
+          <div className="font-mono text-gray-600 mt-0.5">
             <div>{userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}</div>
-            <div className="text-gray-600">±{userPosition.accuracy.toFixed(0)}m</div>
+            <div>Sai số: ±{userPosition.accuracy.toFixed(0)}m</div>
           </div>
         </div>
       )}
+
+      {/* Locate Me (Center on User) Floating Button */}
+      <button
+        onClick={centerOnUser}
+        className="absolute bottom-[148px] lg:bottom-24 right-3 lg:right-4 z-10 w-11 h-11 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-gray-200 flex items-center justify-center text-gray-700 active:scale-90 active:bg-gray-100 hover:text-green-600 transition-all"
+        title="Định vị vị trí của tôi"
+      >
+        <svg className="w-5.5 h-5.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 0V3m0 18v-5M3 12h5m13 0h-5" />
+        </svg>
+      </button>
     </div>
   )
 })

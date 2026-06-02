@@ -129,3 +129,29 @@ body {
     padding-bottom: calc(64px + env(safe-area-inset-bottom));
   }
 }
+
+/* iOS-style blur effect (glassmorphism) */
+.ios-blur {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(20px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+}
+
+/* MapLibre / Mapbox control offsets on mobile to avoid overlapping Bottom Tab Bar */
+@media (max-width: 1024px) {
+  .maplibregl-ctrl-bottom-right,
+  .mapboxgl-ctrl-bottom-right {
+    margin-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    margin-right: 12px !important;
+  }
+  .maplibregl-ctrl-bottom-left,
+  .mapboxgl-ctrl-bottom-left {
+    margin-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    margin-left: 12px !important;
+  }
+  /* Floating Dev Tools button offset adjustments on mobile */
+  .fixed.bottom-6.right-6 {
+    bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+    right: 12px !important;
+  }
+}

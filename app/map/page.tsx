@@ -524,9 +524,9 @@ function MapPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 safe-bottom with-bottom-tab">
-      {/* Professional Header - Single Row Layout */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
+    <div className="h-[100dvh] lg:min-h-screen bg-gray-50 flex flex-col lg:safe-bottom lg:with-bottom-tab overflow-hidden lg:overflow-visible relative">
+      {/* Desktop Professional Header - Single Row Layout (Rendered only on Desktop) */}
+      <div className="hidden lg:block bg-white border-b border-gray-200 shadow-sm">
         <div className="px-4 py-3">
           {/* Single Row: All Controls */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -581,7 +581,7 @@ function MapPageContent() {
                   className={`btn-toggle flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
                     showZones
                       ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-white text-blue-700 border-2 border-blue-200 hover:bg-blue-50'
+                      : 'bg-white text-blue-700 border-2 border-blue-200 hover:bg-green-50'
                   }`}
                 >
                   <span className="text-base">📍</span>
@@ -731,67 +731,141 @@ function MapPageContent() {
                   </div>
                 </div>
 
-               {/* Map Layer Selector */}
-               <div>
-                 <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center">
-                   <span className="mr-2">🗺️</span>
-                   Chế độ xem bản đồ
-                 </h3>
-                 
-                 <div className="space-y-2">
-                   <button
-                     onClick={() => setMapLayer('auto')}
-                     className={`w-full p-3 rounded-lg text-sm font-semibold transition-all ${
-                       mapLayer === 'auto'
-                         ? 'bg-green-600 text-white shadow-md'
-                         : 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50'
-                     }`}
-                   >
-                     <div className="flex items-center justify-between">
-                       <span>🤖 Tự động</span>
-                       <span className="text-xs opacity-75">Zoom 1-18: Hybrid, 19+: Bản đồ</span>
-                     </div>
-                   </button>
-                   
-                   <button
-                     onClick={() => setMapLayer('street')}
-                     className={`w-full p-3 rounded-lg text-sm font-semibold transition-all ${
-                       mapLayer === 'street'
-                         ? 'bg-blue-600 text-white shadow-md'
-                         : 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50'
-                     }`}
-                   >
-                     🗺️ Bản đồ đường phố
-                   </button>
-                   
-                   <button
-                     onClick={() => setMapLayer('hybrid')}
-                     className={`w-full p-3 rounded-lg text-sm font-semibold transition-all ${
-                       mapLayer === 'hybrid'
-                         ? 'bg-blue-600 text-white shadow-md'
-                         : 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50'
-                     }`}
-                   >
-                     🌍 Hybrid (Vệ tinh + Nhãn)
-                   </button>
-                 </div>
-               </div>
+                {/* Map Layer Selector */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center">
+                    <span className="mr-2">🗺️</span>
+                    Chế độ xem bản đồ
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setMapLayer('auto')}
+                      className={`w-full p-3 rounded-lg text-sm font-semibold transition-all ${
+                        mapLayer === 'auto'
+                          ? 'bg-green-600 text-white shadow-md'
+                          : 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>🤖 Tự động</span>
+                        <span className="text-xs opacity-75">Zoom 1-18: Hybrid, 19+: Bản đồ</span>
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => setMapLayer('street')}
+                      className={`w-full p-3 rounded-lg text-sm font-semibold transition-all ${
+                        mapLayer === 'street'
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      🗺️ Bản đồ đường phố
+                    </button>
+                    
+                    <button
+                      onClick={() => setMapLayer('hybrid')}
+                      className={`w-full p-3 rounded-lg text-sm font-semibold transition-all ${
+                        mapLayer === 'hybrid'
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      🌍 Hybrid (Vệ tinh + Nhãn)
+                    </button>
+                  </div>
+                </div>
 
-               {/* Close Button */}
-               <button
-                 onClick={() => setShowAdvancedSettings(false)}
-                 className="w-full bg-gray-600 text-white px-4 py-3 rounded-lg text-sm font-semibold hover:bg-gray-700 active:bg-gray-800 transition-colors"
-               >
-                 Đóng cài đặt
-               </button>
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowAdvancedSettings(false)}
+                  className="w-full bg-gray-600 text-white px-4 py-3 rounded-lg text-sm font-semibold hover:bg-gray-700 active:bg-gray-800 transition-colors"
+                >
+                  Đóng cài đặt
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
 
+      {/* Mobile Floating Action Controls (Rendered only on Mobile) */}
+      <div className="lg:hidden absolute top-[76px] left-3 right-3 z-30 flex items-center justify-between pointer-events-none">
+        {/* Left: Work Mode Button */}
+        <button
+          onClick={() => setWorkModeActive(true)}
+          className="pointer-events-auto flex items-center justify-center w-11 h-11 bg-blue-600 text-white rounded-xl shadow-lg active:scale-95 transition-all"
+          title="Chế độ làm việc on-farm"
+        >
+          <BriefcaseIcon className="h-5.5 w-5.5" />
+        </button>
+
+        {/* Right: Quick Toggles and Settings */}
+        <div className="pointer-events-auto flex items-center space-x-1.5">
+          {/* Trees Toggle */}
+          <button
+            onClick={() => setShowTrees(!showTrees)}
+            className={`flex items-center space-x-1 px-3 py-2 h-10 rounded-full text-xs font-semibold shadow-md border transition-all active:scale-95 ${
+              showTrees
+                ? 'bg-green-600 border-green-600 text-white'
+                : 'bg-white/85 backdrop-blur-md border-white/20 text-green-700'
+            }`}
+          >
+            <span>🌳</span>
+            <span>{loading ? '...' : trees.length}</span>
+          </button>
+
+          {/* Zones Toggle or Focused Zone Display */}
+          {focusedZone ? (
+            <div className="flex items-center space-x-1.5 bg-blue-50 text-blue-800 px-3 py-2 h-10 rounded-full text-xs font-semibold border-2 border-blue-200">
+              <div
+                className="w-2.5 h-2.5 rounded-full animate-pulse"
+                style={{ backgroundColor: focusedZone.color }}
+              />
+              <span className="max-w-[70px] truncate">{focusedZone.name}</span>
+              <button
+                onClick={() => {
+                  setFocusedZone(null)
+                  setSelectedZone(null)
+                  window.history.pushState({}, '', '/map')
+                }}
+                className="p-0.5 rounded-full bg-white hover:bg-gray-100 transition-colors"
+              >
+                <XMarkIcon className="h-3 w-3 text-blue-800" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowZones(!showZones)}
+              className={`flex items-center space-x-1 px-3 py-2 h-10 rounded-full text-xs font-semibold shadow-md border transition-all active:scale-95 ${
+                showZones
+                  ? 'bg-blue-600 border-blue-600 text-white'
+                  : 'bg-white/85 backdrop-blur-md border-white/20 text-blue-700'
+              }`}
+            >
+              <span>📍</span>
+              <span>{loading ? '...' : zones.length}</span>
+            </button>
+          )}
+
+          {/* Settings Button */}
+          <button
+            onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+            className={`flex items-center justify-center w-10 h-10 rounded-full shadow-md border transition-all active:scale-95 ${
+              showAdvancedSettings
+                ? 'bg-gray-200 border-gray-300 text-gray-900'
+                : 'bg-white/85 backdrop-blur-md border-white/20 text-gray-700'
+            }`}
+            title="Cài đặt"
+          >
+            <Cog6ToothIcon className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
       {/* Map and Detail Layout */}
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-180px)] lg:h-[calc(100vh-180px)]">
+      <div className="flex-1 flex flex-col lg:flex-row relative h-full">
         <div className="flex-1 order-2 lg:order-1 relative">
           {loading ? (
             <div className="h-full flex items-center justify-center">
@@ -966,6 +1040,182 @@ function MapPageContent() {
               tree={selectedTree}
               onSaved={handleTreeUpdate}
             />
+          </BottomSheet>
+        )}
+
+        {showAdvancedSettings && (
+          <BottomSheet
+            isOpen={showAdvancedSettings}
+            onClose={() => setShowAdvancedSettings(false)}
+            initialDetent="medium"
+            detents={["large", "medium"]}
+            header={
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                  <span className="mr-2">⚙️</span>
+                  Cấu hình bản đồ
+                </h3>
+                <button 
+                  onClick={() => setShowAdvancedSettings(false)}
+                  className="px-3 py-1.5 rounded-md text-sm bg-gray-100 hover:bg-gray-200"
+                >
+                  Đóng
+                </button>
+              </div>
+            }
+          >
+            <div className="p-4 space-y-5 overflow-y-auto pb-10">
+              {/* Display Options */}
+              <div>
+                <h3 className="font-semibold text-gray-900 text-sm mb-3">Hiển thị</h3>
+                
+                {/* GPS Path Toggle */}
+                <label className="flex items-center justify-between p-3 bg-white rounded-xl border cursor-pointer hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={showUserPath}
+                      onChange={(e) => setShowUserPath(e.target.checked)}
+                      className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Đường đi GPS</span>
+                  </div>
+                </label>
+
+                {/* Tree Status Filters */}
+                <div className="mt-3 p-3 bg-white rounded-xl border">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Lọc theo trạng thái</h4>
+                  <div className="space-y-2.5">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filterByStatus.youngTree}
+                        onChange={(e) => setFilterByStatus(prev => ({ ...prev, youngTree: e.target.checked }))}
+                        className="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                      />
+                      <span className="text-sm text-gray-700">🌱 Cây Non</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filterByStatus.mature}
+                        onChange={(e) => setFilterByStatus(prev => ({ ...prev, mature: e.target.checked }))}
+                        className="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                      />
+                      <span className="text-sm text-gray-700">🌳 Cây Trưởng Thành</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filterByStatus.old}
+                        onChange={(e) => setFilterByStatus(prev => ({ ...prev, old: e.target.checked }))}
+                        className="w-5 h-5 text-green-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                      />
+                      <span className="text-sm text-gray-700">🌲 Cây Già</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* GPS Controls */}
+              <div>
+                <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center">
+                  <span className="mr-2">📍</span>
+                  GPS Tracking
+                </h3>
+                
+                {!backgroundTrackingEnabled ? (
+                  <button
+                    onClick={() => setBackgroundTrackingEnabled(true)}
+                    className="w-full bg-purple-600 text-white px-4 py-3 rounded-xl text-sm font-semibold hover:bg-purple-700 active:bg-purple-800 transition-colors shadow-md"
+                  >
+                    Bật GPS Tracking
+                  </button>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-xl border-2 border-purple-200">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-semibold text-purple-700">GPS đang hoạt động</span>
+                    </div>
+                    <button
+                      onClick={() => setBackgroundTrackingEnabled(false)}
+                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 active:bg-red-800 transition-colors"
+                    >
+                      Tắt
+                    </button>
+                  </div>
+                )}
+
+                {/* Proximity Radius Slider */}
+                <div className="mt-3 p-3 bg-white rounded-xl border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Bán kính phát hiện</span>
+                    <div className="bg-blue-100 px-3 py-0.5 rounded-full">
+                      <span className="text-xs font-bold text-blue-700">{proximityRadius}m</span>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    step="5"
+                    value={proximityRadius}
+                    onChange={(e) => setProximityRadius(Number(e.target.value))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>10m</span>
+                    <span>100m</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Map Layer Selector */}
+              <div>
+                <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center">
+                  <span className="mr-2">🗺️</span>
+                  Chế độ xem bản đồ
+                </h3>
+                
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setMapLayer('auto')}
+                    className={`w-full p-3 rounded-xl text-sm font-semibold transition-all ${
+                      mapLayer === 'auto'
+                        ? 'bg-green-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>🤖 Tự động</span>
+                      <span className="text-xs opacity-75">Hybrid / Street</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setMapLayer('street')}
+                    className={`w-full p-3 rounded-xl text-sm font-semibold transition-all ${
+                      mapLayer === 'street'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    🗺️ Bản đồ đường phố
+                  </button>
+                  
+                  <button
+                    onClick={() => setMapLayer('hybrid')}
+                    className={`w-full p-3 rounded-xl text-sm font-semibold transition-all ${
+                      mapLayer === 'hybrid'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    🌍 Hybrid (Vệ tinh + Nhãn)
+                  </button>
+                </div>
+              </div>
+            </div>
           </BottomSheet>
         )}
       </div>
