@@ -148,10 +148,10 @@ async function main() {
     await hideDevTools();
     
     try {
-      await page.waitForSelector('.leaflet-container', { timeout: 10000 });
-      console.log('✅ Leaflet Map Container loaded.');
+      await page.waitForSelector('.maplibregl-canvas', { timeout: 10000 });
+      console.log('✅ Maplibre Map Container loaded.');
     } catch (e) {
-      console.log('⚠️ Leaflet Map container did not load or timed out.');
+      console.log('⚠️ Maplibre Map container did not load or timed out.');
     }
 
     await page.waitForTimeout(2000);

@@ -133,10 +133,10 @@ async function main() {
     await hideDevTools();
     // Wait for the map element to render
     try {
-      await page.waitForSelector('.leaflet-container', { timeout: 5000 });
+      await page.waitForSelector('.maplibregl-canvas', { timeout: 5000 });
       console.log('🗺️ Map container found!');
     } catch (e) {
-      console.log('⚠️ Leaflet map container not found or slow to load.');
+      console.log('⚠️ Mapbox/MapLibre map container not found or slow to load.');
     }
     await takeScreenshot('04_dashboard_map.png', 3000);
 

@@ -1,41 +1,20 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react'
-import { MapContainer, TileLayer, GeoJSON, Marker, Circle, Polyline, useMap } from 'react-leaflet'
-import L from 'leaflet'
+import React, { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react'
+import Map, { Source, Layer, Marker, Popup, NavigationControl, MapRef } from 'react-map-gl/maplibre'
+import maplibregl from 'maplibre-gl'
 import * as turf from '@turf/turf'
 import { Tree } from '@/lib/types'
 import { useRealTimeUpdates } from '@/lib/websocket-service'
 import { useBackgroundGeolocation } from '@/lib/background-geolocation'
 import { useMobileGestures, triggerHapticFeedback } from '@/lib/use-mobile-gestures'
 import { useIOSOptimizedGPS, IOSGPSPosition } from '@/lib/ios-optimized-gps'
+import MapboxDraw from '@mapbox/mapbox-gl-draw'
+import { useControl } from 'react-map-gl/maplibre'
 
-// Import CSS files
-if (typeof window !== 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require('leaflet/dist/leaflet.css')
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require('leaflet-draw/dist/leaflet.draw.css')
-}
-
-// Import leaflet-draw dynamically
-let LDraw: any = null
-if (typeof window !== 'undefined') {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    LDraw = require('leaflet-draw')
-  } catch (e) {
-    console.warn('leaflet-draw not available:', e)
-  }
-}
-
-// Fix for missing marker icons in Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-})
+// Import MapLibre & Mapbox Draw CSS
+import 'maplibre-gl/dist/maplibre-gl.css'
+import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
 
 interface Zone {
   id: string
@@ -75,45 +54,90 @@ interface UnifiedMapProps {
 // Map layer types
 type MapLayerType = 'street' | 'satellite' | 'hybrid' | 'auto'
 
-// Component to handle zoom-based layer switching
-const ZoomBasedLayerManager = memo(({
-  mapLayer,
-  onAutoSwitch
-}: {
-  mapLayer: MapLayerType
-  onAutoSwitch: (newLayer: 'street' | 'hybrid') => void
-}) => {
-  const map = useMap()
-  
+// Custom DrawControl wrapper for Mapbox Draw with MapLibre
+interface DrawControlProps {
+  onCreate?: (evt: any) => void;
+  onUpdate?: (evt: any) => void;
+  onDelete?: (evt: any) => void;
+  drawRef?: React.MutableRefObject<MapboxDraw | null>;
+}
+
+const DrawControl = (props: DrawControlProps) => {
+  const draw = useControl<any>(
+    () => new MapboxDraw({
+      displayControlsDefault: false,
+      controls: {
+        polygon: true,
+        trash: true
+      },
+      defaultMode: 'draw_polygon',
+      styles: [
+        {
+          id: 'gl-draw-polygon-fill-active',
+          type: 'fill',
+          filter: ['all', ['==', '$type', 'Polygon']],
+          paint: {
+            'fill-color': '#3b82f6',
+            'fill-opacity': 0.2
+          }
+        },
+        {
+          id: 'gl-draw-polygon-stroke-active',
+          type: 'line',
+          filter: ['all', ['==', '$type', 'Polygon']],
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round'
+          },
+          paint: {
+            'line-color': '#3b82f6',
+            'line-width': 2,
+            'line-opacity': 0.8
+          }
+        },
+        {
+          id: 'gl-draw-polygon-and-line-vertex-active',
+          type: 'circle',
+          filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point']],
+          paint: {
+            'circle-radius': 5,
+            'circle-color': '#ffffff',
+            'circle-stroke-color': '#3b82f6',
+            'circle-stroke-width': 2
+          }
+        }
+      ]
+    }),
+    ({ map }: { map: any }) => {
+      if (props.onCreate) map.on('draw.create', props.onCreate);
+      if (props.onUpdate) map.on('draw.update', props.onUpdate);
+      if (props.onDelete) map.on('draw.delete', props.onDelete);
+    },
+    ({ map }: { map: any }) => {
+      if (props.onCreate) map.off('draw.create', props.onCreate);
+      if (props.onUpdate) map.off('draw.update', props.onUpdate);
+      if (props.onDelete) map.off('draw.delete', props.onDelete);
+    },
+    {
+      position: 'top-left'
+    }
+  );
+
   useEffect(() => {
-    if (mapLayer !== 'auto') return
-
-    const handleZoomEnd = () => {
-      const zoom = map.getZoom()
-      // Esri World Imagery has good data up to zoom 18
-      // Switch to street map at zoom 19+ for better detail
-      if (zoom >= 19) {
-        onAutoSwitch('street')
-      } else {
-        onAutoSwitch('hybrid')
-      }
+    if (props.drawRef) {
+      props.drawRef.current = draw;
     }
-
-    // Initial check
-    handleZoomEnd()
-
-    map.on('zoomend', handleZoomEnd)
     return () => {
-      map.off('zoomend', handleZoomEnd)
-    }
-  }, [map, mapLayer, onAutoSwitch])
+      if (props.drawRef) {
+        props.drawRef.current = null;
+      }
+    };
+  }, [draw, props.drawRef]);
 
-  return null
-})
+  return null;
+};
 
-ZoomBasedLayerManager.displayName = 'ZoomBasedLayerManager'
-
-// iOS-Optimized GPS tracking hook (replaces old useOptimizedPositioning)
+// iOS-Optimized GPS tracking hook
 const useIOSGPSTracking = (enabled: boolean = true) => {
   const gps = useIOSOptimizedGPS()
   const [userPosition, setUserPosition] = useState<{
@@ -157,7 +181,6 @@ const useIOSGPSTracking = (enabled: boolean = true) => {
           console.log('📝 [UnifiedMap] Setting userPosition state')
           setUserPosition(newPos)
           
-          // Keep tracking history (last 20 points for path visualization)
           setTrackingHistory(prev => {
             const newHistory = [...prev, {
               lat: newPos.lat,
@@ -186,8 +209,8 @@ const useIOSGPSTracking = (enabled: boolean = true) => {
         enableHighAccuracy: true,
         timeout: 5000,
         maximumAge: 0,
-        distanceFilter: 5, // Only update if moved 5 meters
-        accuracyFilter: 25 // Filter inaccurate coordinates (>25m error)
+        distanceFilter: 5,
+        accuracyFilter: 25
       }).catch(error => {
         console.error('❌ [UnifiedMap] Failed to start GPS tracking:', error)
       })
@@ -232,7 +255,6 @@ const useProximityDetection = (
 
     const userPoint = turf.point([userPosition.lng, userPosition.lat])
 
-    // Find nearby trees
     const nearbyTrees = trees
       .filter(tree => tree.latitude && tree.longitude)
       .map(tree => ({
@@ -246,7 +268,6 @@ const useProximityDetection = (
       .filter(tree => tree.distance <= radius)
       .sort((a, b) => a.distance - b.distance)
 
-    // Check zone proximity and containment
     const zoneProximity = zones.filter(zone => zone.boundaries && zone.boundaries.length >= 3).map(zone => {
       try {
         const coordinates = zone.boundaries.map(coord => [coord.longitude, coord.latitude])
@@ -289,91 +310,38 @@ const useProximityDetection = (
   return nearbyItems
 }
 
-// Drawing controls component
-const DrawingControls = memo(({
-  map,
-  onZoneCreated
-}: {
-  map: L.Map | null
-  onZoneCreated?: (zoneData: { boundaries: Array<{ latitude: number; longitude: number }> }) => void
-}) => {
-  useEffect(() => {
-    if (!map) return
-
-    // Initialize draw control
-    const drawControl = new (L.Control as any).Draw({
-      draw: {
-        polygon: {
-          shapeOptions: {
-            color: '#3b82f6',
-            weight: 2,
-            opacity: 0.8,
-            fillColor: '#3b82f6',
-            fillOpacity: 0.2
-          }
-        },
-        marker: false,
-        circle: false,
-        rectangle: false,
-        polyline: false,
-        circlemarker: false
-      },
-      edit: {
-        featureGroup: new L.FeatureGroup(),
-        edit: false,
-        remove: false
-      }
-    })
-
-    map.addControl(drawControl)
-
-    // Handle draw created
-    const handleDrawCreated = (e: any) => {
-      const layer = e.layer
-      const latlngs = layer.getLatLngs()[0] // For polygons
-
-      const boundaries = latlngs.map((latlng: L.LatLng) => ({
-        latitude: latlng.lat,
-        longitude: latlng.lng
-      }))
-
-      // Add the drawn polygon to map temporarily
-      map.addLayer(layer)
-
-      // Notify parent component
-      if (onZoneCreated) {
-        onZoneCreated({ boundaries })
+// Calculate centroid of a zone
+const getZoneCentroid = (zone: Zone): [number, number] => {
+  try {
+    const coordinates = zone.boundaries.map(coord => [coord.longitude, coord.latitude])
+    if (coordinates.length > 0) {
+      const firstCoord = coordinates[0]
+      const lastCoord = coordinates[coordinates.length - 1]
+      if (firstCoord[0] !== lastCoord[0] || firstCoord[1] !== lastCoord[1]) {
+        coordinates.push(firstCoord)
       }
     }
-
-    if (LDraw && LDraw.Draw && LDraw.Draw.Event) {
-      map.on(LDraw.Draw.Event.CREATED, handleDrawCreated)
+    const poly = turf.polygon([coordinates])
+    const cent = turf.centroid(poly)
+    return [cent.geometry.coordinates[0], cent.geometry.coordinates[1]]
+  } catch (error) {
+    if (zone.boundaries && zone.boundaries.length > 0) {
+      return [zone.boundaries[0].longitude, zone.boundaries[0].latitude]
     }
-
-    return () => {
-      map.removeControl(drawControl)
-      if (LDraw && LDraw.Draw && LDraw.Draw.Event) {
-        map.off(LDraw.Draw.Event.CREATED, handleDrawCreated)
-      }
-    }
-  }, [map, onZoneCreated])
-
-  return null
-})
-DrawingControls.displayName = 'DrawingControls'
+    return [106.660172, 10.762622]
+  }
+}
 
 // Calculate optimal center and zoom based on data
 const calculateMapBounds = (trees: Tree[], zones: Zone[]) => {
   const coordinates: [number, number][] = []
 
-  // Add tree coordinates
   trees.forEach(tree => {
     if (tree.latitude && tree.longitude && tree.latitude !== 0 && tree.longitude !== 0) {
       coordinates.push([tree.latitude, tree.longitude])
     }
   })
 
-  // Add zone boundary coordinates
   zones.forEach(zone => {
     if (zone.boundaries && zone.boundaries.length > 0) {
       zone.boundaries.forEach(boundary => {
@@ -383,14 +351,12 @@ const calculateMapBounds = (trees: Tree[], zones: Zone[]) => {
   })
 
   if (coordinates.length === 0) {
-    // Default to Ho Chi Minh City if no data
     return {
       center: [10.762622, 106.660172] as [number, number],
       zoom: 16
     }
   }
 
-  // Calculate bounds
   const lats = coordinates.map(coord => coord[0])
   const lngs = coordinates.map(coord => coord[1])
 
@@ -402,12 +368,10 @@ const calculateMapBounds = (trees: Tree[], zones: Zone[]) => {
   const centerLat = (minLat + maxLat) / 2
   const centerLng = (minLng + maxLng) / 2
 
-  // Calculate zoom level based on bounds
   const latDiff = maxLat - minLat
   const lngDiff = maxLng - minLng
   const maxDiff = Math.max(latDiff, lngDiff)
 
-  // Rough zoom calculation (higher zoom for smaller areas)
   let zoom = 16
   if (maxDiff > 1) zoom = 12
   else if (maxDiff > 0.5) zoom = 13
@@ -418,9 +382,84 @@ const calculateMapBounds = (trees: Tree[], zones: Zone[]) => {
 
   return {
     center: [centerLat, centerLng] as [number, number],
-    zoom: Math.min(zoom, 22) // Cap at 22 for very close zoom (10m radius)
+    zoom: Math.min(zoom, 22)
   }
 }
+
+// Interactive Marker using Native Event Listeners to bypass MapLibre event swallowing
+export const InteractiveMarker = memo(({
+  tree,
+  color,
+  size,
+  zIndex,
+  distanceLabel,
+  onSelect
+}: {
+  tree: Tree
+  color: string
+  size: number
+  zIndex: number
+  distanceLabel: string
+  onSelect: (tree: Tree) => void
+}) => {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const handleNativeClick = (e: MouseEvent | TouchEvent) => {
+      console.log('🌳 Native click on marker:', tree.name || tree.id)
+      e.stopPropagation()
+      e.preventDefault()
+      onSelect(tree)
+    }
+
+    const preventBubble = (e: Event) => {
+      e.stopPropagation()
+    }
+
+    // Bind click & touchstart natively
+    el.addEventListener('click', handleNativeClick)
+    el.addEventListener('touchstart', handleNativeClick)
+    
+    // Prevent map navigation triggers on mouse/pointer events
+    el.addEventListener('pointerdown', preventBubble)
+    el.addEventListener('mousedown', preventBubble)
+
+    return () => {
+      el.removeEventListener('click', handleNativeClick)
+      el.removeEventListener('touchstart', handleNativeClick)
+      el.removeEventListener('pointerdown', preventBubble)
+      el.removeEventListener('mousedown', preventBubble)
+    }
+  }, [tree, onSelect])
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        backgroundColor: color,
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        border: '1px solid white',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontSize: 10,
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        zIndex: zIndex
+      }}
+    >
+      {distanceLabel}
+    </div>
+  )
+})
+InteractiveMarker.displayName = 'InteractiveMarker'
 
 // Main Unified Map Component
 const UnifiedMap = memo(({
@@ -444,22 +483,35 @@ const UnifiedMap = memo(({
   mapLayer: externalMapLayer = 'auto',
   onMapLayerChange
 }: UnifiedMapProps) => {
-  const mapRef = useRef<L.Map | null>(null)
+  const mapRef = useRef<MapRef | null>(null)
+  const drawRef = useRef<MapboxDraw | null>(null)
   const [showUserPath, setShowUserPath] = useState(externalShowUserPath)
   const [proximityRadius, setProximityRadius] = useState(externalProximityRadius)
   const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] = useState(false)
   const [mapLayer, setMapLayer] = useState<MapLayerType>(externalMapLayer)
-  const [activeLayer, setActiveLayer] = useState<'street' | 'hybrid'>('hybrid') // Actual active layer
+  const [activeLayer, setActiveLayer] = useState<'street' | 'hybrid'>('hybrid')
+  const [selectedZonePopup, setSelectedZonePopup] = useState<Zone | null>(null)
+  const [cursor, setCursor] = useState<string>('auto')
+  
   const [filters, setFilters] = useState({
     showTrees: true,
     showZones: true
   })
 
   // Handle auto layer switching based on zoom
-  const handleAutoSwitch = useCallback((newLayer: 'street' | 'hybrid') => {
-    if (mapLayer === 'auto' && activeLayer !== newLayer) {
-      console.log(`🔄 Auto-switching from ${activeLayer} to ${newLayer}`)
-      setActiveLayer(newLayer)
+  const handleZoomEnd = useCallback((e: any) => {
+    if (mapLayer !== 'auto') return
+    const currentZoom = e.target.getZoom()
+    if (currentZoom >= 19) {
+      if (activeLayer !== 'street') {
+        console.log(`🔄 Auto-switching to street (zoom: ${currentZoom})`)
+        setActiveLayer('street')
+      }
+    } else {
+      if (activeLayer !== 'hybrid') {
+        console.log(`🔄 Auto-switching to hybrid (zoom: ${currentZoom})`)
+        setActiveLayer('hybrid')
+      }
     }
   }, [mapLayer, activeLayer])
 
@@ -477,20 +529,14 @@ const UnifiedMap = memo(({
 
   // Update local state when external props change
   useEffect(() => {
-    console.log('🔄 [UnifiedMap] showUserPath prop changed:', externalShowUserPath)
     setShowUserPath(externalShowUserPath)
   }, [externalShowUserPath])
 
   useEffect(() => {
-    console.log('🔄 [UnifiedMap] proximityRadius prop changed:', externalProximityRadius)
     setProximityRadius(externalProximityRadius)
   }, [externalProximityRadius])
 
   useEffect(() => {
-    console.log('🔄 [UnifiedMap] backgroundTrackingEnabled prop received:', {
-      externalBackgroundTrackingEnabled,
-      timestamp: new Date().toISOString()
-    })
     setBackgroundTrackingEnabled(externalBackgroundTrackingEnabled)
   }, [externalBackgroundTrackingEnabled])
 
@@ -519,19 +565,9 @@ const UnifiedMap = memo(({
 
   // Auto-enable GPS when backgroundTrackingEnabled prop is true
   useEffect(() => {
-    console.log('🔄 [UnifiedMap] Auto-enable effect triggered:', {
-      externalBackgroundTrackingEnabled,
-      currentGpsEnabled: gpsEnabled,
-      willEnable: externalBackgroundTrackingEnabled && !gpsEnabled,
-      willDisable: !externalBackgroundTrackingEnabled && gpsEnabled,
-      timestamp: new Date().toISOString()
-    })
-
     if (externalBackgroundTrackingEnabled && !gpsEnabled) {
-      console.log('🚀 [UnifiedMap] Auto-enabling GPS from backgroundTrackingEnabled prop')
       setGpsEnabled(true)
     } else if (!externalBackgroundTrackingEnabled && gpsEnabled) {
-      console.log('🛑 [UnifiedMap] Auto-disabling GPS from backgroundTrackingEnabled prop')
       setGpsEnabled(false)
     }
   }, [externalBackgroundTrackingEnabled, gpsEnabled])
@@ -545,17 +581,7 @@ const UnifiedMap = memo(({
 
   // Check GPS status on mount
   useEffect(() => {
-    console.log('🚀 UnifiedMap Mounted - GPS Debug Info:', {
-      hasGeolocation: !!navigator.geolocation,
-      isSecureContext: window.isSecureContext,
-      userAgent: navigator.userAgent,
-      timestamp: new Date().toISOString(),
-      location: window.location.href
-    })
-
-    // Check initial permission
     gps.checkPermission().then(state => {
-      console.log('📋 Initial GPS Permission:', state)
       setPermissionStatus(state)
     })
   }, [])
@@ -571,8 +597,8 @@ const UnifiedMap = memo(({
           enableHighAccuracy: true,
           timeout: 30000,
           maximumAge: 10000,
-          distanceFilter: 10, // 10 meters minimum distance
-          updateInterval: 10000 // 10 seconds minimum interval
+          distanceFilter: 10,
+          updateInterval: 10000
         },
         onLocationUpdate: (location) => {
           console.log('📍 Background location update:', location)
@@ -592,7 +618,6 @@ const UnifiedMap = memo(({
 
   // Handle real-time updates
   useEffect(() => {
-    // Update local state when props change
     setTrees(initialTrees)
     setZones(initialZones)
   }, [initialTrees, initialZones])
@@ -602,7 +627,6 @@ const UnifiedMap = memo(({
     if (!enableRealTime || !isEnabled) return
 
     const handleTreeUpdate = (data: { treeId: string, updates: Partial<Tree> }) => {
-      console.log('🔄 Real-time tree update:', data)
       setTrees(prevTrees =>
         prevTrees.map(tree =>
           tree.id === data.treeId ? { ...tree, ...data.updates } : tree
@@ -611,17 +635,14 @@ const UnifiedMap = memo(({
     }
 
     const handleTreeCreated = (data: Tree) => {
-      console.log('🆕 Real-time tree created:', data)
       setTrees(prevTrees => [...prevTrees, data])
     }
 
     const handleTreeDeleted = (data: { treeId: string }) => {
-      console.log('🗑️ Real-time tree deleted:', data)
       setTrees(prevTrees => prevTrees.filter(tree => tree.id !== data.treeId))
     }
 
     const handleZoneUpdate = (data: { zoneId: string, updates: Partial<Zone> }) => {
-      console.log('🔄 Real-time zone update:', data)
       setZones(prevZones =>
         prevZones.map(zone =>
           zone.id === data.zoneId ? { ...zone, ...data.updates } : zone
@@ -630,21 +651,17 @@ const UnifiedMap = memo(({
     }
 
     const handleZoneCreated = (data: Zone) => {
-      console.log('🆕 Real-time zone created:', data)
       setZones(prevZones => [...prevZones, data])
     }
 
     const handleZoneDeleted = (data: { zoneId: string }) => {
-      console.log('🗑️ Real-time zone deleted:', data)
       setZones(prevZones => prevZones.filter(zone => zone.id !== data.zoneId))
     }
 
     const handleFarmAlert = (data: { message: string, type: string, treeId?: string, zoneId?: string }) => {
       console.log('🚨 Farm alert:', data)
-      // Could show toast notification or highlight affected items
     }
 
-    // Register event listeners
     on('tree-updated', handleTreeUpdate)
     on('tree-created', handleTreeCreated)
     on('tree-deleted', handleTreeDeleted)
@@ -654,7 +671,6 @@ const UnifiedMap = memo(({
     on('farm-alert', handleFarmAlert)
 
     return () => {
-      // Cleanup event listeners
       off('tree-updated', handleTreeUpdate)
       off('tree-created', handleTreeCreated)
       off('tree-deleted', handleTreeDeleted)
@@ -679,15 +695,22 @@ const UnifiedMap = memo(({
           }
         }
 
+        const isCurrentZone = proximityData.currentZone?.id === zone.id
+        const nearbyZone = proximityData.zones.find(z => z.id === zone.id)
+        const isNearby = nearbyZone && nearbyZone.distance <= proximityRadius
+
         return {
           type: 'Feature' as const,
           properties: {
             id: zone.id,
             name: zone.name,
-            color: zone.color || '#3b82f6',
+            color: isCurrentZone ? '#10b981' : isNearby ? '#f59e0b' : (zone.color || '#3b82f6'),
+            borderColor: isCurrentZone ? '#10b981' : isNearby ? '#f59e0b' : (zone.color || '#3b82f6'),
             area: zone.area || 0,
             treeCount: zone.treeCount,
-            isActive: zone.isActive
+            isActive: zone.isActive,
+            isCurrentZone,
+            isNearby
           },
           geometry: {
             type: 'Polygon' as const,
@@ -699,300 +722,443 @@ const UnifiedMap = memo(({
         return null
       }
     }).filter(Boolean) as any[]
-  }), [zones])
+  }), [zones, proximityData.currentZone, proximityData.zones, proximityRadius])
 
-  // Zone styling based on proximity
-  const getZoneStyle = useCallback((feature: any) => {
-    const zone = proximityData.zones.find(z => z.id === feature.properties.id)
-    const isCurrentZone = proximityData.currentZone?.id === feature.properties.id
-    const isNearby = zone && zone.distance <= proximityRadius
+  // Bulk trees GeoJSON dataset
+  const treesGeoJSON = React.useMemo(() => ({
+    type: 'FeatureCollection' as const,
+    features: trees
+      .filter(tree => tree.latitude && tree.longitude && tree.latitude !== 0 && tree.longitude !== 0)
+      .map(tree => {
+        // Color classification based on status/needs
+        let color = '#147237' // default green
+        if (tree.needsAttention) {
+          color = '#b40ca1' // amber-magenta attention
+        } else if (tree.treeStatus === 'Cây Non') {
+          color = '#eab308' // yellow
+        }
 
-    return {
-      fillColor: isCurrentZone ? '#10b981' : isNearby ? '#f59e0b' : feature.properties.color,
-      weight: isCurrentZone ? 4 : isNearby ? 3 : 2,
-      opacity: 1,
-      color: isCurrentZone ? '#10b981' : isNearby ? '#f59e0b' : feature.properties.color,
-      dashArray: isCurrentZone ? '' : isNearby ? '5,5' : '3',
-      fillOpacity: isCurrentZone ? 0.4 : isNearby ? 0.3 : 0.2
-    }
-  }, [proximityData, proximityRadius])
-
-  // Tree marker styling - Color-based classification by treeStatus
-  const getTreeMarkerIcon = useCallback((tree: Tree) => {
-    const isSelected = selectedTree?.id === tree.id
-    const isNearby = proximityData.trees.some(t => t.id === tree.id)
-    const nearbyTree = proximityData.trees.find(t => t.id === tree.id)
-
-    // Color classification based on treeStatus
-    let color = '#22c55e' // default green for all trees
-    let size = 16
-
-    if (isSelected) {
-      color = '#ef4444' // red for selected (highest priority)
-      size = 24
-    } else if (isNearby) {
-      // Check treeStatus for nearby trees
-      if (tree.treeStatus === 'Cây Non') {
-        color = '#eab308' // yellow for "Cây Non"
-      } else {
-        color = '##147237' // green for other statuses
-      }
-      size = 20
-    } else if (tree.needsAttention) {
-      color = '#b40ca1' // amber for attention needed
-      size = 18
-    } else {
-      // Check treeStatus for regular trees
-      if (tree.treeStatus === 'Cây Non') {
-        color = '#eab308' // yellow for "Cây Non"
-      } else {
-        color = '#147237' // green for other statuses
-      }
-    }
-
-    return L.divIcon({
-      className: 'tree-marker-unified',
-      html: `
-        <div style="
-          background-color: ${color};
-          width: ${size}px;
-          height: ${size}px;
-          border-radius: 50%;
-          border: 1px solid white;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 10px;
-          font-weight: bold;
-        ">
-          ${nearbyTree ? Math.round(nearbyTree.distance) : ''}
-        </div>
-      `,
-      iconSize: [size + 2, size + 2],
-      iconAnchor: [(size + 2) / 2, (size + 2) / 2]
-    })
-  }, [selectedTree, proximityData])
+        return {
+          type: 'Feature' as const,
+          properties: {
+            id: tree.id,
+            name: tree.name,
+            variety: tree.variety,
+            treeStatus: tree.treeStatus,
+            color
+          },
+          geometry: {
+            type: 'Point' as const,
+            coordinates: [tree.longitude, tree.latitude]
+          }
+        }
+      })
+  }), [trees])
 
   // Handle tree selection
   const handleTreeSelect = useCallback((tree: Tree) => {
     onTreeSelect?.(tree)
-
     if (mapRef.current && tree.latitude && tree.longitude) {
-      mapRef.current.setView([tree.latitude, tree.longitude], 22)
+      mapRef.current.easeTo({
+        center: [tree.longitude, tree.latitude],
+        zoom: 22,
+        duration: 1000
+      })
     }
   }, [onTreeSelect])
 
-  // User path coordinates
-  const userPathCoordinates = trackingHistory.map(point => [point.lat, point.lng] as [number, number])
+  // User path GeoJSON
+  const pathGeoJSON = useMemo(() => ({
+    type: 'Feature' as const,
+    geometry: {
+      type: 'LineString' as const,
+      coordinates: trackingHistory.map(point => [point.lng, point.lat])
+    },
+    properties: {}
+  }), [trackingHistory])
 
+  // Accuracy and Proximity Turf Circles
+  const accuracyCircleGeoJSON = useMemo(() => {
+    if (!userPosition) return null
+    try {
+      return turf.circle([userPosition.lng, userPosition.lat], userPosition.accuracy, { units: 'meters' })
+    } catch (e) {
+      return null
+    }
+  }, [userPosition])
 
-  // Disable custom gestures to prevent conflicts with Leaflet
-  // Let Leaflet handle all map interactions natively
+  const proximityCircleGeoJSON = useMemo(() => {
+    if (!userPosition) return null
+    try {
+      return turf.circle([userPosition.lng, userPosition.lat], proximityRadius, { units: 'meters' })
+    } catch (e) {
+      return null
+    }
+  }, [userPosition, proximityRadius])
+
+  // Mouse move handler to change cursor to pointer when hovering zones
+  const handleMouseMove = useCallback((e: any) => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const features = map.queryRenderedFeatures(e.point, {
+      layers: ['zones-layer-fill']
+    });
+    setCursor(features.length > 0 ? 'pointer' : 'auto');
+  }, []);
+
+  // Handle map click events (specifically for zone selection)
+  const handleMapClick = useCallback((e: any) => {
+    // If drawing is enabled and active, bypass selection click
+    if (drawRef.current && (drawRef.current as any).getMode() !== 'simple_select') {
+      return;
+    }
+
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+
+    // Query features at the clicked point for zones layer
+    const features = map.queryRenderedFeatures(e.point, {
+      layers: ['zones-layer-fill']
+    });
+
+    const zoneFeature = features.find((f: any) => f.layer?.id === 'zones-layer-fill');
+    if (zoneFeature) {
+      const clickedZoneId = zoneFeature.properties?.id;
+      const clickedZone = zones.find(z => z.id === clickedZoneId);
+      console.log('🗺️ Found zone clicked in handler:', clickedZone);
+      if (clickedZone) {
+        onZoneSelect?.(clickedZone);
+        setSelectedZonePopup(clickedZone);
+        return;
+      }
+    }
+  }, [zones, onZoneSelect]);
+
+  // Draw created event callback
+  const handleDrawCreate = useCallback((e: any) => {
+    const feature = e.features[0]
+    if (feature && feature.geometry.type === 'Polygon') {
+      const coords = feature.geometry.coordinates[0]
+      const boundaries = coords.slice(0, -1).map((coord: any) => ({
+        latitude: coord[1],
+        longitude: coord[0]
+      }))
+
+      if (onZoneCreated) {
+        onZoneCreated({ boundaries })
+      }
+
+      // Remove the temporary drawing overlay
+      drawRef.current?.deleteAll()
+    }
+  }, [onZoneCreated])
+
+  // Re-center when mapConfig changes or selectedTree changes
+  const prevFarmIdRef = useRef<string | undefined>(farmId);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (selectedTree && selectedTree.latitude && selectedTree.longitude) {
+      map.easeTo({
+        center: [selectedTree.longitude, selectedTree.latitude],
+        zoom: 22,
+        duration: 1000
+      });
+    } else {
+      map.easeTo({
+        center: [mapConfig.center[1], mapConfig.center[0]],
+        zoom: mapConfig.zoom,
+        duration: prevFarmIdRef.current !== farmId ? 0 : 1000
+      });
+      prevFarmIdRef.current = farmId;
+    }
+  }, [selectedTree, mapConfig, farmId]);
+
+  // Selected Zone Centroid for popup positioning
+  const selectedZonePopupCentroid = useMemo(() => {
+    if (!selectedZonePopup) return null
+    return getZoneCentroid(selectedZonePopup)
+  }, [selectedZonePopup])
+
+  // Find highlighted tree details
+  const highlightedTree = useMemo(() => {
+    if (!highlightedTreeId) return null
+    return trees.find(t => t.id === highlightedTreeId)
+  }, [trees, highlightedTreeId])
 
   return (
     <div className={`relative w-full h-full overflow-hidden ${className}`} style={{ zIndex: 1 }}>
-      <MapContainer
-        center={mapConfig.center}
-        zoom={mapConfig.zoom}
-        style={{ height: '100%', width: '100%', zIndex: 1 }}
-        ref={(map) => { if (map) mapRef.current = map }}
-        zoomControl={true}
-        attributionControl={false}
-        scrollWheelZoom={true}
-        doubleClickZoom={true}
-        dragging={true}
-        touchZoom={true}
+      <Map
+        ref={mapRef}
+        initialViewState={{
+          longitude: mapConfig.center[1],
+          latitude: mapConfig.center[0],
+          zoom: mapConfig.zoom
+        }}
+        style={{ width: '100%', height: '100%', zIndex: 1 }}
+        mapLib={maplibregl}
+        onZoomEnd={handleZoomEnd}
+        onClick={handleMapClick}
+        onMouseMove={handleMouseMove}
+        cursor={cursor}
       >
-        {/* Zoom-based layer manager for auto mode */}
-        {mapLayer === 'auto' && (
-          <ZoomBasedLayerManager
-            mapLayer={mapLayer}
-            onAutoSwitch={handleAutoSwitch}
-          />
-        )}
-
-        {/* Satellite Layer (Esri World Imagery) - with smooth transition */}
+        {/* Base Map Sources */}
         {(mapLayer === 'satellite' || activeLayer === 'hybrid') && (
-          <TileLayer
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            attribution='Tiles &copy; Esri'
-            maxZoom={19}
-            className="satellite-layer"
-          />
+          <Source
+            id="satellite"
+            type="raster"
+            tiles={["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"]}
+            tileSize={256}
+            maxzoom={19}
+          >
+            <Layer
+              id="satellite-layer"
+              type="raster"
+              beforeId={activeLayer === 'hybrid' ? 'street-layer' : undefined}
+            />
+          </Source>
         )}
 
-        {/* Street Map Layer (OpenStreetMap) - with smooth transition */}
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          maxZoom={22}
-          opacity={activeLayer === 'hybrid' ? 0.4 : 1}
-          className="street-layer"
-        />
-
-        {/* Drawing Controls */}
-        {enableDrawing && (
-          <DrawingControls
-            map={mapRef.current}
-            onZoneCreated={onZoneCreated}
-          />
-        )}
-
-        {/* Zone Polygons */}
-        {filters.showZones && (
-          <GeoJSON
-            data={zonesGeoJSON}
-            style={getZoneStyle}
-            onEachFeature={(feature, layer) => {
-              layer.on('click', () => {
-                const zone = zones.find(z => z.id === feature.properties.id)
-                if (zone) onZoneSelect?.(zone)
-              })
-
-              layer.bindPopup(`
-                <div style="min-width: 200px;">
-                  <h3 style="color: ${feature.properties.color};">${feature.properties.name}</h3>
-                  <div style="font-size: 14px;">
-                    <p><strong>Số cây:</strong> ${feature.properties.treeCount}</p>
-                    <p><strong>Diện tích:</strong> ${feature.properties.area} ha</p>
-                    <p><strong>Trạng thái:</strong> ${feature.properties.isActive ? 'Hoạt động' : 'Không hoạt động'}</p>
-                  </div>
-                </div>
-              `)
+        <Source
+          id="street"
+          type="raster"
+          tiles={["https://tile.openstreetmap.org/{z}/{x}/{y}.png"]}
+          tileSize={256}
+          maxzoom={22}
+        >
+          <Layer
+            id="street-layer"
+            type="raster"
+            paint={{
+              'raster-opacity': activeLayer === 'hybrid' ? 0.4 : 1.0
             }}
           />
+        </Source>
+
+        {/* Zones Layers */}
+        {filters.showZones && (
+          <Source id="zones" type="geojson" data={zonesGeoJSON}>
+            <Layer
+              id="zones-layer-fill"
+              type="fill"
+              paint={{
+                'fill-color': ['get', 'color'],
+                'fill-opacity': [
+                  'case',
+                  ['boolean', ['get', 'isCurrentZone'], false], 0.4,
+                  ['boolean', ['get', 'isNearby'], false], 0.3,
+                  0.2
+                ]
+              }}
+            />
+            <Layer
+              id="zones-layer-outline"
+              type="line"
+              paint={{
+                'line-color': ['get', 'borderColor'],
+                'line-width': [
+                  'case',
+                  ['boolean', ['get', 'isCurrentZone'], false], 4,
+                  ['boolean', ['get', 'isNearby'], false], 3,
+                  2
+                ]
+              }}
+            />
+          </Source>
         )}
 
-        {/* Tree Markers */}
+        {/* Tree Markers Loop (DOM-based, matching Leaflet styling and click reliability) */}
         {filters.showTrees && trees
           .filter(tree => tree.latitude && tree.longitude && tree.latitude !== 0 && tree.longitude !== 0)
-          .map(tree => (
-            <React.Fragment key={tree.id}>
+          .map(tree => {
+            const isSelected = selectedTree?.id === tree.id
+            const isNearby = proximityData.trees.some(t => t.id === tree.id)
+            const nearbyTree = proximityData.trees.find(t => t.id === tree.id)
+
+            // Color classification based on status/needs
+            let color = '#22c55e' // default green for all trees
+            let size = 16
+
+            if (isSelected) {
+              color = '#ef4444' // red for selected
+              size = 24
+            } else if (isNearby) {
+              if (tree.treeStatus === 'Cây Non' || tree.treeStatus === 'Young Tree') {
+                color = '#eab308' // yellow for "Cây Non"
+              } else {
+                color = '#147237' // dark green
+              }
+              size = 20
+            } else if (tree.needsAttention) {
+              color = '#b40ca1' // amber-magenta attention
+              size = 18
+            } else {
+              if (tree.treeStatus === 'Cây Non' || tree.treeStatus === 'Young Tree') {
+                color = '#eab308' // yellow for "Cây Non"
+              } else {
+                color = '#147237' // dark green
+              }
+            }
+
+            return (
               <Marker
-                position={[tree.latitude!, tree.longitude!]}
-                icon={getTreeMarkerIcon(tree)}
-                eventHandlers={{
-                  click: () => handleTreeSelect(tree)
-                }}
-              />
-              {/* Highlight circle for tree navigated from showcase */}
-              {highlightedTreeId === tree.id && (
-                <>
-                  {/* Pulsing outer circle */}
-                  <Circle
-                    center={[tree.latitude!, tree.longitude!]}
-                    radius={3}
-                    pathOptions={{
-                      color: '#ef4444',
-                      fillColor: '#ef4444',
-                      fillOpacity: 0.2,
-                      weight: 3,
-                      className: 'pulsing-circle'
-                    }}
-                  />
-                  {/* Inner solid circle */}
-                  <Circle
-                    center={[tree.latitude!, tree.longitude!]}
-                    radius={1.5}
-                    pathOptions={{
-                      color: '#ef4444',
-                      fillColor: '#ef4444',
-                      fillOpacity: 0.4,
-                      weight: 2
-                    }}
-                  />
-                </>
-              )}
-            </React.Fragment>
-          ))
-        }
+                key={tree.id}
+                longitude={tree.longitude!}
+                latitude={tree.latitude!}
+                anchor="center"
+              >
+                <InteractiveMarker
+                  tree={tree}
+                  color={color}
+                  size={size}
+                  zIndex={isSelected ? 15 : isNearby ? 12 : 10}
+                  distanceLabel={nearbyTree ? String(Math.round(nearbyTree.distance)) : ''}
+                  onSelect={handleTreeSelect}
+                />
+              </Marker>
+            )
+          })}
 
-        {/* User Position and Tracking (only when GPS is enabled) */}
-        {gpsEnabled && userPosition && (
-          <>
-            {console.log('🗺️ Rendering user position on map:', {
-              position: userPosition,
-              showUserPath,
-              pathCoordinatesLength: userPathCoordinates.length,
-              proximityRadius,
-              timestamp: new Date().toISOString()
-            })}
-
-            {/* User tracking path */}
-            {showUserPath && userPathCoordinates.length > 1 && (
-              <Polyline
-                positions={userPathCoordinates}
-                pathOptions={{
-                  color: '#ef4444',
-                  weight: 3,
-                  opacity: 0.7,
-                  dashArray: '5,10'
-                }}
-              />
-            )}
-
-            {/* User marker */}
-            <Marker
-              position={[userPosition.lat, userPosition.lng]}
-              icon={L.divIcon({
-                className: 'user-marker-unified',
-                html: `
-                  <div style="
-                    width: 20px;
-                    height: 20px;
-                    background: radial-gradient(circle, #ef4444 30%, rgba(239, 68, 68, 0.3) 70%);
-                    border-radius: 50%;
-                    border: 3px solid white;
-                    box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
-                    animation: pulse 2s infinite;
-                  "></div>
-                  <style>
-                    @keyframes pulse {
-                      0% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.6); }
-                      50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); }
-                      100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.6); }
-                    }
-                  </style>
-                `,
-                iconSize: [26, 26],
-                iconAnchor: [13, 13]
-              })}
-            />
-
-            {/* GPS Accuracy Circle */}
-            <Circle
-              center={[userPosition.lat, userPosition.lng]}
-              radius={userPosition.accuracy}
-              pathOptions={{
-                color: '#ef4444',
-                fillColor: '#ef4444',
-                fillOpacity: 0.1,
-                weight: 1
-              }}
-            />
-
-            {/* Proximity Detection Circle */}
-            <Circle
-              center={[userPosition.lat, userPosition.lng]}
-              radius={proximityRadius}
-              pathOptions={{
-                color: '#10b981',
-                fillColor: '#10b981',
-                fillOpacity: 0.05,
-                weight: 2,
-                dashArray: '10,5'
-              }}
-            />
-          </>
+        {/* Pulsing circle highlight for selected tree */}
+        {highlightedTree && highlightedTree.latitude && highlightedTree.longitude && (
+          <Marker
+            longitude={highlightedTree.longitude}
+            latitude={highlightedTree.latitude}
+            anchor="center"
+          >
+            <div className="relative flex items-center justify-center" style={{ width: 40, height: 40 }}>
+              <div className="absolute w-8 h-8 rounded-full bg-red-500 opacity-25 animate-ping" />
+              <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white shadow-md" />
+            </div>
+          </Marker>
         )}
-      </MapContainer>
 
+        {/* User Breadcrumb Trail */}
+        {gpsEnabled && showUserPath && trackingHistory.length > 1 && (
+          <Source id="user-path" type="geojson" data={pathGeoJSON}>
+            <Layer
+              id="user-path-layer"
+              type="line"
+              paint={{
+                'line-color': '#ef4444',
+                'line-width': 3,
+                'line-opacity': 0.7,
+                'line-dasharray': [2, 4]
+              }}
+            />
+          </Source>
+        )}
+
+        {/* GPS Accuracy Circle */}
+        {gpsEnabled && accuracyCircleGeoJSON && (
+          <Source id="accuracy-circle" type="geojson" data={accuracyCircleGeoJSON}>
+            <Layer
+              id="accuracy-circle-layer"
+              type="fill"
+              paint={{
+                'fill-color': '#ef4444',
+                'fill-opacity': 0.1
+              }}
+            />
+            <Layer
+              id="accuracy-circle-line"
+              type="line"
+              paint={{
+                'line-color': '#ef4444',
+                'line-width': 1
+              }}
+            />
+          </Source>
+        )}
+
+        {/* Proximity Circle */}
+        {gpsEnabled && proximityCircleGeoJSON && (
+          <Source id="proximity-circle" type="geojson" data={proximityCircleGeoJSON}>
+            <Layer
+              id="proximity-circle-layer"
+              type="fill"
+              paint={{
+                'fill-color': '#10b981',
+                'fill-opacity': 0.05
+              }}
+            />
+            <Layer
+              id="proximity-circle-line"
+              type="line"
+              paint={{
+                'line-color': '#10b981',
+                'line-width': 2,
+                'line-dasharray': [5, 2]
+              }}
+            />
+          </Source>
+        )}
+
+        {/* User Location Pulsing Dot */}
+        {gpsEnabled && userPosition && (
+          <Marker
+            longitude={userPosition.lng}
+            latitude={userPosition.lat}
+            anchor="center"
+          >
+            <div style={{
+              width: 20,
+              height: 20,
+              background: 'radial-gradient(circle, #3b82f6 30%, rgba(59, 130, 246, 0.3) 70%)',
+              borderRadius: '50%',
+              border: '3px solid white',
+              boxShadow: '0 0 15px rgba(59, 130, 246, 0.6)',
+              animation: 'pulse-blue 2s infinite'
+            }} />
+            <style>{`
+              @keyframes pulse-blue {
+                0% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.6); }
+                50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); }
+                100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.6); }
+              }
+            `}</style>
+          </Marker>
+        )}
+
+        {/* Mapbox Draw Control integration */}
+        {enableDrawing && (
+          <DrawControl
+            drawRef={drawRef}
+            onCreate={handleDrawCreate}
+            onUpdate={handleDrawCreate}
+          />
+        )}
+
+        {/* Zoom and Navigation Controls */}
+        <NavigationControl position="bottom-right" showCompass={true} showZoom={true} />
+
+        {/* Zone Detail Popup */}
+        {selectedZonePopup && selectedZonePopupCentroid && (
+          <Popup
+            longitude={selectedZonePopupCentroid[0]}
+            latitude={selectedZonePopupCentroid[1]}
+            anchor="bottom"
+            onClose={() => setSelectedZonePopup(null)}
+            closeOnClick={false}
+          >
+            <div className="p-2 min-w-[200px] text-gray-800">
+              <h3 className="font-bold text-base mb-1" style={{ color: selectedZonePopup.color || '#3b82f6' }}>
+                {selectedZonePopup.name}
+              </h3>
+              <div className="text-xs space-y-0.5">
+                <p><strong>Số cây:</strong> {selectedZonePopup.treeCount}</p>
+                <p><strong>Diện tích:</strong> {selectedZonePopup.area} ha</p>
+                <p><strong>Trạng thái:</strong> {selectedZonePopup.isActive ? 'Hoạt động' : 'Không hoạt động'}</p>
+              </div>
+            </div>
+          </Popup>
+        )}
+      </Map>
 
       {/* Current Zone Indicator (only when GPS is enabled) */}
       {gpsEnabled && proximityData.currentZone && (
-        <div className="absolute top-4 right-4 bg-green-600 text-white rounded-lg shadow-lg p-3">
+        <div className="absolute top-4 right-4 bg-green-600 text-white rounded-lg shadow-lg p-3 z-[10]">
           <div className="font-bold">📍 Vùng hiện tại</div>
           <div className="text-sm">{proximityData.currentZone.name}</div>
         </div>
@@ -1000,7 +1166,7 @@ const UnifiedMap = memo(({
 
       {/* Nearby Items Panel (only when GPS is enabled) */}
       {gpsEnabled && (proximityData.trees.length > 0 || proximityData.zones.length > 0) && (
-        <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm">
+        <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm z-[10] text-gray-800">
           <h3 className="font-bold text-green-600 mb-3">🔍 Vật thể gần đây</h3>
 
           {proximityData.trees.length > 0 && (
@@ -1040,18 +1206,14 @@ const UnifiedMap = memo(({
 
       {/* Position Info Panel (only when GPS is enabled) */}
       {gpsEnabled && userPosition && (
-        <>
-          <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-2 text-xs z-[1000]">
-            <div className="font-bold text-green-600">📍 Vị trí</div>
-            <div className="font-mono space-y-0.5">
-              <div>{userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}</div>
-              <div className="text-gray-600">±{userPosition.accuracy.toFixed(0)}m</div>
-            </div>
+        <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-2 text-xs z-[10] text-gray-800">
+          <div className="font-bold text-green-600">📍 Vị trí</div>
+          <div className="font-mono space-y-0.5">
+            <div>{userPosition.lat.toFixed(6)}, {userPosition.lng.toFixed(6)}</div>
+            <div className="text-gray-600">±{userPosition.accuracy.toFixed(0)}m</div>
           </div>
-        </>
+        </div>
       )}
-
-
     </div>
   )
 })

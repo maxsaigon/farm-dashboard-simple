@@ -12,8 +12,8 @@ async function main() {
   try {
     const adminEmail = process.env.POCKETBASE_ADMIN_EMAIL || 'admin@buonme.com';
     const adminPassword = process.env.POCKETBASE_ADMIN_PASSWORD || 'BuonMeFarm2026!';
-    await pb.admins.authWithPassword(adminEmail, adminPassword);
-    console.log('✅ Authenticated as admin successfully.');
+    await pb.collection('_superusers').authWithPassword(adminEmail, adminPassword);
+    console.log('✅ Authenticated as superuser successfully.');
 
     // Fetch all farms
     const farms = await pb.collection('farms').getFullList();
@@ -26,6 +26,10 @@ async function main() {
     // Fetch ALL zones in PocketBase
     const allZones = await pb.collection('zones').getFullList();
     console.log(`📍 Total Zones in DB: ${allZones.length}`);
+
+    // Fetch ALL photos in PocketBase
+    const allPhotos = await pb.collection('photos').getFullList({ requestKey: null });
+    console.log(`📷 Total Photos in DB: ${allPhotos.length}`);
 
     // Map counts by farm ID
     const farmTreeCounts: Record<string, number> = {};

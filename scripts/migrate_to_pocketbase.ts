@@ -22,6 +22,38 @@ function toPbId(firebaseId: string): string {
   return hash.substring(0, 15)
 }
 
+// Safely parse date from Firestore to ISO string
+function parseFirestoreDate(value: any): string | null {
+  if (value === undefined || value === null || value === 0) return null;
+  
+  if (typeof value === 'object') {
+    const sec = value._seconds ?? value.seconds;
+    if (typeof sec === 'number') {
+      return new Date(sec * 1000).toISOString();
+    }
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    if (typeof value.toDate === 'function') {
+      return value.toDate().toISOString();
+    }
+  }
+  
+  if (typeof value === 'number') {
+    const isSeconds = value < 99999999999;
+    return new Date(isSeconds ? value * 1000 : value).toISOString();
+  }
+  
+  if (typeof value === 'string') {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString();
+    }
+  }
+  
+  return null;
+}
+
 // Initialize Firebase Admin SDK
 // Make sure service account file exists at this path or edit accordingly
 const serviceAccountPath = path.join(__dirname, '../config/firebase-sa.json')
@@ -89,7 +121,7 @@ async function runMigration() {
             password: 'TemporaryPassword123!',
             passwordConfirm: 'TemporaryPassword123!',
             verified: data.isEmailVerified || data.emailVerified || false,
-            created: data.createdAt ? new Date(data.createdAt._seconds * 1000).toISOString() : new Date().toISOString()
+            created: parseFirestoreDate(data.createdAt) || new Date().toISOString()
           })
           console.log(`[Users] Imported user: ${data.email || pbUserId}`)
         } else {
@@ -113,8 +145,8 @@ async function runMigration() {
           description: data.description || '',
           category: data.category || '',
           status: data.status || 'compliant',
-          last_checked: data.lastChecked ? new Date(data.lastChecked._seconds * 1000).toISOString() : new Date().toISOString(),
-          next_check: data.nextCheck ? new Date(data.nextCheck._seconds * 1000).toISOString() : new Date().toISOString(),
+          last_checked: parseFirestoreDate(data.lastChecked) || new Date().toISOString(),
+          next_check: parseFirestoreDate(data.nextCheck) || new Date().toISOString(),
           requirements: data.requirements || [],
           violations: data.violations || []
         })
@@ -159,12 +191,21 @@ async function runMigration() {
           console.log(`[Farms] Imported farm: ${farmData.name}`)
         }
 
-        // Migrate Trees under this Farm
-        console.log(`[Trees] 🌳 Fetching trees for farm: ${farmData.name}...`)
-        const treeSnapshot = await db.collection('farms').doc(farmDoc.id).collection('trees').get()
-        console.log(`[Trees] Found ${treeSnapshot.size} trees in farm.`)
+        // Migrate Trees under this Farm (fetch both from subcollection and root-level collection)
+        console.log(`[Trees] 🌳 Fetching subcollection trees for farm: ${farmData.name}...`)
+        const subTreeSnapshot = await db.collection('farms').doc(farmDoc.id).collection('trees').get()
 
-        for (const treeDoc of treeSnapshot.docs) {
+        console.log(`[Trees] 🌳 Fetching root trees for farm: ${farmData.name}...`)
+        const rootTreeSnapshot = await db.collection('trees').where('farmId', '==', farmDoc.id).get()
+
+        // Combine both sources and remove duplicates based on document ID
+        const treeDocsMap = new Map();
+        subTreeSnapshot.docs.forEach(doc => treeDocsMap.set(doc.id, doc));
+        rootTreeSnapshot.docs.forEach(doc => treeDocsMap.set(doc.id, doc));
+        const allTreeDocs = Array.from(treeDocsMap.values());
+        console.log(`[Trees] Found ${allTreeDocs.length} unique trees in farm (gộp subcollection & root).`)
+
+        for (const treeDoc of allTreeDocs) {
           const treeData = treeDoc.data()
           const pbTreeId = toPbId(treeDoc.id)
 
@@ -191,16 +232,16 @@ async function runMigration() {
                 latitude: treeData.latitude || 0,
                 longitude: treeData.longitude || 0,
                 gps_accuracy: treeData.gpsAccuracy || 0,
-                planting_date: treeData.plantingDate ? new Date(treeData.plantingDate._seconds * 1000).toISOString() : null,
+                planting_date: parseFirestoreDate(treeData.plantingDate),
                 manual_fruit_count: treeData.manualFruitCount || 0,
                 ai_fruit_count: treeData.aiFruitCount || 0,
                 ai_accuracy: treeData.aiAccuracy || 0,
-                last_count_date: treeData.lastCountDate ? new Date(treeData.lastCountDate._seconds * 1000).toISOString() : null,
-                last_ai_analysis_date: treeData.lastAIAnalysisDate ? new Date(treeData.lastAIAnalysisDate._seconds * 1000).toISOString() : null,
+                last_count_date: parseFirestoreDate(treeData.lastCountDate),
+                last_ai_analysis_date: parseFirestoreDate(treeData.lastAIAnalysisDate),
                 tree_height: treeData.treeHeight || 0,
                 trunk_diameter: treeData.trunkDiameter || 0,
-                fertilized_date: treeData.fertilizedDate ? new Date(treeData.fertilizedDate._seconds * 1000).toISOString() : null,
-                pruned_date: treeData.prunedDate ? new Date(treeData.prunedDate._seconds * 1000).toISOString() : null,
+                fertilized_date: parseFirestoreDate(treeData.fertilizedDate),
+                pruned_date: parseFirestoreDate(treeData.prunedDate),
                 needs_attention: treeData.needsAttention === true,
                 custom_fields: treeData.customFields || {}
               })
@@ -210,9 +251,9 @@ async function runMigration() {
           }
         }
 
-        // Migrate Zones under this Farm
+        // Migrate Zones under this Farm (fetch from root zones collection)
         console.log(`[Zones] 🗺️ Fetching zones for farm: ${farmData.name}...`)
-        const zoneSnapshot = await db.collection('farms').doc(farmDoc.id).collection('zones').get()
+        const zoneSnapshot = await db.collection('zones').where('farmId', '==', farmDoc.id).get()
         for (const zoneDoc of zoneSnapshot.docs) {
           const zoneData = zoneDoc.data()
           const pbZoneId = toPbId(zoneDoc.id)
@@ -224,20 +265,27 @@ async function runMigration() {
             } catch (e) {}
 
             if (!zoneExists) {
+              // Standardize coordinate property names from Firestore (_latitude -> latitude)
+              const originalBoundary = zoneData.boundary || zoneData.boundaries || []
+              const boundaries = originalBoundary.map((pt: any) => ({
+                latitude: pt.latitude ?? pt._latitude ?? 0,
+                longitude: pt.longitude ?? pt._longitude ?? 0
+              }))
+
               await pb.collection('zones').create({
                 id: pbZoneId,
                 farm: pbFarmId,
                 name: zoneData.name || '',
                 code: zoneData.code || '',
                 description: zoneData.description || '',
-                boundaries: zoneData.boundaries || zoneData.boundary || [],
+                boundaries: boundaries,
                 tree_count: zoneData.treeCount || 0,
                 area: zoneData.area || 0,
                 is_active: zoneData.isActive !== false,
                 notes: zoneData.notes || '',
                 color: zoneData.color || '#00FF00',
                 color_data: zoneData.colorData || null,
-                last_inspection_date: zoneData.lastInspectionDate ? new Date(zoneData.lastInspectionDate._seconds * 1000).toISOString() : null,
+                last_inspection_date: parseFirestoreDate(zoneData.lastInspectionDate),
                 needs_attention: zoneData.needsAttention === true,
                 alert_on_entry: zoneData.alertOnEntry === true,
                 alert_on_exit: zoneData.alertOnExit === true,
@@ -269,7 +317,7 @@ async function runMigration() {
                 id: pbEntryId,
                 farm: pbFarmId,
                 tree: entryData.treeId ? toPbId(entryData.treeId) : '',
-                entry_date: entryData.entryDate ? new Date(entryData.entryDate._seconds * 1000).toISOString() : new Date().toISOString(),
+                entry_date: parseFirestoreDate(entryData.entryDate) || new Date().toISOString(),
                 fruit_count: entryData.fruitCount || 0,
                 health_rating: entryData.healthRating || 0,
                 notes: entryData.notes || '',
@@ -303,7 +351,7 @@ async function runMigration() {
                 amount: invData.amount || 0,
                 category: invData.category || 'Khác',
                 subcategory: invData.subcategory || '',
-                date: invData.date ? new Date(invData.date._seconds * 1000).toISOString() : new Date().toISOString(),
+                date: parseFirestoreDate(invData.date) || new Date().toISOString(),
                 notes: invData.notes || '',
                 quantity: invData.quantity || 0,
                 unit: invData.unit || '',
@@ -320,14 +368,42 @@ async function runMigration() {
         }
 
         // Migrate Photos (metadata & download binaries from Firebase Storage)
-        console.log(`[Photos] 📷 Fetching photos for farm: ${farmData.name}...`)
-        const photoSnapshot = await db.collection('farms').doc(farmDoc.id).collection('photos').get()
-        console.log(`[Photos] Found ${photoSnapshot.size} photos.`)
+        console.log(`[Photos] 📷 Fetching subcollection photos for farm: ${farmData.name}...`)
+        const subPhotoSnapshot = await db.collection('farms').doc(farmDoc.id).collection('photos').get()
 
-        for (const photoDoc of photoSnapshot.docs) {
+        console.log(`[Photos] 📷 Fetching root-level photos for farm: ${farmData.name}...`)
+        const rootPhotoSnapshot = await db.collection('photos').where('farmId', '==', farmDoc.id).get()
+
+        // Combine both sources and remove duplicates based on document ID
+        const photoDocsMap = new Map();
+        subPhotoSnapshot.docs.forEach(doc => photoDocsMap.set(doc.id, doc));
+        rootPhotoSnapshot.docs.forEach(doc => photoDocsMap.set(doc.id, doc));
+        const allPhotoDocs = Array.from(photoDocsMap.values());
+        console.log(`[Photos] Found ${allPhotoDocs.length} unique photos in farm (gộp subcollection & root).`)
+
+        for (const photoDoc of allPhotoDocs) {
           const photoData = photoDoc.data()
           const pbPhotoId = toPbId(photoDoc.id)
-          const firebasePath = photoData.originalPath || photoData.storagePath || photoData.compressedPath
+          let firebasePath = photoData.originalPath || photoData.storagePath || photoData.compressedPath
+
+          // If path fields are missing but we have a treeId, construct the path dynamically
+          if (!firebasePath && photoData.treeId) {
+            const filename = photoData.filename || 'compressed.jpg'
+            const possiblePaths = [
+              `farms/${farmDoc.id}/trees/${photoData.treeId}/photos/${photoDoc.id}/${filename}`,
+              `farms/${farmDoc.id}/trees/${photoData.treeId}/photos/${photoDoc.id}/compressed.jpg`,
+              `farms/${farmDoc.id}/trees/${photoData.treeId}/photos/${photoDoc.id}/original.jpg`,
+              `farms/${farmDoc.id}/photos/${photoDoc.id}/${filename}`
+            ]
+
+            for (const p of possiblePaths) {
+              const [exists] = await bucket.file(p).exists()
+              if (exists) {
+                firebasePath = p
+                break
+              }
+            }
+          }
 
           try {
             let photoExists = false
@@ -361,7 +437,7 @@ async function runMigration() {
                 form.append('latitude', String(photoData.latitude || 0))
                 form.append('longitude', String(photoData.longitude || 0))
                 form.append('altitude', String(photoData.altitude || 0))
-                form.append('timestamp', photoData.timestamp ? new Date(photoData.timestamp._seconds * 1000).toISOString() : new Date().toISOString())
+                form.append('timestamp', parseFirestoreDate(photoData.timestamp) || new Date().toISOString())
                 form.append('uploaded_to_server', 'true')
                 form.append('server_processed', photoData.serverProcessed === true ? 'true' : 'false')
                 form.append('needs_ai_analysis', photoData.needsAIAnalysis === true ? 'true' : 'false')

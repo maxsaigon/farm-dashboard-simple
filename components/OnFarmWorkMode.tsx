@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Tree } from '@/lib/types'
-import { MapContainer, TileLayer, Marker, Circle, Polyline, useMap } from 'react-leaflet'
-import L from 'leaflet'
+import Map, { Source, Layer, Marker, MapRef } from 'react-map-gl/maplibre'
+import { InteractiveMarker } from './UnifiedMap'
+import maplibregl from 'maplibre-gl'
 import * as turf from '@turf/turf'
 import { useIOSOptimizedGPS, IOSGPSPosition } from '@/lib/ios-optimized-gps'
 import { useWakeLock } from '@/lib/use-wake-lock'
@@ -18,17 +19,7 @@ import { AuditService } from '@/lib/audit-service'
 import { savePendingPhoto } from '@/lib/offline-photos-db'
 import { isWifiConnection } from '@/lib/offline-sync-service'
 
-// Fix Leaflet icons
-if (typeof window !== 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require('leaflet/dist/leaflet.css')
-  delete (L.Icon.Default.prototype as any)._getIconUrl
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-  })
-}
+import 'maplibre-gl/dist/maplibre-gl.css'
 
 interface Zone {
   id: string
@@ -52,22 +43,12 @@ interface NearbyTree extends Tree {
   distance: number
 }
 
-// Auto-center map to user location
-function AutoCenterMap({ userPosition }: { userPosition: { lat: number, lng: number } | null }) {
-  const map = useMap()
-  
-  useEffect(() => {
-    if (userPosition) {
-      map.setView([userPosition.lat, userPosition.lng], 20, { animate: true })
-    }
-  }, [userPosition, map])
-  
-  return null
-}
+// AutoCenterMap helper removed since MapLibre uses direct useEffect centering
 
 export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, onTreeCreated, onTreeUpdated, farmId }: OnFarmWorkModeProps) {
   const { user, selectedSeasonYear } = useSimpleAuth()
   const gps = useIOSOptimizedGPS()
+  const mapRef = useRef<MapRef | null>(null)
   
   // Keep device screen active during active farm work
   useWakeLock(true)
@@ -249,6 +230,17 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
 
     setNearbyTrees(nearby)
   }, [userPosition, trees])
+
+  // Auto-center map when userPosition updates
+  useEffect(() => {
+    if (userPosition && mapRef.current) {
+      mapRef.current.easeTo({
+        center: [userPosition.lng, userPosition.lat],
+        zoom: 20,
+        duration: 1000
+      })
+    }
+  }, [userPosition])
 
   // Camera functions
   const startCamera = async () => {
@@ -695,37 +687,25 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
     }
   }, [user, userPosition, newTreeData, farmId, capturedPhotos, onTreeCreated, selectedSeasonYear])
 
-  // Get tree marker icon
-  const getTreeMarkerIcon = (tree: NearbyTree) => {
-    const size = tree.distance < 10 ? 24 : tree.distance < 20 ? 20 : 16
-    const color = tree.distance < 10 ? '#ef4444' : tree.distance < 20 ? '#f59e0b' : '#22c55e'
-    
-    return L.divIcon({
-      className: 'tree-marker',
-      html: `
-        <div style="
-          background-color: ${color};
-          width: ${size}px;
-          height: ${size}px;
-          border-radius: 50%;
-          border: 2px solid white;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 10px;
-          font-weight: bold;
-        ">
-          ${Math.round(tree.distance)}
-        </div>
-      `,
-      iconSize: [size + 4, size + 4],
-      iconAnchor: [(size + 4) / 2, (size + 4) / 2]
-    })
-  }
+  // getTreeMarkerIcon helper removed (now rendered directly via React Markers in JSX)
 
-  const userPathCoordinates = trackingHistory.map(point => [point.lat, point.lng] as [number, number])
+  const pathGeoJSON = useMemo(() => ({
+    type: 'Feature' as const,
+    geometry: {
+      type: 'LineString' as const,
+      coordinates: trackingHistory.map(point => [point.lng, point.lat])
+    },
+    properties: {}
+  }), [trackingHistory])
+
+  const accuracyCircleGeoJSON = useMemo(() => {
+    if (!userPosition) return null
+    try {
+      return turf.circle([userPosition.lng, userPosition.lat], userPosition.accuracy, { units: 'meters' })
+    } catch (e) {
+      return null
+    }
+  }, [userPosition])
 
   return (
     <>
@@ -752,149 +732,170 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
       {/* Fullscreen Map */}
       <div className="flex-1 relative" style={{ zIndex: 1 }}>
         {userPosition ? (
-          <MapContainer
-            center={[userPosition.lat, userPosition.lng]}
-            zoom={20}
+          <Map
+            ref={mapRef}
+            initialViewState={{
+              longitude: userPosition.lng,
+              latitude: userPosition.lat,
+              zoom: 20
+            }}
+            bearing={userPosition.heading ? -userPosition.heading : 0}
             style={{ height: '100%', width: '100%' }}
-            zoomControl={false}
-            attributionControl={false}
+            mapLib={maplibregl}
           >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maxZoom={22}
-            />
-            
-            <AutoCenterMap userPosition={userPosition} />
+            {/* Street Map Layer (OpenStreetMap) */}
+            <Source
+              id="street"
+              type="raster"
+              tiles={["https://tile.openstreetmap.org/{z}/{x}/{y}.png"]}
+              tileSize={256}
+              maxzoom={22}
+            >
+              <Layer id="street-layer" type="raster" />
+            </Source>
 
             {/* User tracking path */}
-            {userPathCoordinates.length > 1 && (
-              <Polyline
-                positions={userPathCoordinates}
-                pathOptions={{
-                  color: '#3b82f6',
-                  weight: 3,
-                  opacity: 0.6,
-                  dashArray: '5,10'
-                }}
-              />
+            {trackingHistory.length > 1 && (
+              <Source id="work-user-path" type="geojson" data={pathGeoJSON}>
+                <Layer
+                  id="work-user-path-layer"
+                  type="line"
+                  paint={{
+                    'line-color': '#3b82f6',
+                    'line-width': 3,
+                    'line-opacity': 0.6,
+                    'line-dasharray': [2, 4]
+                  }}
+                />
+              </Source>
+            )}
+
+            {/* GPS Accuracy Circle */}
+            {accuracyCircleGeoJSON && (
+              <Source id="work-accuracy-circle" type="geojson" data={accuracyCircleGeoJSON}>
+                <Layer
+                  id="work-accuracy-circle-layer"
+                  type="fill"
+                  paint={{
+                    'fill-color': '#3b82f6',
+                    'fill-opacity': 0.1
+                  }}
+                />
+                <Layer
+                  id="work-accuracy-circle-line"
+                  type="line"
+                  paint={{
+                    'line-color': '#3b82f6',
+                    'line-width': 1
+                  }}
+                />
+              </Source>
             )}
 
             {/* User marker */}
             <Marker
-              position={[userPosition.lat, userPosition.lng]}
-              icon={L.divIcon({
-                className: 'user-marker',
-                html: `
-                  <div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
-                    ${userPosition.heading !== undefined && userPosition.heading !== null && !isNaN(userPosition.heading) ? `
-                      <svg style="
-                        position: absolute;
-                        width: 80px;
-                        height: 80px;
-                        top: -25px;
-                        left: -25px;
-                        transform: rotate(${userPosition.heading}deg);
-                        transform-origin: center center;
-                        pointer-events: none;
-                      " viewBox="0 0 100 100">
-                        <defs>
-                          <linearGradient id="beamGradient" x1="0%" y1="100%" x2="0%" y2="0%">
-                            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.6"/>
-                            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
-                          </linearGradient>
-                        </defs>
-                        <path d="M 50 50 L 32 15 L 68 15 Z" fill="url(#beamGradient)"/>
-                      </svg>
-                    ` : ''}
-                    <div style="
-                      position: relative;
-                      width: 20px;
-                      height: 20px;
-                      background: radial-gradient(circle, #3b82f6 30%, rgba(59, 130, 246, 0.3) 70%);
-                      border-radius: 50%;
-                      border: 3px solid white;
-                      box-shadow: 0 0 15px rgba(59, 130, 246, 0.8);
-                      z-index: 10;
-                    "></div>
-                  </div>
-                `,
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
-              })}
-            />
-
-            {/* GPS Accuracy Circle */}
-            <Circle
-              center={[userPosition.lat, userPosition.lng]}
-              radius={userPosition.accuracy}
-              pathOptions={{
-                color: '#3b82f6',
-                fillColor: '#3b82f6',
-                fillOpacity: 0.1,
-                weight: 1
-              }}
-            />
+              longitude={userPosition.lng}
+              latitude={userPosition.lat}
+              anchor="center"
+            >
+              <div style={{ position: 'relative', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {userPosition.heading !== undefined && userPosition.heading !== null && !isNaN(userPosition.heading) && (
+                  <svg style={{
+                    position: 'absolute',
+                    width: 80,
+                    height: 80,
+                    top: -25,
+                    left: -25,
+                    pointerEvents: 'none'
+                  }} viewBox="0 0 100 100">
+                    <defs>
+                      <linearGradient id="beamGradient" x1="0%" y1="100%" x2="0%" y2="0%">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.6"/>
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M 50 50 L 32 15 L 68 15 Z" fill="url(#beamGradient)"/>
+                  </svg>
+                )}
+                <div style={{
+                  position: 'relative',
+                  width: 20,
+                  height: 20,
+                  background: 'radial-gradient(circle, #3b82f6 30%, rgba(59, 130, 246, 0.3) 70%)',
+                  borderRadius: '50%',
+                  border: '3px solid white',
+                  boxShadow: '0 0 15px rgba(59, 130, 246, 0.8)',
+                  zIndex: 10
+                }}></div>
+              </div>
+            </Marker>
 
             {/* Draggable Temporary New Tree Marker */}
             {isPlacingNewTree && calibratedPosition && (
               <Marker
-                position={[calibratedPosition.lat, calibratedPosition.lng]}
+                longitude={calibratedPosition.lng}
+                latitude={calibratedPosition.lat}
                 draggable={true}
-                eventHandlers={{
-                  dragend: (e) => {
-                    const marker = e.target
-                    const position = marker.getLatLng()
-                    console.log('📌 Dragged new tree pin to:', position)
-                    setCalibratedPosition(prev => prev ? {
-                      ...prev,
-                      lat: position.lat,
-                      lng: position.lng
-                    } : null)
-                  }
+                onDragEnd={(e) => {
+                  const { lng, lat } = e.lngLat
+                  console.log('📌 Dragged new tree pin to:', { lat, lng })
+                  setCalibratedPosition(prev => prev ? {
+                    ...prev,
+                    lat,
+                    lng
+                  } : null)
                 }}
-                icon={L.divIcon({
-                  className: 'new-tree-placement-marker',
-                  html: `
-                    <div style="
-                      width: 28px;
-                      height: 28px;
-                      background-color: #10b981;
-                      border-radius: 50%;
-                      border: 3px solid white;
-                      box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
-                      animation: pulse-green 1.5s infinite;
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      color: white;
-                      font-size: 14px;
-                    ">🌱</div>
-                    <style>
-                      @keyframes pulse-green {
-                        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-                        70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-                        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-                      }
-                    </style>
-                  `,
-                  iconSize: [30, 30],
-                  iconAnchor: [15, 15]
-                })}
-              />
+                anchor="center"
+              >
+                <div style={{
+                  width: 28,
+                  height: 28,
+                  backgroundColor: '#10b981',
+                  borderRadius: '50%',
+                  border: '3px solid white',
+                  boxShadow: '0 0 10px rgba(16, 185, 129, 0.8)',
+                  animation: 'pulse-green 1.5s infinite',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontSize: 14,
+                  cursor: 'grab'
+                }}>🌱</div>
+                <style>{`
+                  @keyframes pulse-green {
+                    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+                    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+                  }
+                `}</style>
+              </Marker>
             )}
 
             {/* Nearby trees */}
-            {nearbyTrees.map(tree => (
-              <Marker
-                key={tree.id}
-                position={[tree.latitude!, tree.longitude!]}
-                icon={getTreeMarkerIcon(tree)}
-                eventHandlers={{
-                  click: () => handleMarkerClick(tree)
-                }}
-              />
-            ))}
-          </MapContainer>
+            {nearbyTrees.map(tree => {
+              const size = tree.distance < 10 ? 24 : tree.distance < 20 ? 20 : 16
+              const color = tree.distance < 10 ? '#ef4444' : tree.distance < 20 ? '#f59e0b' : '#22c55e'
+              
+              return (
+                <Marker
+                  key={tree.id}
+                  longitude={tree.longitude!}
+                  latitude={tree.latitude!}
+                  anchor="center"
+                >
+                  <InteractiveMarker
+                    tree={tree}
+                    color={color}
+                    size={size}
+                    zIndex={12}
+                    distanceLabel={String(Math.round(tree.distance))}
+                    onSelect={handleMarkerClick}
+                  />
+                </Marker>
+              )
+            })}
+          </Map>
         ) : (
           <div className="h-full flex items-center justify-center bg-gray-100">
             <div className="text-center p-6">

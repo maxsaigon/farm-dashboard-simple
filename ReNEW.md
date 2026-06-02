@@ -24,12 +24,12 @@ Toàn bộ UI hiển thị bằng **Tiếng Việt**. Tên biến code bằng En
 |---|---|
 | Framework | **Next.js 14+** (App Router) + React 18+ |
 | Styling | **TailwindCSS** — Mobile-first |
-| Database | **Firebase Firestore** (NoSQL, real-time, offline) |
-| Auth | **Firebase Authentication** (Email/Password) |
-| Storage | **Firebase Storage** (Ảnh cây trồng) |
-| Maps | **Leaflet** + **react-leaflet** + **OpenStreetMap** + **Esri Satellite** |
+| Database | **PocketBase** (SQLite, relational, real-time sync, self-hosted) |
+| Auth | **PocketBase Authentication** (Built-in users auth, Email/Password) |
+| Storage | **PocketBase File Storage** (Tự động lưu theo record file fields, Local/S3-compatible) |
+| Maps | **MapLibre GL JS** + **react-map-gl** + **OpenStreetMap** + **Esri Satellite** |
 | Geo | **@turf/turf** (khoảng cách, point-in-polygon, diện tích) |
-| PWA | Service Worker + IndexedDB (offline photo queue) |
+| PWA | Service Worker + IndexedDB (Offline Read Cache & Mutation Queue) |
 | Virtual List | **@tanstack/react-virtual** (hiển thị 1000+ cây) |
 
 ---
@@ -53,13 +53,13 @@ Toàn bộ UI hiển thị bằng **Tiếng Việt**. Tên biến code bằng En
 │  │ (UI)      │  │ (Route Prot.)│  │ (date, geo, photo) │   │
 │  └──────────┘  └──────────────┘  └─────────────────────┘   │
 └─────────────────────────┬───────────────────────────────────┘
-                          │ Firebase SDK
+                          │ PocketBase SDK (SSE / HTTP)
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    FIREBASE CLOUD                            │
+│                    POCKETBASE BACKEND (Self-hosted)          │
 │  ┌────────────┐  ┌─────────────┐  ┌──────────────────┐     │
-│  │ Auth       │  │ Firestore   │  │ Storage          │     │
-│  │ (Users)    │  │ (Data)      │  │ (Photos)         │     │
+│  │ Auth       │  │ Collections │  │ Local/S3 Storage │     │
+│  │ (users)    │  │ (DB tables) │  │ (File Fields)    │     │
 │  └────────────┘  └─────────────┘  └──────────────────┘     │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -86,7 +86,7 @@ components/
 │   ├── AuthGuard.tsx            # Route protection
 │   └── LoginForm.tsx
 ├── map/
-│   ├── UnifiedMap.tsx           # Leaflet map (main)
+│   ├── UnifiedMap.tsx           # MapLibre GL JS map (main)
 │   ├── OnFarmWorkMode.tsx       # Field work mode (GPS + create tree)
 │   ├── GPSStatusBar.tsx         # GPS accuracy display
 │   ├── NearbyTreePanel.tsx      # Trees within 50m
@@ -128,7 +128,7 @@ components/
     └── SystemSettings.tsx
 
 lib/
-├── firebase.ts                  # Firebase init + config
+├── pocketbase.ts                # PocketBase client SDK init + config
 ├── auth-context.tsx             # Auth + Farm selection context
 ├── types.ts                     # ALL TypeScript interfaces
 ├── date-utils.ts                # convertToDate (ONE place only!)
@@ -139,8 +139,8 @@ lib/
 ├── photo-service.ts             # Photo CRUD + offline queue
 ├── photo-compression.ts         # Image compression
 ├── investment-service.ts        # Investment CRUD
-├── storage.ts                   # Firebase Storage helpers
-├── offline-sync.ts              # IndexedDB + sync queue
+├── storage-utils.ts             # PocketBase File URL/upload helpers
+├── offline-sync.ts              # IndexedDB cache + write queue
 ├── gps-service.ts               # GPS tracking + burst calibration
 └── admin-service.ts             # Admin-only operations
 ```
@@ -200,319 +200,281 @@ interface AuthContextValue {
 
 ### 3.4 Admin check
 - **KHÔNG hard-code UID** trong code
-- Dùng **Firebase Custom Claims**: `request.auth.token.admin === true`
-- Hoặc check `adminConfig` collection trong Firestore
+- Check trường `role === 'super_admin'` trên auth record `users` của PocketBase.
+- Hoặc check bảng `user_roles` để xác định quyền hạn cụ thể (ví dụ: `role_type === 'super_admin'`).
 
 ---
 
-## 4. Database Schema (Firestore)
+## 4. Database Schema (PocketBase Relational)
 
-### 4.1 Collection hierarchy
+### 4.1 Collection hierarchy (Flat Relational Model)
+PocketBase không có subcollection lồng nhau như Firestore. Dữ liệu được lưu trữ dưới dạng các collection phẳng (flat tables) và liên kết với nhau bằng các trường `relation` (Foreign Keys). Tất cả các collection đều sử dụng định dạng ID 15 ký tự chữ-số ngẫu nhiên của PocketBase.
 
 ```
-/users/{userId}
-/farms/{farmId}
-/farms/{farmId}/trees/{treeId}
-/farms/{farmId}/trees/{treeId}/notes/{noteId}
-/farms/{farmId}/photos/{photoId}
-/farms/{farmId}/zones/{zoneId}
-/farms/{farmId}/investments/{investmentId}
-/farmAccess/{accessId}           // userId_farmId pattern
-/adminConfig/main
+users (Auth collection)
+  ▲
+  │ (relation: user)
+user_farm_access ──(relation: farm)──► farms (farms0000000000)
+                                        ▲      ▲
+                      (relation: farm)  │      │ (relation: farm)
+                                      trees  zones
+                                        ▲
+                      (relation: tree)  │
+                     ┌──────────────────┴──────────────────┐
+                     │                                     │
+                tree_notes                              photos
 ```
 
-### 4.2 Schema: User (`/users/{userId}`)
+### 4.2 Schema: User (Auth Collection: `users`)
 
 ```typescript
 interface User {
-  uid: string               // Firebase Auth UID
-  email: string
-  displayName: string
-  phoneNumber?: string
-  accountStatus: 'active' | 'suspended' | 'pending_verification'
-  isEmailVerified: boolean
-  lastLoginAt?: Date
-  loginCount: number
+  id: string                 // PocketBase Auth UID (15 chars)
+  username: string           // Tên đăng nhập
+  email: string              // Email đăng ký (unique)
+  verified: boolean          // Đã xác thực email
+  display_name?: string      // Tên hiển thị
+  phone_number?: string      // Số điện thoại
+  role: 'user' | 'super_admin' // Vai trò hệ thống
+  account_status: 'active' | 'suspended' | 'pending_verification'
+  login_count: number        // Số lần đăng nhập
+  last_login_at?: Date       // Lần đăng nhập cuối
   language: string           // 'vi-VN'
   timezone: string           // 'Asia/Ho_Chi_Minh'
-  createdAt: Date
-  updatedAt: Date
+  preferences?: any          // JSON cài đặt cá nhân
+  created: Date              // Ngày tạo tài khoản
+  updated: Date              // Ngày cập nhật tài khoản
 }
 ```
 
-### 4.3 Schema: Farm (`/farms/{farmId}`)
+### 4.3 Schema: Farm (Base Collection ID: `farms0000000000`, Name: `farms`)
 
 ```typescript
 interface Farm {
-  id: string
+  id: string                 // PocketBase ID (15 chars)
   name: string               // "Trang trại Bảo Lộc"
-  ownerName: string
-  totalArea?: number         // Hecta
-  centerLatitude: number     // Tâm bản đồ
-  centerLongitude: number
-  boundaryCoordinates?: string // JSON string of polygon coordinates
-  seasons: number[]          // [2024, 2025, 2026] — danh sách niên vụ
-  currentSeasonYear: number  // Niên vụ hiện hành
-  isActive: boolean
-  createdDate: Date
+  owner_name?: string        // Tên chủ sở hữu
+  farm_type?: 'personal' | 'commercial' | 'cooperative' // Phân loại
+  status?: 'active' | 'inactive' | 'archived' // Trạng thái
+  total_area?: number        // Diện tích (Hecta)
+  center_latitude?: number   // Tâm bản đồ
+  center_longitude?: number
+  boundary_coordinates?: any  // JSON array tọa độ đa giác ranh giới
+  seasons: number[]          // [2024, 2025, 2026] — Danh sách niên vụ
+  current_season_year: number // Niên vụ hiện hành
+  is_active: boolean         // Trạng thái hoạt động
+  created: Date
+  updated: Date
 }
 ```
 
-### 4.4 Schema: Tree (`/farms/{farmId}/trees/{treeId}`) ⭐ QUAN TRỌNG NHẤT
+### 4.4 Schema: Tree (Base Collection ID: `trees0000000000`, Name: `trees`) ⭐ QUAN TRỌNG NHẤT
 
 ```typescript
 interface Tree {
-  id: string
-  farmId: string
+  id: string                 // PocketBase ID (15 chars)
+  farm: string               // Relation đến 'farms' (maxSelect: 1, cascade delete)
   name: string               // "Ri6-001" hoặc "Monthong Khu A Hàng 3"
-  qrCode?: string            // QR code dán trên thân cây
-  variety: string            // "Ri6" | "Monthong" | "Musang King" | "Chuồng Bò" | ...
+  qr_code?: string           // QR code dán trên thân cây
+  variety?: string           // "Ri6" | "Monthong" | "Musang King"
+  zone_code?: string         // "KHU_A"
+  tree_status?: 'young' | 'mature' | 'old' // Tuổi sinh trưởng
+  health_status?: 'Excellent' | 'Good' | 'Fair' | 'Poor' // Trạng thái sức khỏe
+  notes?: string
+  health_notes?: string
+  disease_notes?: string
 
   // GPS
   latitude: number
   longitude: number
-  gpsAccuracy?: number       // Sai số GPS (mét)
-
-  // Zone assignment
-  zoneCode?: string          // "KHU_A"
-  zoneName?: string          // "Khu A"
-
-  // Health & Status
-  healthStatus: 'Excellent' | 'Good' | 'Fair' | 'Poor'
-  treeStatus: 'young' | 'mature' | 'old'
-  needsAttention: boolean
+  gps_accuracy?: number      // Sai số GPS (mét)
 
   // Fruit counting
-  manualFruitCount: number   // Đếm bằng tay vụ hiện tại
-  aiFruitCount: number       // AI đếm từ ảnh
-  lastCountDate?: Date
+  manual_fruit_count: number // Đếm bằng tay vụ hiện tại
+  ai_fruit_count: number     // AI đếm từ ảnh vụ hiện tại
+  ai_accuracy?: number       // Độ tin cậy AI
+  last_count_date?: Date
+  last_ai_analysis_date?: Date
 
   // Physical measurements
-  treeHeight?: number        // Mét
-  trunkDiameter?: number     // cm
+  tree_height?: number       // Chiều cao (mét)
+  trunk_diameter?: number    // Đường kính thân (cm)
 
   // Care tracking
-  plantingDate?: Date
-  fertilizedDate?: Date      // Ngày bón phân gần nhất
-  prunedDate?: Date          // Ngày tỉa cành gần nhất
+  planting_date?: Date
+  fertilized_date?: Date     // Ngày bón phân gần nhất
+  pruned_date?: Date         // Ngày tỉa cành gần nhất
+  needs_attention: boolean   // Cần chú ý gấp
 
-  // Notes
-  notes?: string
-  healthNotes?: string
-  diseaseNotes?: string
-
-  // AI
-  lastAIAnalysisDate?: Date
-  aiAccuracy?: number
-
-  // Custom extensible fields
-  customFields?: {
-    treeId: string
-    fields: Array<{
-      fieldId: string
-      value: string | number | boolean | Date
-      updatedAt: Date
-    }>
-    lastUpdated: Date
-  }
-
-  // Season-specific data — LƯU LỊCH SỬ THEO TỪNG NĂM
-  seasonalStats?: {
+  // Season-specific data — LƯU LỊCH SỬ THEO TỪNG NĂM (Dạng JSON)
+  seasonal_stats?: {
     [seasonYear: number]: {
       manualFruitCount: number
       aiFruitCount: number
       healthStatus: string
       notes?: string
-      updatedAt: Date
+      updatedAt: string
     }
   }
-
-  // Sync
-  needsSync?: boolean
-  lastSyncDate?: Date
-  createdAt: Date
-  updatedAt: Date
+  custom_fields?: any        // Custom extensible fields dạng JSON
+  created: Date
+  updated: Date
 }
 ```
 
-### 4.5 Schema: Photo (`/farms/{farmId}/photos/{photoId}`)
+### 4.5 Schema: Photo (Base Collection ID: `photos000000000`, Name: `photos`)
 
 ```typescript
 interface Photo {
-  id: string
-  treeId: string
-  farmId: string
-  filename: string
-  photoType: 'general' | 'health' | 'fruit_count'
-  seasonYear: number          // Gán niên vụ khi chụp
+  id: string                 // PocketBase ID (15 chars)
+  farm: string               // Relation đến 'farms' (maxSelect: 1, cascade delete)
+  tree: string               // Relation đến 'trees' (maxSelect: 1, cascade delete)
+  image_file: string         // Tên file ảnh (được upload và quản lý qua PocketBase file field)
+  photo_type?: 'general' | 'health' | 'fruit_count'
+  user_notes?: string
+  season_year: number        // Niên vụ lúc chụp ảnh
 
   // Location
   latitude?: number
   longitude?: number
+  altitude?: number
 
-  // Storage paths
-  localPath: string           // Firebase Storage download URL
-  compressedPath?: string     // Path to compressed version
-  thumbnailPath?: string      // Path to thumbnail
-  originalPath?: string
+  // Image variants (Local/Cache path references)
+  original_path?: string
+  compressed_path?: string
+  thumbnail_path?: string
+  ai_ready_path?: string
 
   // Processing status
-  uploadedToServer: boolean
-  serverProcessed: boolean
-  needsAIAnalysis: boolean
+  uploaded_to_server: boolean
+  server_processed: boolean
+  needs_ai_analysis: boolean
+  manual_fruit_count?: number
+  total_local_size?: number
 
-  // AI results
-  manualFruitCount?: number
-  userNotes?: string
-
-  timestamp: Date
-  uploadDate?: Date
-  localStorageDate?: Date     // When saved to IndexedDB (offline)
-  totalLocalSize?: number
+  timestamp: Date            // Thời điểm chụp thực tế
+  created: Date
+  updated: Date
 }
 ```
 
-**Firebase Storage structure:**
-```
-farms/{farmId}/trees/{treeId}/photos/{photoId}/
-├── compressed.jpg            ← Main display (500KB)
-├── thumbnail.jpg             ← Gallery grid (50KB)
-└── ai_ready.jpg              ← For AI analysis (1.5MB)
-```
+**PocketBase Storage File URL structure:**
+Ảnh được lưu trữ trực tiếp trên PocketBase server (Local hoặc S3-compatible). Client lấy URL của ảnh bằng API:
+`pb.files.getUrl(photoRecord, photoRecord.image_file, { thumb: '100x100' })`
+Đường dẫn vật lý trên server:
+`pb_data/storage/{collectionId}/{recordId}/{fileName}`
 
-### 4.6 Schema: Zone (`/farms/{farmId}/zones/{zoneId}`)
+### 4.6 Schema: Zone (Base Collection ID: `zones0000000000`, Name: `zones`)
 
 ```typescript
 interface FarmZone {
-  id: string
-  farmId: string
+  id: string                 // PocketBase ID (15 chars)
+  farm: string               // Relation đến 'farms' (maxSelect: 1, cascade delete)
   name: string               // "Khu A"
   code: string               // "KHU_A"
   description?: string
-  color: string              // Hex color "#3b82f6" for map polygon
-  area: number               // Hecta
-  treeCount: number
-  isActive: boolean
-  boundaries: Array<{        // Polygon coordinates
+  color?: string             // Mã màu Hex hiển thị ranh giới (ví dụ: "#3b82f6")
+  color_data?: any           // JSON lưu trữ chi tiết màu RGBA
+  area?: number              // Diện tích (Hecta)
+  tree_count?: number        // Số lượng cây trong vùng
+  is_active: boolean
+  boundaries: Array<{        // Danh sách tọa độ đỉnh đa giác ranh giới
     latitude: number
     longitude: number
   }>
   notes?: string
-  createdAt: Date
-  updatedAt: Date
+  last_inspection_date?: Date
+  needs_attention?: boolean
+  created: Date
+  updated: Date
 }
 ```
 
-### 4.7 Schema: Investment (`/farms/{farmId}/investments/{investmentId}`)
+### 4.7 Schema: Investment (Base Collection ID: `investm00000000`, Name: `investments`)
 
 ```typescript
 interface Investment {
-  id: string
-  farmId: string
-  amount: number              // VNĐ
-  category: 'Phân bón' | 'Thuốc BVTV' | 'Công cụ' | 'Lao động' | 'Khác'
-  subcategory?: string        // "NPK 16-16-8"
-  date: Date                  // Ngày chi trả
+  id: string                 // PocketBase ID (15 chars)
+  farm: string               // Relation đến 'farms' (maxSelect: 1, cascade delete)
+  created_by_user?: string   // Relation đến auth 'users'
+  amount: number             // Số tiền chi (VNĐ)
+  category: string           // "Phân bón" | "Thuốc BVTV" | "Lao động" ...
+  subcategory?: string       // Chi tiết: "NPK 16-16-8"
+  date: Date                 // Ngày chi
   notes?: string
-  quantity?: number
-  unit?: string               // "Bao" | "Kg" | "Lít" | "Ngày công"
-  pricePerUnit?: number
-  treeCount?: number          // Số cây áp dụng
-  images?: string[]           // URLs ảnh hóa đơn
-  isRecurring: boolean
-  recurringPeriod?: string    // "Hàng tháng" | "Hàng năm"
-  createdBy: string           // User UID
-  createdAt: Date
-  updatedAt: Date
+  quantity?: number          // Số lượng
+  unit?: string              // "Bao" | "Kg" | "Lít" | "Ngày công" ...
+  price_per_unit?: number    // Đơn giá
+  tree_count?: number        // Số cây áp dụng
+  is_recurring: boolean      // Lặp lại định kỳ
+  recurring_period?: string  // "Hàng tháng" | "Hàng năm"
+  images?: string[]          // Mảng file ảnh hóa đơn đính kèm (PocketBase file field, maxSelect: 10)
+  created: Date
+  updated: Date
 }
 ```
 
-### 4.8 Schema: Tree Note (`/farms/{farmId}/trees/{treeId}/notes/{noteId}`)
+### 4.8 Schema: Tree Note (Base Collection ID: `treenotes00000`, Name: `tree_notes`)
 
 ```typescript
 interface TreeNote {
-  id: string
-  content: string
-  author: {
-    uid: string
-    name: string
-    email: string
-  }
+  id: string                 // PocketBase ID (15 chars)
+  farm: string               // Relation đến 'farms' (cascade delete)
+  tree: string               // Relation đến 'trees' (cascade delete)
+  author?: string            // Relation đến auth 'users'
+  author_name: string        // Snapshot tên tác giả lúc viết
+  author_email: string       // Snapshot email tác giả lúc viết
+  content: string            // Nội dung ghi chú
   type: 'info' | 'warning' | 'success' | 'urgent'
-  mentions?: string[]         // @mentioned usernames
-  timestamp: Date
-  isEdited?: boolean
-  editedAt?: Date
+  mentions?: string[]        // Danh sách user ID được tag tên
+  is_edited: boolean         // Đã sửa đổi
+  edited_at?: Date
+  created: Date              // Thời điểm tạo (PocketBase system auto field)
+  updated: Date
 }
 ```
 
-### 4.9 Schema: Farm Access (`/farmAccess/{userId}_{farmId}`)
+### 4.9 Schema: User Farm Access (Base Collection ID: `userfar00000000`, Name: `user_farm_access`)
 
 ```typescript
-interface FarmAccess {
-  id: string                   // `${userId}_${farmId}`
-  userId: string
-  farmId: string
+interface UserFarmAccess {
+  id: string                 // PocketBase ID (15 chars)
+  user: string               // Relation đến auth 'users' (cascade delete)
+  farm: string               // Relation đến 'farms' (cascade delete)
   role: 'owner' | 'manager' | 'worker' | 'viewer'
-  permissions: string[]        // ['read', 'write', 'delete', 'manage_users', ...]
-  createdAt: Date
-  updatedAt: Date
+  permissions: string[]      // Danh sách quyền chi tiết ['read', 'write', 'delete', ...]
+  is_active: boolean         // Đang hoạt động
+  created: Date
+  updated: Date
 }
 ```
 
-### 4.10 Firestore Security Rules (QUAN TRỌNG!)
+### 4.10 PocketBase API Rules (Phân quyền bảo mật)
+Phân quyền truy cập dữ liệu trong PocketBase được cấu hình qua **API Rules** (Filter Expressions) của từng Collection:
 
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+#### 1. Collection `users`
+*   **List / View Rule**: `@request.auth.id != "" && (@request.auth.id == id || @request.auth.role == "super_admin")`
+*   **Create Rule**: Cho phép đăng ký công khai
+*   **Update Rule**: `@request.auth.id != "" && (@request.auth.id == id || @request.auth.role == "super_admin")`
+*   **Delete Rule**: `@request.auth.role == "super_admin"`
 
-    function isAuthenticated() {
-      return request.auth != null;
-    }
+#### 2. Collection `farms`
+*   **List / View Rule**: `@request.auth.id != "" && (@request.auth.role == "super_admin" || @collection.user_farm_access.user ?= @request.auth.id && @collection.user_farm_access.farm ?= id && @collection.user_farm_access.is_active = true)`
+*   **Create Rule**: `@request.auth.id != ""` (Bất kỳ user đã đăng nhập đều có thể tạo nông trại mới)
+*   **Update / Delete Rule**: Chỉ Owner hoặc Super Admin được sửa/xóa nông trại:
+    `@request.auth.id != "" && (@request.auth.role == "super_admin" || @collection.user_farm_access.user ?= @request.auth.id && @collection.user_farm_access.farm ?= id && @collection.user_farm_access.role = "owner" && @collection.user_farm_access.is_active = true)`
 
-    function isAdmin() {
-      return isAuthenticated() && request.auth.token.admin == true;
-    }
+#### 3. Các Collection dữ liệu trang trại (`trees`, `zones`, `tree_notes`, `photos`, `investments`)
+*   **List / View Rule**: `@request.auth.id != "" && (@request.auth.role == "super_admin" || @collection.user_farm_access.user ?= @request.auth.id && @collection.user_farm_access.farm ?= farm && @collection.user_farm_access.is_active = true)`
+*   **Create Rule / Update Rule**: Cho phép nếu không phải role viewer:
+    `@request.auth.id != "" && (@request.auth.role == "super_admin" || @collection.user_farm_access.user ?= @request.auth.id && @collection.user_farm_access.farm ?= farm && @collection.user_farm_access.is_active = true && @collection.user_farm_access.role != "viewer")`
+*   **Delete Rule**: Chỉ Owner, Manager hoặc Super Admin:
+    `@request.auth.id != "" && (@request.auth.role == "super_admin" || @collection.user_farm_access.user ?= @request.auth.id && @collection.user_farm_access.farm ?= farm && @collection.user_farm_access.is_active = true && (@collection.user_farm_access.role == "owner" || @collection.user_farm_access.role == "manager"))`
 
-    function hasFarmAccess(farmId) {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/farmAccess/$(request.auth.uid + '_' + farmId));
-    }
-
-    // Users — only own profile
-    match /users/{userId} {
-      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow create: if isAuthenticated();
-    }
-
-    // Farms — only users with farmAccess
-    match /farms/{farmId} {
-      allow read: if hasFarmAccess(farmId) || isAdmin();
-      allow write: if hasFarmAccess(farmId) || isAdmin();
-
-      // All subcollections (trees, photos, zones, investments, notes)
-      match /{document=**} {
-        allow read: if hasFarmAccess(farmId) || isAdmin();
-        allow write: if hasFarmAccess(farmId) || isAdmin();
-      }
-    }
-
-    // Farm access records
-    match /farmAccess/{accessId} {
-      allow read: if isAuthenticated() &&
-        (request.auth.uid == resource.data.userId || isAdmin());
-      allow write: if isAdmin();
-    }
-
-    // Admin config
-    match /adminConfig/{document=**} {
-      allow read, write: if isAdmin();
-    }
-
-    // ⚠️ KHÔNG CÓ catch-all rule! Mặc định deny tất cả.
-  }
-}
+#### 4. Collection `user_farm_access`
+*   **List / View Rule**: `@request.auth.id != "" && (@request.auth.role == "super_admin" || @collection.user_farm_access.user ?= @request.auth.id && @collection.user_farm_access.farm ?= farm)`
+*   **Create / Update / Delete Rule**: Chỉ Owner hoặc Super Admin được quản lý thành viên:
+    `@request.auth.id != "" && (@request.auth.role == "super_admin" || @collection.user_farm_access.user ?= @request.auth.id && @collection.user_farm_access.farm ?= farm && @collection.user_farm_access.role == "owner")`
 ```
 
 ---
@@ -523,7 +485,7 @@ service cloud.firestore {
 
 **Chức năng:**
 - Form nhập Email + Mật khẩu
-- Gọi Firebase Auth `signInWithEmailAndPassword`
+- Gọi PocketBase Auth: `pb.collection('users').authWithPassword(email, password)`
 - Sau đăng nhập: redirect theo logic ở mục 3.1
 - Hiển thị lỗi rõ ràng (sai mật khẩu, tài khoản bị khóa...)
 
@@ -539,7 +501,7 @@ service cloud.firestore {
 - Hiển thị danh sách farms user có quyền truy cập
 - Click vào farm card → highlight (viền xanh)
 - Nút "Vào Nông Trại" → lưu `currentFarm` vào context + localStorage → redirect `/map`
-- Nút "Tạo Nông Trại Mới" → modal nhập tên + diện tích → `FarmService.createFarm()`
+- Nút "Tạo Nông Trại Mới" → modal nhập tên + diện tích → `FarmService.createFarm()` (gọi API tạo record trong collection `farms` của PocketBase)
 
 **Logic đặc biệt:**
 - Nếu user chỉ có 1 farm → **tự động chọn**, bỏ qua trang này
@@ -550,7 +512,7 @@ service cloud.firestore {
 ### 5.3 `/map` — Bản Đồ Trang Trại ⭐ TRANG CHÍNH
 
 **Chức năng cốt lõi:**
-1. **Bản đồ Leaflet fullscreen** với cây trồng (circle markers) và khu vực (polygon overlays)
+1. **Bản đồ MapLibre GL JS vector/raster fullscreen** với cây trồng (WebGL circle layer) và khu vực (fill/outline layers)
 2. **3 chế độ bản đồ:**
    - 🤖 **Tự động** (mặc định): Zoom 1-18 → Hybrid (vệ tinh Esri + nhãn OSM), Zoom 19+ → Street map
    - 🗺️ **Bản đồ**: OpenStreetMap thuần
@@ -638,9 +600,9 @@ User Location Marker   ──── blue pulsing dot + accuracy circle
    - Giống cây (bắt buộc): grid chọn nhanh [Ri6, Monthong, Musang King, ...]
    - Khu vực (auto-filled từ GPS)
    - [📷 Chụp ảnh] — mở camera, chụp, lưu vào capturedPhotos[]
-5. Confirm → createTree() trong Firestore
-6. Upload photos (nén 500KB) → Firebase Storage
-7. Nếu OFFLINE: lưu ảnh vào IndexedDB, sync khi có wifi
+5. Confirm → createTree() trong PocketBase (tạo record trong collection `trees`)
+6. Upload photos (nén 500KB) → tạo record trong collection `photos` của PocketBase với trường file `image_file` chứa file blob nén dưới dạng multipart form-data.
+7. Nếu OFFLINE: lưu dữ liệu cây và ảnh vào IndexedDB (Mutation Queue), thực hiện đồng bộ lại khi có sóng/mạng wifi
 8. Thông báo thành công (Toast, KHÔNG dùng alert())
 ```
 
@@ -773,7 +735,7 @@ navigator.mediaDevices.getUserMedia({
 2. **Thành viên**: CRUD users, gán farm, phân quyền
 3. **Nông trại**: CRUD farms, gán owner
 4. **Quyền hạn**: Ma trận phân quyền (Owner/Manager/Worker/Viewer × permissions)
-5. **Hệ thống**: Cache management, Firestore sync status, system config
+5. **Hệ thống**: Cache management, PocketBase sync status, system config
 
 ---
 
@@ -784,7 +746,7 @@ navigator.mediaDevices.getUserMedia({
 2. Chụp ảnh → hiển thị preview
 3. Chọn cây liên kết (từ danh sách hoặc auto-detect nearby)
 4. Chọn loại ảnh: general / health / fruit_count
-5. Upload → nén → Firebase Storage
+5. Upload → nén → PocketBase `photos` collection (dưới dạng multipart file field)
 6. (Future) Gửi đến AI service → đếm trái / phát hiện bệnh
 
 ---
@@ -820,22 +782,38 @@ User chọn năm cũ (2025) trong dropdown → toàn bộ dashboard/map/trees/ph
 
 ## 7. Offline & Sync Architecture
 
-### 7.1 Firestore Offline
-- Dùng `persistentLocalCache` + `persistentMultipleTabManager`
-- Firestore tự cache data locally → app hoạt động khi offline
-- Mutations queued → sync khi online
+### 7.1 PocketBase Client Offline Strategy (IndexedDB Cache + Mutation Queue)
+PocketBase không hỗ trợ tự động lưu cache cục bộ và hàng đợi ghi ngoại tuyến như Firestore SDK. Vì vậy, ứng dụng PWA sử dụng kiến trúc đồng bộ tự chế bằng IndexedDB (qua thư viện như `Dexie.js` hoặc custom wrapper):
+
+1.  **Read Cache (Bộ nhớ đệm đọc)**:
+    *   Mỗi khi fetch dữ liệu từ PocketBase (Farms, Trees, Zones, Investments), lưu bản sao dữ liệu vào IndexedDB cục bộ.
+    *   Khi offline hoặc mạng yếu, ứng dụng đọc trực tiếp từ IndexedDB để đảm bảo tốc độ phản hồi cực nhanh (< 100ms).
+    *   Khi online, app kéo dữ liệu mới nhất từ PocketBase, cập nhật lại IndexedDB và cập nhật trạng thái UI.
+
+2.  **Write Mutation Queue (Hàng đợi ghi)**:
+    *   Khi người dùng thực hiện cập nhật (ví dụ: đổi trạng thái cây, sửa GPS, đếm trái) khi ngoại tuyến:
+        a. Cập nhật ngay vào IndexedDB cục bộ (Optimistic UI).
+        b. Đóng gói dữ liệu thay đổi dưới dạng một "Mutation Job" (bao gồm: tên collection, record ID, dữ liệu updates, timestamp).
+        c. Thêm Job này vào bảng `offline_mutations_queue` trong IndexedDB.
+    *   Khi phát hiện mạng trực tuyến trở lại (qua sự kiện `online` của trình duyệt hoặc polling định kỳ):
+        a. Khởi động Service Worker hoặc Sync Worker.
+        b. Đọc lần lượt các Job trong `offline_mutations_queue` theo trình tự thời gian (FIFO).
+        c. Thực hiện gọi API PocketBase để lưu dữ liệu lên server.
+        d. Nếu thành công, xóa Job khỏi IndexedDB. Nếu thất bại (trừ lỗi xác thực), giữ lại trong hàng đợi để thử lại sau.
 
 ### 7.2 Offline Photo Queue (IndexedDB)
+Đối với việc chụp ảnh thực địa khi offline:
 ```
-1. User chụp ảnh khi OFFLINE
-2. Blob ảnh → nén (compressImageSmart) → lưu vào IndexedDB ('offline-photos-db')
-3. Khi online:
-   a. Service Worker detect 'online' event
-   b. Đọc pending photos từ IndexedDB
-   c. Upload lên Firebase Storage
-   d. Tạo photo document trong Firestore
-   e. Xóa khỏi IndexedDB
-   f. Thông báo: "Đã đồng bộ X ảnh"
+1. User chụp ảnh lúc ngoại tuyến (Airplane mode hoặc mất sóng trong vườn).
+2. Ảnh Blob → nén (compressImageSmart) → lưu vào IndexedDB ('offline_photos_queue') cùng với metadata (treeId, farmId, latitude, longitude, timestamp, photoType, seasonYear).
+3. Cập nhật UI tạm thời hiển thị ảnh từ blob URL cục bộ.
+4. Khi khôi phục kết nối:
+   a. Service Worker/Sync Manager nhận diện trạng thái online.
+   b. Đọc các ảnh đang chờ từ IndexedDB 'offline_photos_queue'.
+   c. Khởi tạo FormData, đính kèm ảnh nén và các trường metadata.
+   d. Gửi request POST tạo record trong collection `photos` của PocketBase.
+   e. Nhận kết quả thành công → xóa ảnh tương ứng khỏi IndexedDB.
+   f. Phát Toast thông báo: "Đã đồng bộ thành công X hình ảnh lên hệ thống".
 ```
 
 ### 7.3 Photo Compression Settings
@@ -955,8 +933,7 @@ logger.error('Firestore error', e)  // Luôn hiện
 ## 12. PWA Requirements
 
 - `manifest.json`: name, icons, theme_color, background_color, start_url
-- Service Worker: cache app shell + Leaflet tiles + Leaflet icons
-- **Leaflet icons must be bundled locally** (NOT from CDN) để Service Worker cache được
+- Service Worker: cache app shell + MapLibre vector/raster tiles
 - IndexedDB: offline photo queue
 - `display: standalone` cho fullscreen mobile experience
 
@@ -987,39 +964,38 @@ logger.error('Firestore error', e)  // Luôn hiện
 ## 14. Environment Variables
 
 ```env
-# Firebase
-NEXT_PUBLIC_FIREBASE_API_KEY=
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_FIREBASE_APP_ID=
+# PocketBase Connection
+NEXT_PUBLIC_POCKETBASE_URL=https://farmbackend.buonme.com
+
+# PocketBase Admin/Migration (Only for scripts, do not expose to client!)
+POCKETBASE_ADMIN_EMAIL=admin@buonme.com
+POCKETBASE_ADMIN_PASSWORD=
 
 # App
 NEXT_PUBLIC_SITE_URL=https://farm-manager.vercel.app
 NEXT_PUBLIC_ENABLE_LOGS=false          # Enable debug logs in production
 
-# ⚠️ KHÔNG có NEXT_PUBLIC_ADMIN_UID hay NEXT_PUBLIC_ADMIN_EMAIL!
-# Admin check phải qua Firebase Custom Claims.
+# ⚠️ KHÔNG được dùng credential admin trực tiếp trên Client.
+# Admin check trên Client dựa vào roles / user_roles của record người dùng.
 ```
 
 ---
 
 ## 15. Checklist Trước Khi Ship
 
-- [ ] Firestore rules: KHÔNG CÓ catch-all `match /{document=**}`
-- [ ] Admin check: qua Custom Claims, KHÔNG hard-code UID
+- [ ] PocketBase API rules: cấu hình phân quyền chi tiết cho tất cả các collection (ngăn chặn truy cập công khai trái phép)
+- [ ] Admin check: kiểm tra qua role field hoặc bảng `user_roles`, KHÔNG hard-code UID
 - [ ] ESLint: KHÔNG `ignoreDuringBuilds: true`
 - [ ] TypeScript: KHÔNG `any` type (dùng proper interfaces)
 - [ ] Logging: dùng `logger`, KHÔNG `console.log` trực tiếp
 - [ ] UI feedback: Toast/Dialog, KHÔNG `alert()`/`prompt()`
 - [ ] `convertToDate`: chỉ 1 implementation duy nhất trong `date-utils.ts`
-- [ ] Leaflet icons: bundled trong `/public/`, không CDN
+- [ ] MapLibre CSS/Icons: nạp cục bộ hoặc import trực tiếp, không CDN ngoài PWA cache
 - [ ] `playwright` trong `devDependencies`, KHÔNG `dependencies`
 - [ ] Không có files rác (.swp, Trash/, archive/)
 - [ ] Mỗi component ≤ 300 LOC (tách nếu lớn hơn)
 - [ ] Responsive: test trên iPhone SE (320px width)
-- [ ] Offline: test tạo cây + chụp ảnh khi airplane mode
+- [ ] Offline: test lưu ngoại tuyến tạo cây + chụp ảnh khi airplane mode
 
 ---
 
@@ -1036,7 +1012,7 @@ NEXT_PUBLIC_ENABLE_LOGS=false          # Enable debug logs in production
 | **Hiển thị** | Fullscreen overlay (`fixed inset-0 z-[50000]`) |
 | **Đóng** | Nút X góc trái, phím Escape |
 | **Props** | `tree: Tree`, `isOpen: boolean`, `onClose()`, `onSaved(tree)` |
-| **Data sources** | Auth Context, Firestore (trees, photos, notes, seasons, investments, auditLogs), Firebase Storage |
+| **Data sources** | Auth Context, PocketBase collections (users, farms, trees, zones, tree_notes, investments, photos, activity_logs) |
 
 ### A.2 Component Hierarchy (Phiên bản mới đề xuất)
 
@@ -1057,7 +1033,7 @@ FullscreenTreeShowcase/
 │
 ├── TreeNoteSystem.tsx              ← Collaborative notes (363 LOC — OK size)
 │   ├── NoteInput (text area + type selector + submit)
-│   └── NoteTimeline (real-time Firestore listener)
+│   └── NoteTimeline (real-time PocketBase SSE listener)
 │
 ├── DurianSeasonCard.tsx            ← Season lifecycle status
 │
@@ -1154,7 +1130,7 @@ interface TreeShowcaseState {
   saving: boolean                  // Save in progress
 
   // Season data
-  lastSeason: {                    // From /farms/{farmId}/seasons collection
+  lastSeason: {                    // Đọc từ trường JSON seasons trong collection farms hoặc từ record farm hiện tại
     name?: string
     perTreeCount: number
     endDate?: Date
@@ -1218,7 +1194,7 @@ User nhập count → nhấn "Lưu số lượng"
      │
      ▼
 4. updateTree(farmId, treeId, userId, updates)
-   → Firestore write + AuditLog tự động
+   → PocketBase write + ActivityLog tự động
      │
      ▼
 5. onSaved({...tree, ...updates}) → parent component cập nhật local state
@@ -1284,7 +1260,7 @@ User nhấn "Lưu GPS"
 #### A.6.1 ImageGallery (Tách thành 5 files)
 
 **Chức năng chính:**
-- Load ảnh từ 2 nguồn: **Firestore photos collection** (chính) + **Firebase Storage pattern matching** (legacy fallback)
+- Load ảnh từ: **PocketBase photos collection** (sử dụng API lấy URL từ file field `image_file` qua `pb.files.getUrl(record, record.image_file)`)
 - Hiển thị grid ảnh 2-3 cột responsive
 - Click ảnh → fullscreen viewer với **pinch-to-zoom** (mobile) + **mouse wheel zoom** (desktop) + **drag pan**
 - Double-tap → toggle zoom 1x ↔ 2.5x
@@ -1297,9 +1273,9 @@ User nhấn "Lưu GPS"
 2. Nút "Thêm ảnh" → `<input accept="image/*">` (từ thư viện)
 3. Chọn file → hiện modal chọn photo type: general / health / fruit_count
 4. Nén bằng `compressImageSmart(file, photoType)`
-5. Upload → Firebase Storage path: `farms/{farmId}/trees/{treeId}/photos/{timestamp}/{filename}`
-6. Tạo photo document trong Firestore
-7. Log audit event: `PHOTO_UPLOADED`
+5. Upload → PocketBase: tạo record mới trong `photos` collection, đính kèm file blob nén dưới dạng multipart form-data.
+6. Record được lưu tự động trên PocketBase server và liên kết với record cây tương ứng.
+7. Log audit event: `PHOTO_UPLOADED` (lưu vào `activity_logs` collection)
 8. Refresh gallery + hiện badge "✨ Mới"
 
 **Season filter:**
@@ -1308,7 +1284,7 @@ User nhấn "Lưu GPS"
 
 **Xóa ảnh:** (Chỉ owner/manager có quyền)
 1. Nút 🗑️ trên photo → Confirm dialog
-2. Xóa Firestore doc → xóa Storage file → refresh gallery
+2. Xóa PocketBase record (server sẽ tự động cascade xóa file vật lý tương ứng) → refresh gallery
 
 **Cache:**
 - Storage images cache bằng `Map<string, images>` trong memory
@@ -1317,22 +1293,27 @@ User nhấn "Lưu GPS"
 #### A.6.2 TreeNoteSystem
 
 **Chức năng:**
-- Real-time notes: Firestore `onSnapshot` listener
+- Real-time notes: PocketBase Realtime subscription (SSE) qua `pb.collection('tree_notes').subscribe('*')` lọc theo treeId cục bộ.
 - 4 loại note: 📘 Info, ⚠️ Warning, ✅ Success, 🚨 Urgent
 - @Mentions: nhập `@username` → highlight + (future) notification
 - Timeline hiển thị: avatar + tên + relative time + note content + type badge
 - Max 50 notes hiển thị
 
-**Firestore path:** `/farms/{farmId}/trees/{treeId}/notes/{noteId}`
+**PocketBase collection:** `tree_notes`
 
 **Schema:**
 ```typescript
 {
+  id: string
+  farm: string // Relation
+  tree: string // Relation
   content: string
-  author: { uid, name, email }
+  author?: string // Relation to users
+  author_name: string
+  author_email: string
   type: 'info' | 'warning' | 'success' | 'urgent'
   mentions?: string[]
-  timestamp: serverTimestamp()
+  created: Date // PocketBase system auto field
 }
 ```
 
@@ -1349,7 +1330,7 @@ User nhấn "Lưu GPS"
 | 12+ | `new_season` | 🥭 | orange |
 | No data | `new_tree` | 🌱 | gray |
 
-**Data source:** Query `/farms/{farmId}/seasons`, `orderBy('endDate', 'desc'), limit(1)` → lấy `perTreeBreakdown[treeId]` để có fruit count mùa trước.
+**Data source:** Đọc thông tin từ trường JSON `seasons` trên collection `farms` và so sánh qua dữ liệu lịch sử trong `seasonal_stats` của cây sầu riêng.
 
 #### A.6.4 SeasonInvestmentCard
 
@@ -1358,10 +1339,9 @@ User nhấn "Lưu GPS"
 **Data query:**
 ```typescript
 // Mùa hiện tại:
-query(investmentsRef, 
-  where('date', '>=', new Date(`${year}-01-01`)),
-  where('date', '<=', new Date(`${year}-12-31`))
-)
+pb.collection('investments').getList(1, 100, {
+  filter: `farm = "${farmId}" && date >= "${year}-01-01 00:00:00" && date <= "${year}-12-31 23:59:59"`
+})
 // Mùa trước: tương tự cho year-1
 ```
 
@@ -1383,7 +1363,7 @@ So với mùa trước: -7.3M VNĐ (-47.1%) 🟢
 
 **Chức năng:** Hiển thị lịch sử thay đổi (audit log) của cây.
 
-**Data source:** `/auditLogs` collection, `where('resourceId', '==', treeId)`, `orderBy('timestamp', 'desc')`, `limit(20)`
+**Data source:** `activity_logs` collection, filter: `resource = "trees" && resource_id = "${treeId}"`, sort: `-created`, limit: 20
 
 **Hiển thị:** Timeline dọc với icon + tên user + relative time + action + old→new values
 
@@ -1397,7 +1377,7 @@ So với mùa trước: -7.3M VNĐ (-47.1%) 🟢
 | Status change | ✅ | indigo | "Trạng thái: Cây Non → Trưởng Thành" |
 | General update | ✏️ | gray | Field name + old → new |
 
-**User name resolution:** Load from `/users/{userId}` collection, cache in-memory Map.
+**User name resolution:** Load từ PocketBase `users` collection, cache in-memory Map hoặc sử dụng tính năng expand relation.
 
 #### A.6.6 ShareTreeModal
 
@@ -1419,7 +1399,7 @@ So với mùa trước: -7.3M VNĐ (-47.1%) 🟢
 
 4. **Skeleton loading**: Mỗi section có skeleton riêng, load độc lập. Không block toàn bộ page vì 1 section chậm.
 
-5. **Optimistic UI**: Khi nhấn "Lưu", update UI ngay → sync Firestore background → rollback nếu lỗi.
+5. **Optimistic UI**: Khi nhấn "Lưu", update UI ngay → sync PocketBase background → rollback nếu lỗi.
 
 #### A.7.2 Performance
 
@@ -1456,8 +1436,8 @@ So với mùa trước: -7.3M VNĐ (-47.1%) 🟢
 | 3 | ~60 `console.log` trong ImageGallery | Dùng `logger.debug()` |
 | 4 | `data as any` khi parse season perTreeBreakdown | Proper typing với interface |
 | 5 | GPS edit dùng `alert()` cho validation | Dùng inline error message (đã fix) |
-| 6 | `SeasonInvestmentCard` query Firestore trực tiếp trong component | Chuyển sang service layer hoặc custom hook |
-| 7 | Photo upload viết trực tiếp Firestore trong component (L552-670) | Chuyển sang `PhotoService.uploadForTree()` |
+| 6 | `SeasonInvestmentCard` query PocketBase trực tiếp trong component | Chuyển sang service layer hoặc custom hook |
+| 7 | Photo upload viết trực tiếp PocketBase trong component (L552-670) | Chuyển sang `PhotoService.uploadForTree()` |
 | 8 | `convertToDate` logic lặp trong `getDurianSeasonStatus` | Import từ `date-utils.ts` |
 | 9 | `handleSave` check permissions nhưng không dùng kết quả (L472-485) | Xóa dead code hoặc dùng để block save |
 | 10 | Không có loading skeleton cho TreeNoteSystem + TreeTimeline | Thêm skeleton states |
