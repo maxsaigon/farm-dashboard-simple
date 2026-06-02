@@ -505,21 +505,36 @@ const UnifiedMap = memo(({
   })
 
   // Handle auto layer switching based on zoom
-  const handleZoomEnd = useCallback((e: any) => {
+  const updateLayerForZoom = useCallback((zoomLevel: number) => {
     if (mapLayer !== 'auto') return
-    const currentZoom = e.target.getZoom()
-    if (currentZoom >= 19) {
-      if (activeLayer !== 'street') {
-        console.log(`🔄 Auto-switching to street (zoom: ${currentZoom})`)
-        setActiveLayer('street')
-      }
+    if (zoomLevel >= 19) {
+      setActiveLayer(prev => {
+        if (prev !== 'street') {
+          console.log(`🔄 Auto-switching to street (zoom: ${zoomLevel})`)
+          return 'street'
+        }
+        return prev
+      })
     } else {
-      if (activeLayer !== 'hybrid') {
-        console.log(`🔄 Auto-switching to hybrid (zoom: ${currentZoom})`)
-        setActiveLayer('hybrid')
-      }
+      setActiveLayer(prev => {
+        if (prev !== 'hybrid') {
+          console.log(`🔄 Auto-switching to hybrid (zoom: ${zoomLevel})`)
+          return 'hybrid'
+        }
+        return prev
+      })
     }
-  }, [mapLayer, activeLayer])
+  }, [mapLayer])
+
+  const handleZoomEnd = useCallback((e: any) => {
+    const currentZoom = e.target.getZoom()
+    updateLayerForZoom(currentZoom)
+  }, [updateLayerForZoom])
+
+  const handleMapLoad = useCallback((e: any) => {
+    const currentZoom = e.target.getZoom()
+    updateLayerForZoom(currentZoom)
+  }, [updateLayerForZoom])
 
   // Sync with external mapLayer prop
   useEffect(() => {
@@ -533,12 +548,7 @@ const UnifiedMap = memo(({
     setIsZoomedIn(prev => (prev !== zoomedIn ? zoomedIn : prev))
   }, [])
 
-  // Update active layer when manual selection changes
-  useEffect(() => {
-    if (mapLayer !== 'auto') {
-      setActiveLayer(mapLayer === 'satellite' ? 'hybrid' : mapLayer)
-    }
-  }, [mapLayer])
+
 
   // Update local state when external props change
   useEffect(() => {
@@ -575,6 +585,21 @@ const UnifiedMap = memo(({
   useEffect(() => {
     setIsZoomedIn(mapConfig.zoom >= 18)
   }, [mapConfig.zoom])
+
+  // Update active layer when mapLayer changes or on map configuration changes
+  useEffect(() => {
+    if (mapLayer !== 'auto') {
+      setActiveLayer(mapLayer === 'satellite' ? 'hybrid' : mapLayer)
+    } else {
+      // For auto mode, perform initial check based on current map zoom or mapConfig.zoom
+      const map = mapRef.current?.getMap()
+      if (map) {
+        updateLayerForZoom(map.getZoom())
+      } else {
+        updateLayerForZoom(mapConfig.zoom)
+      }
+    }
+  }, [mapLayer, mapConfig.zoom, updateLayerForZoom])
 
   // GPS state management with iOS-Optimized GPS
   const [gpsEnabled, setGpsEnabled] = useState(false)
@@ -933,6 +958,7 @@ const UnifiedMap = memo(({
         mapLib={maplibregl}
         onZoomEnd={handleZoomEnd}
         onZoom={handleZoom}
+        onLoad={handleMapLoad}
         onClick={handleMapClick}
         onMouseMove={handleMouseMove}
         cursor={cursor}
@@ -945,7 +971,7 @@ const UnifiedMap = memo(({
             type="raster"
             tiles={["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"]}
             tileSize={256}
-            maxzoom={19}
+            maxzoom={18}
           >
             <Layer
               id="satellite-layer"
