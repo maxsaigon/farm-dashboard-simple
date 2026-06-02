@@ -557,7 +557,7 @@ export default function SimplifiedZoneManagement() {
 
       {/* Add / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000] p-4 animate-fade-in">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform scale-100 transition-all">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
@@ -709,7 +709,7 @@ export default function SimplifiedZoneManagement() {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmZone && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-in text-center">
             <div className="w-14 h-14 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <ExclamationTriangleIcon className="h-7 w-7" />
