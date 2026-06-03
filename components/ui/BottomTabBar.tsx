@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MapIcon, ViewfinderCircleIcon, ViewfinderCircleIcon as ZoneIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
+import { MapIcon, ViewfinderCircleIcon, ViewfinderCircleIcon as ZoneIcon, CurrencyDollarIcon, QueueListIcon } from '@heroicons/react/24/outline'
 import { useCallback } from 'react'
 import type ReactType from 'react'
 
@@ -15,6 +15,7 @@ interface TabItem {
 
 const TABS: TabItem[] = [
   { id: 'map', name: 'Bản đồ', href: '/map', icon: MapIcon },
+  { id: 'trees', name: 'Cây', href: '/trees', icon: QueueListIcon },
   { id: 'zones', name: 'Khu', href: '/zones', icon: ZoneIcon },
   { id: 'money', name: 'Tiền', href: '/money', icon: CurrencyDollarIcon },
 ]

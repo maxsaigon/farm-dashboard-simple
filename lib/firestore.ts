@@ -404,10 +404,25 @@ async function getZoneNameMap(farmId: string): Promise<Map<string, string>> {
 async function enrichTreesWithZoneNames(trees: Tree[], farmId: string): Promise<Tree[]> {
   const zoneNameMap = await getZoneNameMap(farmId)
   
-  return trees.map(tree => ({
-    ...tree,
-    zoneName: tree.zoneCode ? zoneNameMap.get(tree.zoneCode) : undefined
-  }))
+  return trees.map(tree => {
+    let resolvedZoneName = tree.zoneId ? zoneNameMap.get(tree.zoneId) : undefined
+    
+    if (!resolvedZoneName && tree.zoneCode) {
+      resolvedZoneName = zoneNameMap.get(tree.zoneCode)
+    }
+    
+    if (!resolvedZoneName && tree.zoneName) {
+      const isCoordinate = /^Z\d+_\d+$/i.test(tree.zoneName)
+      if (!isCoordinate) {
+        resolvedZoneName = tree.zoneName
+      }
+    }
+    
+    return {
+      ...tree,
+      zoneName: resolvedZoneName
+    }
+  })
 }
 
 // Photos management

@@ -160,10 +160,22 @@ function MapPageContent() {
             if (z.code) codeToName.set(z.code, z.name)
             if (z.name) codeToName.set(z.name, z.name)
           })
-          const treesWithNames = parsedTrees.map((t: any) => ({
-            ...t,
-            zoneName: t.zoneName || (t.zoneCode ? codeToName.get(String(t.zoneCode)) : undefined)
-          }))
+          const treesWithNames = parsedTrees.map((t: any) => {
+            let resolvedZoneName = t.zoneId ? codeToName.get(String(t.zoneId)) : undefined
+            if (!resolvedZoneName && t.zoneCode) {
+              resolvedZoneName = codeToName.get(String(t.zoneCode))
+            }
+            if (!resolvedZoneName && t.zoneName) {
+              const isCoordinate = /^Z\d+_\d+$/i.test(t.zoneName)
+              if (!isCoordinate) {
+                resolvedZoneName = t.zoneName
+              }
+            }
+            return {
+              ...t,
+              zoneName: resolvedZoneName
+            }
+          })
           
           setTrees(treesWithNames)
           setZones(parsedZones)
@@ -221,10 +233,22 @@ function MapPageContent() {
         if (z.code) codeToName.set(z.code, z.name)
         if (z.name) codeToName.set(z.name, z.name)
       })
-      const treesWithNames = treesData.map(t => ({
-        ...t,
-        zoneName: t.zoneName || (t.zoneCode ? codeToName.get(String(t.zoneCode)) : undefined)
-      }))
+      const treesWithNames = treesData.map(t => {
+        let resolvedZoneName = t.zoneId ? codeToName.get(String(t.zoneId)) : undefined
+        if (!resolvedZoneName && t.zoneCode) {
+          resolvedZoneName = codeToName.get(String(t.zoneCode))
+        }
+        if (!resolvedZoneName && t.zoneName) {
+          const isCoordinate = /^Z\d+_\d+$/i.test(t.zoneName)
+          if (!isCoordinate) {
+            resolvedZoneName = t.zoneName
+          }
+        }
+        return {
+          ...t,
+          zoneName: resolvedZoneName
+        }
+      })
 
       console.log('📝 [MapPage] Setting trees and zones state')
       setTrees(treesWithNames)

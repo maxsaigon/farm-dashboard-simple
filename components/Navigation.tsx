@@ -18,7 +18,8 @@ import {
   ShieldCheckIcon,
   ArrowRightOnRectangleIcon,
   UserIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  QueueListIcon
 } from '@heroicons/react/24/outline'
 
 export function Navigation() {
@@ -45,6 +46,13 @@ export function Navigation() {
       href: '/map',
       icon: MapIcon,
       emoji: '🗺️'
+    },
+    {
+      name: 'Cây',
+      description: 'Quản lý danh sách cây',
+      href: '/trees',
+      icon: QueueListIcon,
+      emoji: '🌳'
     },
     {
       name: 'Khu Vực',

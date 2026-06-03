@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { updateTree, deleteTree } from '@/lib/firestore'
 import { Tree } from '@/lib/types'
+import { collection, getDocs, query, where } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import {
   PencilIcon,
   TrashIcon,
@@ -40,6 +42,44 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
   const [customFields, setCustomFields] = useState<TreeCustomFields | undefined>()
   const [isMobile, setIsMobile] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
+  const [zones, setZones] = useState<{ id: string, name: string, code?: string }[]>([])
+
+  // Load zones list for select dropdown when editing
+  useEffect(() => {
+    if (!currentFarm?.id || !isEditing) return
+
+    const loadZonesList = async () => {
+      try {
+        const farmZonesRef = collection(db, 'farms', currentFarm.id, 'zones')
+        const legacyZonesRef = collection(db, 'zones')
+        const legacyZonesQuery = query(legacyZonesRef, where('farmId', '==', currentFarm.id))
+
+        const [farmZonesSnapshot, legacyZonesSnapshot] = await Promise.all([
+          getDocs(farmZonesRef),
+          getDocs(legacyZonesQuery)
+        ])
+
+        const zonesMap = new Map<string, { id: string, name: string, code?: string }>()
+        const processDoc = (d: any) => {
+          const data = d.data()
+          zonesMap.set(d.id, {
+            id: d.id,
+            name: data.name || `Khu ${d.id.slice(-4)}`,
+            code: data.code || ''
+          })
+        }
+
+        legacyZonesSnapshot.docs.forEach(processDoc)
+        farmZonesSnapshot.docs.forEach(processDoc)
+
+        setZones(Array.from(zonesMap.values()))
+      } catch (err) {
+        console.error('Failed to load zones in TreeDetail:', err)
+      }
+    }
+
+    loadZonesList()
+  }, [currentFarm?.id, isEditing])
 
   // Mobile detection and body scroll locking
   useEffect(() => {
@@ -100,6 +140,8 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
       name: tree.name || '',
       variety: tree.variety || '',
       zoneCode: tree.zoneCode || '',
+      zoneName: tree.zoneName || '',
+      zoneId: tree.zoneId || '',
       plantingDate: tree.plantingDate,
       healthStatus: seasonalStats.healthStatus as Tree['healthStatus'],
       treeHeight: tree.treeHeight || 0,
@@ -492,23 +534,48 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
               </div>
 
               {/* Only show zone if it exists and makes sense */}
-              {(tree.zoneCode || isEditing) && (
+              {(tree.zoneId || tree.zoneName || tree.zoneCode || isEditing) && (
                 <div>
                   <label className="text-lg font-semibold text-gray-800 flex items-center mb-2">
                     📍 Khu vực
                   </label>
                   {isEditing ? (
-                    <input
-                      type="text"
-                      value={formData.zoneCode || ''}
-                      onChange={(e) => setFormData({ ...formData, zoneCode: e.target.value })}
+                    <select
+                      value={formData.zoneId || ''}
+                      onChange={(e) => {
+                        const selectedId = e.target.value
+                        const selectedZoneObj = zones.find(z => z.id === selectedId)
+                        if (selectedZoneObj) {
+                          setFormData(prev => ({
+                            ...prev,
+                            zoneId: selectedZoneObj.id,
+                            zoneName: selectedZoneObj.name,
+                            zoneCode: (prev.zoneCode && /^Z\d+_\d+$/i.test(prev.zoneCode))
+                              ? prev.zoneCode
+                              : (selectedZoneObj.code || selectedZoneObj.name)
+                          }))
+                        } else {
+                          setFormData(prev => ({
+                            ...prev,
+                            zoneId: '',
+                            zoneName: '',
+                            zoneCode: (prev.zoneCode && /^Z\d+_\d+$/i.test(prev.zoneCode)) ? prev.zoneCode : ''
+                          }))
+                        }
+                      }}
                       className="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-xl 
                                  focus:border-green-500 focus:ring-4 focus:ring-green-100
                                  bg-white shadow-sm min-touch"
-                      placeholder="Ví dụ: A01, B05..."
-                    />
+                    >
+                      <option value="">Chưa phân khu (Chưa chọn)</option>
+                      {zones.map(z => (
+                        <option key={z.id} value={z.id}>
+                          {z.name} {z.code ? `(${z.code})` : ''}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
-                    <p className="text-gray-900 text-lg font-medium">{tree.zoneName || tree.zoneCode || 'Chưa phân khu'}</p>
+                    <p className="text-gray-900 text-lg font-medium">{tree.zoneName || 'Chưa phân khu'}</p>
                   )}
                 </div>
               )}

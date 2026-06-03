@@ -6,7 +6,7 @@ import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { subscribeToTrees } from '@/lib/firestore'
 import { DataReconciliationService } from '@/lib/data-reconciliation-service'
 import { Tree } from '@/lib/types'
-import { 
+import {
   MagnifyingGlassIcon,
   MapPinIcon,
   ExclamationTriangleIcon,
@@ -15,9 +15,11 @@ import {
   EyeIcon,
   PencilIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { TreeImagePreview } from './TreeImagePreview'
+import { normalizeVariety, normalizeZone } from '@/lib/normalization'
 
 // No mock data - use only real API data
 
@@ -99,7 +101,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
     const varietySet = new Set<string>()
     trees.forEach(tree => {
       if (tree.variety) {
-        varietySet.add(tree.variety)
+        varietySet.add(normalizeVariety(tree.variety))
       }
     })
     return Array.from(varietySet).sort()
@@ -108,9 +110,8 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
   const zones = useMemo(() => {
     const zoneSet = new Set<string>()
     trees.forEach(tree => {
-      const zoneValue = tree.zoneName || tree.zoneCode
-      if (zoneValue) {
-        zoneSet.add(zoneValue)
+      if (tree.zoneName) {
+        zoneSet.add(normalizeZone(tree.zoneName))
       }
     })
     return Array.from(zoneSet).sort()
@@ -120,27 +121,27 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
   const filteredAndSortedTrees = useMemo(() => {
     const filtered = trees.filter(tree => {
       // Search filter
-      const matchesSearch = !searchTerm || 
+      const matchesSearch = !searchTerm ||
         tree.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         tree.qrCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (tree.zoneName || tree.zoneCode)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tree.variety?.toLowerCase().includes(searchTerm.toLowerCase())
+        (tree.zoneName && normalizeZone(tree.zoneName).toLowerCase().includes(searchTerm.toLowerCase())) ||
+        normalizeVariety(tree.variety).toLowerCase().includes(searchTerm.toLowerCase())
 
       // Status filter
-      const matchesStatus = filterStatus === 'all' || 
+      const matchesStatus = filterStatus === 'all' ||
         (filterStatus === 'healthy' && ['Excellent', 'Good'].includes(tree.healthStatus || '')) ||
         (filterStatus === 'needs_attention' && tree.needsAttention) ||
         (filterStatus === 'poor' && ['Fair', 'Poor'].includes(tree.healthStatus || ''))
 
       // Variety filter
-      const matchesVariety = filterVariety === 'all' || tree.variety === filterVariety
+      const matchesVariety = filterVariety === 'all' || normalizeVariety(tree.variety) === filterVariety
 
       // Zone filter
-      const matchesZone = filterZone === 'all' || (tree.zoneName || tree.zoneCode) === filterZone
+      const matchesZone = filterZone === 'all' || (tree.zoneName && normalizeZone(tree.zoneName) === filterZone)
 
       // Fruit count filter
       const totalFruitCount = (tree.manualFruitCount || 0) + (tree.aiFruitCount || 0)
-      const matchesFruitCount = filterFruitCount === 'all' || 
+      const matchesFruitCount = filterFruitCount === 'all' ||
         (filterFruitCount === 'none' && totalFruitCount === 0) ||
         (filterFruitCount === 'low' && totalFruitCount > 0 && totalFruitCount <= 10) ||
         (filterFruitCount === 'medium' && totalFruitCount > 10 && totalFruitCount <= 30) ||
@@ -178,7 +179,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
       }
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortOrder === 'asc' 
+        return sortOrder === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue)
       }
@@ -197,7 +198,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
   const virtualizer = useVirtualizer({
     count: filteredAndSortedTrees.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 140, // estimated height of each tree card
+    estimateSize: () => 80, // estimated height of each tree card
     overscan: 5
   })
 
@@ -247,7 +248,7 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
   }
 
   return (
-    <div className={`bg-white rounded-xl shadow-lg border border-gray-200 ${className}`}>
+    <div className={`bg-white rounded-xl shadow-md border border-gray-100 sm:border-gray-200 ${className}`}>
       {/* Pull-to-refresh indicator */}
       {pullDistance > 0 && (
         <div className="flex items-center justify-center text-sm text-gray-600" style={{ height: Math.min(pullDistance, 80) }}>
@@ -256,107 +257,150 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
       )}
 
       {/* Header */}
-      <div className="p-6 border-b border-gray-200" onTouchStart={(e) => {
+      <div className="p-3 sm:p-5 border-b border-gray-100" onTouchStart={(e) => {
         if (window.scrollY <= 0) {
           touchStartY.current = e.touches[0].clientY
           pulling.current = true
           setPullDistance(0)
         }
       }}
-      onTouchMove={(e) => {
-        if (!pulling.current || touchStartY.current == null) return
-        const dy = e.touches[0].clientY - touchStartY.current
-        if (dy > 0) {
-          setPullDistance(dy)
-        }
-      }}
-      onTouchEnd={() => {
-        if (!pulling.current) return
-        pulling.current = false
-        if (pullDistance > 80) {
-          setIsRefreshing(true)
-          setRefreshToken((x) => x + 1)
-          if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate?.(10)
-          setTimeout(() => setIsRefreshing(false), 600)
-        }
-        setPullDistance(0)
-      }}
+        onTouchMove={(e) => {
+          if (!pulling.current || touchStartY.current == null) return
+          const dy = e.touches[0].clientY - touchStartY.current
+          if (dy > 0) {
+            setPullDistance(dy)
+          }
+        }}
+        onTouchEnd={() => {
+          if (!pulling.current) return
+          pulling.current = false
+          if (pullDistance > 80) {
+            setIsRefreshing(true)
+            setRefreshToken((x) => x + 1)
+            if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate?.(10)
+            setTimeout(() => setIsRefreshing(false), 600)
+          }
+          setPullDistance(0)
+        }}
       >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Danh Sách Cây</h2>
-            <p className="text-sm text-gray-600 mt-1">
+        <div className="flex flex-col gap-2.5">
+          {/* Title on desktop, hidden on mobile */}
+          <div className="hidden sm:block">
+            <h2 className="text-lg font-bold text-gray-900">Danh Sách Cây</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
               Hiển thị {filteredAndSortedTrees.length} cây
               {filteredAndSortedTrees.length !== trees.length && ` (${trees.length} tổng cộng)`}
             </p>
           </div>
 
-          {/* Search and filters */}
-          <div className="flex flex-col gap-3">
-            {/* Search */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm theo tên, mã QR, khu vực, giống..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-              </div>
+          {/* Search and count inline */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm cây, QR, giống, khu..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-8 py-1.5 border border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-green-500 focus:border-transparent bg-gray-50 text-gray-900"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200 transition-colors"
+                  aria-label="Xóa tìm kiếm"
+                >
+                  <XMarkIcon className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
+            {/* Compact counter badge */}
+            <div className="flex-shrink-0 bg-green-50 text-green-700 font-semibold px-2.5 py-1.5 rounded-xl text-[11px] border border-green-100">
+              {filteredAndSortedTrees.length} cây
+            </div>
+          </div>
 
-            {/* Filters Row 1 */}
-            <div className="flex flex-wrap gap-2">
+          {/* Horizontal Scrollable Select Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-none">
+            {/* status filter */}
+            <div className="relative flex-shrink-0">
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                className="appearance-none pl-2.5 pr-6 py-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-[11px] font-medium text-gray-600 cursor-pointer outline-none focus:ring-1 focus:ring-green-500"
               >
-                <option value="all">Tất cả trạng thái</option>
+                <option value="all">Trạng thái: Tất cả</option>
                 <option value="healthy">Khỏe mạnh</option>
                 <option value="needs_attention">Cần chú ý</option>
                 <option value="poor">Yếu</option>
               </select>
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
 
+            {/* variety filter */}
+            <div className="relative flex-shrink-0">
               <select
                 value={filterVariety}
                 onChange={(e) => setFilterVariety(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                className="appearance-none pl-2.5 pr-6 py-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-[11px] font-medium text-gray-600 cursor-pointer outline-none focus:ring-1 focus:ring-green-500"
               >
-                <option value="all">Tất cả giống</option>
+                <option value="all">Giống: Tất cả</option>
                 {varieties.map(variety => (
                   <option key={variety} value={variety}>{variety}</option>
                 ))}
               </select>
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
 
+            {/* zone filter */}
+            <div className="relative flex-shrink-0">
               <select
                 value={filterZone}
                 onChange={(e) => setFilterZone(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                className="appearance-none pl-2.5 pr-6 py-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-[11px] font-medium text-gray-600 cursor-pointer outline-none focus:ring-1 focus:ring-green-500"
               >
-                <option value="all">Tất cả khu vực</option>
+                <option value="all">Khu vực: Tất cả</option>
                 {zones.map(zone => (
                   <option key={zone} value={zone}>{zone}</option>
                 ))}
               </select>
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
 
+            {/* fruit count filter */}
+            <div className="relative flex-shrink-0">
               <select
                 value={filterFruitCount}
                 onChange={(e) => setFilterFruitCount(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                className="appearance-none pl-2.5 pr-6 py-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-[11px] font-medium text-gray-600 cursor-pointer outline-none focus:ring-1 focus:ring-green-500"
               >
-                <option value="all">Tất cả số trái</option>
+                <option value="all">Số trái: Tất cả</option>
                 <option value="none">Không có trái (0)</option>
                 <option value="low">Ít trái (1-10)</option>
                 <option value="medium">Trung bình (11-30)</option>
                 <option value="high">Nhiều trái (&gt;30)</option>
               </select>
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
 
-            {/* Filters Row 2 - Sorting and Pagination */}
-            <div className="flex flex-wrap gap-2">
+            {/* sort order */}
+            <div className="relative flex-shrink-0">
               <select
                 value={`${sortBy}-${sortOrder}`}
                 onChange={(e) => {
@@ -364,41 +408,44 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
                   setSortBy(field as typeof sortBy)
                   setSortOrder(order as typeof sortOrder)
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                className="appearance-none pl-2.5 pr-6 py-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-[11px] font-medium text-gray-600 cursor-pointer outline-none focus:ring-1 focus:ring-green-500"
               >
-                <option value="name-asc">Tên A-Z</option>
-                <option value="name-desc">Tên Z-A</option>
-                <option value="plantingDate-desc">Ngày trồng mới nhất</option>
-                <option value="plantingDate-asc">Ngày trồng cũ nhất</option>
-                <option value="healthStatus-desc">Sức khỏe tốt nhất</option>
-                <option value="healthStatus-asc">Sức khỏe yếu nhất</option>
-                <option value="fruitCount-desc">Nhiều trái nhất</option>
-                <option value="fruitCount-asc">Ít trái nhất</option>
+                <option value="name-asc">Xếp: Tên A-Z</option>
+                <option value="name-desc">Xếp: Tên Z-A</option>
+                <option value="plantingDate-desc">Xếp: Ngày trồng mới nhất</option>
+                <option value="plantingDate-asc">Xếp: Ngày trồng cũ nhất</option>
+                <option value="healthStatus-desc">Xếp: Sức khỏe tốt nhất</option>
+                <option value="healthStatus-asc">Xếp: Sức khỏe yếu nhất</option>
+                <option value="fruitCount-desc">Xếp: Nhiều trái nhất</option>
+                <option value="fruitCount-asc">Xếp: Ít trái nhất</option>
               </select>
-
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Tree List */}
-      <div className="p-6">
+      <div className="p-2 sm:p-4">
         {filteredAndSortedTrees.length === 0 ? (
           <div className="text-center py-12">
             <MapPinIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy cây nào</h3>
             <p className="text-gray-600">
-              {trees.length === 0 
+              {trees.length === 0
                 ? 'Chưa có cây nào được trồng trong nông trại này.'
                 : 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.'
               }
             </p>
           </div>
         ) : (
-          <div 
+          <div
             ref={parentRef}
-            className="overflow-auto"
-            style={{ height: '600px' }}
+            className="overflow-auto h-[calc(100vh-270px)] sm:h-[600px]"
           >
             <div
               style={{
@@ -409,6 +456,22 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
             >
               {virtualizer.getVirtualItems().map((virtualItem) => {
                 const tree = filteredAndSortedTrees[virtualItem.index]
+                const totalFruits = (tree.manualFruitCount || 0) + (tree.aiFruitCount || 0)
+                const isSelected = tree.id === selectedTreeId
+
+                const getAccentBorderClass = () => {
+                  if (tree.needsAttention || tree.healthStatus === 'Poor') {
+                    return 'border-l-red-500'
+                  }
+                  if (['Excellent', 'Good'].includes(tree.healthStatus || '')) {
+                    return 'border-l-emerald-500'
+                  }
+                  if (tree.healthStatus === 'Fair') {
+                    return 'border-l-amber-500'
+                  }
+                  return 'border-l-gray-300'
+                }
+
                 return (
                   <div
                     key={virtualItem.key}
@@ -424,83 +487,83 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
                     <div
                       onClick={() => onTreeSelect?.(tree)}
                       data-testid="tree-card"
-                      className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 m-1 ${
-                        tree.id === selectedTreeId 
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                      className={`p-2.5 sm:p-3 border rounded-xl transition-all duration-200 cursor-pointer m-1 shadow-sm hover:shadow-md border-l-4 ${getAccentBorderClass()} ${
+                        isSelected
+                          ? 'border-green-500 bg-green-50/20'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
                       }`}
                     >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    {/* Tree Image Preview */}
-                    <div className="flex-shrink-0">
-                      <TreeImagePreview 
-                        treeId={tree.id}
-                        farmId={tree.farmId}
-                        qrCode={tree.qrCode}
-                        className="w-12 h-12"
-                      />
-                    </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3 min-w-0 flex-1">
+                          {/* Tree Image Preview */}
+                          <div className="flex-shrink-0">
+                            <TreeImagePreview 
+                              treeId={tree.id}
+                              farmId={tree.farmId}
+                              qrCode={tree.qrCode}
+                              className="w-11 h-11"
+                            />
+                          </div>
 
-                    {/* Health Icon */}
-                    <div className="flex-shrink-0">
-                      {getHealthIcon(tree)}
-                    </div>
+                          {/* Tree Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-0.5">
+                              <h3 className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
+                                {tree.name || `Cây ${normalizeVariety(tree.variety) || tree.id.slice(0, 8)}`}
+                              </h3>
+                              {tree.variety && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-50 text-blue-700 border border-blue-100/50">
+                                  {normalizeVariety(tree.variety)}
+                                </span>
+                              )}
+                            </div>
 
-                    {/* Tree Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="text-sm font-semibold text-gray-900 truncate">
-                          {tree.name || `Cây ${tree.variety || tree.id.slice(0, 8)}`}
-                        </h3>
-                        {tree.variety && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {tree.variety}
-                          </span>
-                        )}
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
+                             {tree.zoneName && (
+                               <span className="flex items-center">
+                                  <MapPinIcon className="h-3 w-3 mr-0.5 text-gray-400" />
+                                  {normalizeZone(tree.zoneName)}
+                                </span>
+                              )}
+                              <span className="w-1 h-1 rounded-full bg-gray-300 hidden sm:inline" />
+                              <span>Trồng: {formatDate(tree.plantingDate)}</span>
+                              <span className="w-1 h-1 rounded-full bg-gray-300" />
+                              <span>
+                                Trái: <span className="font-semibold text-gray-700">{totalFruits.toLocaleString()}</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Health Icon */}
+                        <div className="flex items-center space-x-2 ml-2">
+                          {getHealthIcon(tree)}
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-4 text-xs text-gray-600">
-                       {(tree.zoneName || tree.zoneCode) && (
-                         <span className="flex items-center">
-                           <MapPinIcon className="h-3 w-3 mr-1" />
-                           Khu {tree.zoneName || tree.zoneCode}
-                         </span>
-                       )}
-                        <span>Trồng: {formatDate(tree.plantingDate)}</span>
-                        <span>
-                          Trái: {((tree.manualFruitCount || 0) + (tree.aiFruitCount || 0)).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  
-                </div>
-
-                {/* Additional info when selected */}
-                {selectedTreeId === tree.id && (
-                  <div className="mt-3 pt-3 border-t border-green-200">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <span className="text-gray-500">Chiều cao:</span>
-                        <div className="font-medium">{tree.treeHeight ? `${tree.treeHeight}m` : 'N/A'}</div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Đường kính:</span>
-                        <div className="font-medium">{tree.trunkDiameter ? `${tree.trunkDiameter}cm` : 'N/A'}</div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Phân bón:</span>
-                        <div className="font-medium">{formatDate(tree.fertilizedDate)}</div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Tỉa cành:</span>
-                        <div className="font-medium">{formatDate(tree.prunedDate)}</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                      {/* Additional info when selected */}
+                      {isSelected && (
+                        <div className="mt-2.5 pt-2.5 border-t border-gray-100">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+                            <div className="bg-gray-50/50 p-1.5 sm:p-2 rounded-lg border border-gray-100/80">
+                              <span className="text-gray-400 font-medium block">Chiều cao</span>
+                              <span className="font-semibold text-gray-700">{tree.treeHeight ? `${tree.treeHeight}m` : 'N/A'}</span>
+                            </div>
+                            <div className="bg-gray-50/50 p-1.5 sm:p-2 rounded-lg border border-gray-100/80">
+                              <span className="text-gray-400 font-medium block">Đường kính</span>
+                              <span className="font-semibold text-gray-700">{tree.trunkDiameter ? `${tree.trunkDiameter}cm` : 'N/A'}</span>
+                            </div>
+                            <div className="bg-gray-50/50 p-1.5 sm:p-2 rounded-lg border border-gray-100/80">
+                              <span className="text-gray-400 font-medium block">Phân bón</span>
+                              <span className="font-semibold text-gray-700 truncate block">{formatDate(tree.fertilizedDate)}</span>
+                            </div>
+                            <div className="bg-gray-50/50 p-1.5 sm:p-2 rounded-lg border border-gray-100/80">
+                              <span className="text-gray-400 font-medium block">Tỉa cành</span>
+                              <span className="font-semibold text-gray-700 truncate block">{formatDate(tree.prunedDate)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )

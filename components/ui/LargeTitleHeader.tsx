@@ -51,7 +51,7 @@ export default function LargeTitleHeader({ title, subtitle, className }: LargeTi
       </div>
 
       {/* Large title section */}
-      <div className={clsx('px-4 pt-4 pb-4 transition-all', collapsed ? 'pt-2 pb-2' : 'pt-6 pb-6')}
+      <div className={clsx('px-4 pt-4 pb-4 transition-all hidden sm:block', collapsed ? 'pt-2 pb-2' : 'pt-6 pb-6')}
            aria-live="polite">
         <h1 className={clsx('text-gray-900 font-bold transition-transform origin-left', collapsed ? 'text-2xl' : 'text-3xl')}>{title}</h1>
         {subtitle && (

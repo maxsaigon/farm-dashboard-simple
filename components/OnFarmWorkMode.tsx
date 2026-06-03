@@ -516,11 +516,14 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
       console.log('📝 [OnFarmWorkMode] Step 1: Creating tree...')
       const autoName = newTreeData.name || `${newTreeData.variety} ${new Date().toLocaleDateString('vi-VN')}`
       
+      const matchingZone = zones.find(z => z.name === newTreeData.zoneName)
+      
       const newTree: Partial<Tree> = {
         name: autoName,
         variety: newTreeData.variety,
         zoneName: newTreeData.zoneName,
-        zoneCode: newTreeData.zoneName,
+        zoneId: matchingZone ? matchingZone.id : '',
+        zoneCode: matchingZone ? (matchingZone.code || '') : '',
         treeStatus: newTreeData.treeStatus,
         latitude: activeLat,
         longitude: activeLng,
