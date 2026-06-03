@@ -1,8 +1,8 @@
 // Farm Manager Service Worker
-const CACHE_NAME = 'farm-manager-v1.0.0'
-const STATIC_CACHE_NAME = 'farm-manager-static-v1.0.0'
-const DYNAMIC_CACHE_NAME = 'farm-manager-dynamic-v1.0.0'
-const IMAGE_CACHE_NAME = 'farm-manager-images-v1.0.0'
+const CACHE_NAME = 'farm-manager-v1.0.1'
+const STATIC_CACHE_NAME = 'farm-manager-static-v1.0.1'
+const DYNAMIC_CACHE_NAME = 'farm-manager-dynamic-v1.0.1'
+const IMAGE_CACHE_NAME = 'farm-manager-images-v1.0.1'
 
 // Resources to cache immediately
 const STATIC_ASSETS = [
@@ -89,6 +89,22 @@ self.addEventListener('fetch', event => {
   
   // Skip Chrome extension requests
   if (url.protocol === 'chrome-extension:') return
+
+  // Skip Firebase, Firestore, Google Auth, and Google Analytics services
+  if (
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('firebase') ||
+    url.hostname.includes('securetoken') ||
+    url.hostname.includes('google-analytics') ||
+    url.hostname.includes('analytics.google')
+  ) {
+    // Exception: Allow image GET requests from Firebase Storage to be cached
+    if (isImageRequest(request)) {
+      event.respondWith(handleImageRequest(request))
+      return
+    }
+    return // Let the browser handle these directly without service worker interference
+  }
   
   // Handle different types of requests
   if (isImageRequest(request)) {
