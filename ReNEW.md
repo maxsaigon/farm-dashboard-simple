@@ -99,9 +99,10 @@ components/
 │   ├── TreeNoteSystem.tsx       # Collaborative notes
 │   └── CustomFieldsSection.tsx  # Extensible fields
 ├── gallery/
-│   ├── ImageGallery.tsx         # Photo grid + viewer
-│   ├── ImageViewer.tsx          # Fullscreen zoom viewer
-│   └── ImageUploader.tsx        # Upload + compress
+│   ├── ImageGallery.tsx         # Photo grid container (manages uploads & filters)
+│   ├── DeleteConfirmModal.tsx   # Modal for photo deletion confirmation
+│   ├── PhotoTypeModal.tsx       # Selection modal for photo types (general/health/fruit_count)
+│   └── PhotoViewerModal.tsx     # Fullscreen Zoom/Pan Image Viewer (uses Portal)
 ├── investment/
 │   ├── InvestmentManagement.tsx # Main container
 │   ├── InvestmentList.tsx       # Expense list
@@ -142,7 +143,12 @@ lib/
 ├── storage-utils.ts             # PocketBase File URL/upload helpers
 ├── offline-sync.ts              # IndexedDB cache + write queue
 ├── gps-service.ts               # GPS tracking + burst calibration
-└── admin-service.ts             # Admin-only operations
+├── admin-service.ts             # Admin-only operations
+├── normalization.ts             # Chuẩn hoá giống cây & tên khu vực
+├── modal-z-index.ts             # Hệ thống quản lý z-index modal phân tầng
+├── photo-utils.ts               # Trích xuất timestamp và định dạng ngày chụp
+└── hooks/
+    └── use-image-zoom-pan.ts    # Hook xử lý cử chỉ zoom/pan hình ảnh
 ```
 
 ---
@@ -475,7 +481,23 @@ Phân quyền truy cập dữ liệu trong PocketBase được cấu hình qua *
 *   **List / View Rule**: `@request.auth.id != "" && (@request.auth.role == "super_admin" || @collection.user_farm_access.user ?= @request.auth.id && @collection.user_farm_access.farm ?= farm)`
 *   **Create / Update / Delete Rule**: Chỉ Owner hoặc Super Admin được quản lý thành viên:
     `@request.auth.id != "" && (@request.auth.role == "super_admin" || @collection.user_farm_access.user ?= @request.auth.id && @collection.user_farm_access.farm ?= farm && @collection.user_farm_access.role == "owner")`
-```
+
+### 4.11 Chuẩn hóa Dữ liệu (Data Normalization)
+Để duy trì tính nhất quán của dữ liệu khi lưu trữ vào database và tránh các lỗi hiển thị hoặc thống kê do người dùng nhập tay sai định dạng (ví dụ: gõ hoa thường tùy tiện hoặc gõ sai tên giống cây), hệ thống áp dụng các quy chuẩn chuẩn hóa dữ liệu tại client (`lib/normalization.ts`) trước khi gửi lên server:
+
+#### 1. Chuẩn hóa Giống Cây (`normalizeVariety`)
+Áp dụng cho trường `variety` của cây sầu riêng. Hàm sẽ làm sạch khoảng trắng thừa và ánh xạ các tên gọi phổ biến về các giống cây chuẩn:
+*   `ri6`, `ri 6`, `ri-6` -> **`Ri6`**
+*   `monthong`, `mon thong`, `dona`, `đô na` -> **`Monthong`**
+*   `musang king`, `musang`, `msk` -> **`Musang King`**
+*   `black thorn`, `gai den`, `gai đen` -> **`Black Thorn`**
+*   Các giống cây khác: Tự động chuyển đổi sang dạng viết hoa chữ cái đầu của mỗi từ (Title Case).
+
+#### 2. Chuẩn hóa Tên Khu Vực (`normalizeZone`)
+Áp dụng cho tên phân khu. Khi nông dân nhập tên phân khu hoặc hệ thống tự động phát hiện, hàm chuẩn hóa sẽ tự động loại bỏ các tiền tố trùng lặp "Khu" do gõ nhầm để đảm bảo tên luôn có định dạng nhất quán `Khu {Tên}`:
+*   `Khu A` -> **`Khu A`**
+*   `A` -> **`Khu A`**
+*   `Khu Khu A` -> **`Khu A`** (loại bỏ tiền tố thừa bằng cách kiểm tra nếu chuỗi bắt đầu bằng chữ "khu" thì cắt bỏ và chuẩn hóa lại thành "Khu " + phần còn lại).
 
 ---
 
@@ -512,32 +534,57 @@ Phân quyền truy cập dữ liệu trong PocketBase được cấu hình qua *
 ### 5.3 `/map` — Bản Đồ Trang Trại ⭐ TRANG CHÍNH
 
 **Chức năng cốt lõi:**
-1. **Bản đồ MapLibre GL JS vector/raster fullscreen** với cây trồng (WebGL circle layer) và khu vực (fill/outline layers)
-2. **3 chế độ bản đồ:**
-   - 🤖 **Tự động** (mặc định): Zoom 1-18 → Hybrid (vệ tinh Esri + nhãn OSM), Zoom 19+ → Street map
-   - 🗺️ **Bản đồ**: OpenStreetMap thuần
-   - 🌍 **Hybrid**: Vệ tinh + nhãn (OSM opacity 40%)
-3. **Toggle hiển thị**: Bật/tắt Tree markers, Zone polygons
-4. **Click tree marker** → mở `FullscreenTreeShowcase`
-5. **Click zone polygon** → BottomSheet hiển thị zone info
-6. **Nút "Làm việc"** → kích hoạt On-Farm Work Mode (xem 5.3.1)
+1. **Bản đồ MapLibre GL JS vector/raster fullscreen** với các lớp cây trồng (DOM-based Interactive Marker) và khu vực (Polygon fill/outline layers).
+2. **3 chế độ hiển thị nền (Map Layers):**
+   - 🤖 **Tự động (Auto)** (mặc định): 
+     *   `Zoom < 19`: Hiển thị lớp **Hybrid** (Vệ tinh Esri World Imagery tích hợp đè nhãn OpenStreetMap ở opacity 40%).
+     *   `Zoom >= 19`: Tự động chuyển đổi sang lớp **Street Map** (OpenStreetMap) thuần túy để worker nhìn rõ đường đi và không bị nhòe hình ảnh vệ tinh khi phóng quá lớn.
+   - 🗺️ **Bản đồ (Street)**: Chỉ hiển thị OpenStreetMap thuần.
+   - 🌍 **Hybrid**: Cố định vệ tinh Esri + nhãn OSM (opacity 40%).
+3. **Bộ lọc hiển thị (Toggle filters)**: Bật/tắt nhanh Tree markers, Zone polygons.
+4. **Tương tác Marker Cây trồng**: Click/Tap vào marker cây trồng mở `FullscreenTreeShowcase`.
+5. **Tương tác Phân khu**: Click/Tap vào polygon khu vực mở Popup/BottomSheet hiển thị thông tin tóm tắt khu vực (Tên, mã, số cây, diện tích, trạng thái).
+6. **Nút "Làm việc" (Work Mode)**: Kích hoạt chế độ đi vườn On-Farm Work Mode (Xem mục 5.3.1).
 
-**Layer rendering:**
+**Chi tiết kỹ thuật & Giải thuật Bản đồ:**
+
+*   **Trình nghe sự kiện bản địa Marker (`InteractiveMarker`)**: 
+    Do MapLibre GL JS có cơ chế nuốt các sự kiện click trên mobile khi kéo thả bản đồ, các Marker cây trồng phải được thiết kế dưới dạng React component render thẻ DOM HTML thuần, gắn trình nghe sự kiện bằng JavaScript bản địa (`addEventListener` cho cả `click` và `touchstart`).
+    Hàm xử lý bắt buộc gọi `e.stopPropagation()` và `e.preventDefault()`. Đồng thời, phải chặn bọt sự kiện pointer bằng cách lắng nghe và chặn lan truyền (`stopPropagation`) các sự kiện `pointerdown` và `mousedown` ngay trên marker để không kích hoạt cử chỉ kéo/di chuyển của bản đồ chính.
+*   **Chặn Click theo Zoom**:
+    Marker chỉ cho phép click (`isClickable = isZoomedIn`) khi bản đồ có `zoom >= 18`. Ở mức zoom nhỏ hơn, marker chuyển sang trạng thái bán trong suốt (opacity 0.75) và không phản hồi sự kiện click để tránh mở nhầm cây khi người dùng đang thao tác kéo/thu phóng bản đồ rộng.
+*   **Định vị thông minh (Center on User)**:
+    Nút định vị (Locate Me) khi tap sẽ kiểm tra quyền GPS:
+    - Nếu có vị trí: `easeTo` di chuyển bản đồ đến tọa độ user với `zoom: 19`, đồng thời kích hoạt phản hồi rung xúc giác (**Haptic Feedback**) thông qua API rung của thiết bị (`navigator.vibrate([50])`).
+    - Nếu chưa bật GPS: Tự động kích hoạt dịch vụ theo dõi vị trí.
+*   **Phân tích lân cận Proximity Detection (Turf.js)**:
+    Khi GPS hoạt động, chạy một bộ lắng nghe khoảng cách Turf.js thời gian thực:
+    - Tính khoảng cách từ user đến các cây trồng bằng `@turf/distance` (hệ mét).
+    - Tính xem user có nằm trong đa giác (Polygon) nào không bằng `@turf/boolean-point-in-polygon`. Nếu nằm ngoài, tính khoảng cách đến tâm khu vực (Centroid) bằng `@turf/centroid`.
+    - Hiển thị bảng nổi **"Vật thể gần đây"** ở góc dưới bản đồ, liệt kê tối đa 3 cây và 3 vùng lân cận nằm trong bán kính khoảng cách tùy cấu hình (mặc định 30m), xếp theo khoảng cách tăng dần.
+*   **Các lớp phủ đồ họa (Overlay Layers)**:
+    - **Lớp vết di chuyển (Breadcrumb trail)**: Vẽ đường nét đứt màu đỏ (`line-color: '#ef4444'`, `line-width: 3`, `line-opacity: 0.7`, `line-dasharray: [2, 4]`) nối 20 điểm vị trí GPS gần nhất của user.
+    - **Vòng tròn sai số GPS (Accuracy circle)**: Vẽ vòng tròn Turf bao quanh user với bán kính bằng sai số GPS (`accuracy`) thực tế, tô màu đỏ nhạt với fill opacity 0.1.
+    - **Vòng tròn bán kính lân cận (Proximity circle)**: Vẽ vòng tròn Turf nét đứt màu xanh lá cây bao quanh user với bán kính 30m, fill opacity 0.05.
+
+**Layer rendering order (Thứ tự đè lớp):**
 ```
-Satellite Layer (Esri) ──── opacity 1.0 khi hybrid/auto
-OSM Layer              ──── opacity 0.4 khi hybrid, 1.0 khi street
-Zone Polygons          ──── color từ zone.color, fill opacity 0.2
-Tree Circle Markers    ──── color theo healthStatus:
-                            Excellent/Good = green
-                            Fair = orange
-                            Poor = red
-                            needsAttention = yellow pulse
-User Location Marker   ──── blue pulsing dot + accuracy circle
+Satellite Layer (Esri) ──── Đáy bản đồ (hybrid/auto khi zoom < 19)
+OSM Layer              ──── Đè trên Satellite (opacity 0.4 khi hybrid, 1.0 khi street)
+Zone Polygons          ──── Lớp Fill (opacity 0.2), Lớp Outline nét liền (width 2)
+User Path (Breadcrumb) ──── Lớp Line nét đứt đỏ (dasharray [2,4])
+Accuracy & Proximity   ──── Lớp Fill vòng tròn Turf nhạt dưới chân user
+User Location Marker   ──── Blue pulsing dot (radial gradient, animation pulse-blue)
+Tree Circle Markers    ──── Đè trên cùng, màu theo trạng thái:
+                            • Mùa hiện tại: Xanh lá cây đậm (#147237)
+                            • Cây non: Vàng cam (#eab308)
+                            • Cần chú ý gấp: Màu tím đỏ đậm (#b40ca1)
+                            • Đang chọn (Selected): Đỏ (#ef4444) kèm ping animation
 ```
 
 #### 5.3.1 On-Farm Work Mode — Chế độ đi vườn thực địa ⭐
 
-**Mô tả:** Chế độ fullscreen dành cho nông dân dùng ngoài thực địa. Tối ưu cho thao tác nhanh, GPS tracking, và tạo cây mới.
+**Mô tả:** Chế độ bản đồ fullscreen dành cho nông dân dùng ngoài thực địa. Tối ưu cho thao tác một tay nhanh chóng, chống lỗi nảy GPS (GPS bounce), tự động hóa nhận diện khu vực và liên kết chụp ảnh AI.
 
 **Layout:**
 ```
@@ -566,54 +613,54 @@ User Location Marker   ──── blue pulsing dot + accuracy circle
 └─────────────────────────────────────┘
 ```
 
-**GPS Features:**
-- **GPS tracking**: `navigator.geolocation.watchPosition()` với `enableHighAccuracy: true`
-- **Update interval**: mỗi 3m di chuyển
-- **Breadcrumb trail**: Lưu 50 điểm gần nhất, vẽ polyline trên map
-- **Accuracy circle**: Vòng tròn xung quanh user marker
-  - 🟢 Xanh: < 5m (GPS tốt)
-  - 🟠 Cam: 5-15m (trung bình)
-  - 🔴 Đỏ: > 15m (sóng yếu)
+**Chi tiết tính năng đặc thù đi vườn:**
 
-**GPS Burst Calibration — thuật toán chống GPS bounce:**
-```
-1. Thu thập 4 mẫu GPS liên tiếp (interval = 500ms, tổng 2 giây)
-2. Lọc bỏ mẫu có accuracy > 15m
-3. Nếu tất cả mẫu yếu → cảnh báo "Ra vùng trống"
-4. Tính trung bình cộng tọa độ các mẫu tốt → kết quả cuối cùng
-```
-→ Tăng độ chính xác ~2x so với single reading
-
-**Nearby Tree Detection:**
-- Bán kính: **50 mét**
-- Dùng `@turf/distance` để tính khoảng cách
-- Hiển thị max **5 cây** gần nhất, sort theo distance tăng dần
-- Màu khoảng cách: 🔴 < 10m, 🟠 10-20m, 🟢 > 20m
+*   **Duy trì sáng màn hình (Screen Wake Lock)**: 
+    Khi vào On-Farm Work Mode, hệ thống tự động gọi API `navigator.wakeLock.request('screen')` để giữ cho màn hình điện thoại luôn bật sáng, ngăn thiết bị tự khóa màn hình khi worker đang di chuyển giữa các hàng cây dưới trời nắng. Tự động giải phóng (release) wake lock khi đóng chế độ hoặc khi ứng dụng bị ẩn xuống background.
+*   **Tối ưu không gian hiển thị (Hiding Navigation)**:
+    Khi On-Farm Work Mode kích hoạt, component tự động thêm class `work-mode-active` vào thẻ `body` để ẩn toàn bộ thanh điều hướng BottomTabBar và các Navigation bar bằng CSS. Thao tác này giúp giải phóng 100% diện tích màn hình điện thoại cho bản đồ thực địa. Class này sẽ được gỡ bỏ khi đóng chế độ.
+*   **Giải quyết đè Marker (Ambiguity Resolver)**:
+    Do các cây sầu riêng có thể trồng rất sát nhau, trên màn hình mobile nhỏ các marker có thể đè khít lên nhau gây khó khăn khi tap chọn.
+    - Giải thuật: Khi tap vào một marker cây trồng, hệ thống tính khoảng cách từ cây đó tới tất cả các cây xung quanh trong bán kính **4 mét** (sử dụng Turf.js).
+    - Nếu phát hiện có từ 2 cây trở lên trong bán kính này, thay vì mở thẳng trang chi tiết, hệ thống sẽ hiển thị một Modal danh sách các cây trùng để người dùng chọn chính xác cây muốn xem.
+*   **GPS Burst Calibration (Thuật toán chống GPS bounce)**:
+    Khi người dùng nhấn "Tạo cây mới tại đây" hoặc "Sửa GPS", hệ thống chạy cơ chế hiệu chuẩn chùm (Burst Calibration) thay vì lấy tọa độ đơn lẻ:
+    1. Thu thập liên tiếp 4 mẫu GPS (mỗi mẫu cách nhau 500ms, tổng thời gian thu thập là 2 giây).
+    2. Lọc bỏ toàn bộ các mẫu có sai số (`accuracy`) > 15m.
+    3. Nếu tất cả các mẫu đều yếu (> 15m), phát cảnh báo nông dân nên ra vùng trống thông thoáng để lấy sóng tốt hơn.
+    4. Tính trung bình cộng tọa độ (Latitude, Longitude) của các mẫu tốt còn lại để làm tọa độ cây. Sai số lưu trữ là sai số nhỏ nhất trong các mẫu tốt đó.
+*   **Cảnh báo chất lượng sóng GPS khi tạo cây**:
+    Nếu sau khi hiệu chuẩn, độ chính xác GPS cuối cùng vẫn > 15m, hệ thống bắt buộc hiển thị Dialog cảnh báo: *"⚠️ Cảnh báo: Độ chính xác GPS hiện tại khá kém (±X mét). Tọa độ lưu lại có thể bị lệch nhiều so với thực tế. Bạn có muốn tiếp tục tạo cây tại vị trí này không?"*. Nông dân phải nhấn xác nhận mới cho phép lưu.
+*   **Coordinates Guard (Bộ canh gác tọa độ sửa đổi)**:
+    Để tránh việc vô tình thay đổi GPS của cây sang vị trí hoàn toàn khác làm rối loạn bản đồ vườn, khi sửa GPS thủ công (hoặc lấy GPS hiện tại để cập nhật), hệ thống tính khoảng cách Haversine giữa tọa độ cũ và tọa độ mới đề xuất:
+    - `Khoảng cách < 5m`: Cho phép lưu tự động ngay lập tức.
+    - `Khoảng cách từ 5m đến 30m`: Hiển thị cảnh báo lệch kèm hộp kiểm (checkbox): *"Vị trí mới cách vị trí cũ X mét. Tôi xác nhận vị trí này chính xác."* Người dùng phải tick chọn checkbox này mới bấm được nút Lưu.
+    - `Khoảng cách > 30m`: Khóa tính năng Lưu và hiển thị thông báo chặn: *"Không cho phép thay đổi tọa độ vượt quá 30m để bảo toàn vị trí cây."* (Quy tắc này chỉ được vượt qua bởi tài khoản có quyền `super_admin`).
 
 **Tạo cây mới workflow:**
 ```
-1. User nhấn "Tạo cây mới tại đây"
-2. Chạy GPS Burst Calibration → lấy tọa độ chính xác
-3. Auto-detect zone gần nhất bằng point-in-polygon (Turf.js)
-4. Hiển thị form:
-   - Tên cây (tùy chọn, auto-generate: "{variety} {date}")
-   - Giống cây (bắt buộc): grid chọn nhanh [Ri6, Monthong, Musang King, ...]
-   - Khu vực (auto-filled từ GPS)
-   - [📷 Chụp ảnh] — mở camera, chụp, lưu vào capturedPhotos[]
-5. Confirm → createTree() trong PocketBase (tạo record trong collection `trees`)
-6. Upload photos (nén 500KB) → tạo record trong collection `photos` của PocketBase với trường file `image_file` chứa file blob nén dưới dạng multipart form-data.
-7. Nếu OFFLINE: lưu dữ liệu cây và ảnh vào IndexedDB (Mutation Queue), thực hiện đồng bộ lại khi có sóng/mạng wifi
-8. Thông báo thành công (Toast, KHÔNG dùng alert())
+1. User nhấn "➕ Tạo cây mới"
+2. Chạy GPS Burst Calibration → lấy tọa độ hiệu chuẩn chuẩn xác
+3. Tự động phát hiện Khu vực (Zone) bằng thuật toán Point-in-polygon (Turf.js) đối chiếu tọa độ hiệu chuẩn với ranh giới các zone
+   - Nếu user nằm ngoài các zone vẽ sẵn, tìm zone có tâm (centroid) gần nhất và tự động điền vào form gợi ý
+4. Hiển thị form tạo cây:
+   - Tên cây (tự động điền theo định dạng: "{Giống cây} {Ngày tạo}")
+   - Giống cây (bắt buộc): Grid chọn nhanh [Ri6, Monthong, Musang King, Black Thorn]
+   - Khu vực (đã điền sẵn từ bước 3, cho phép chọn lại)
+   - [📷 Chụp ảnh] — mở camera trực tiếp
+5. Người dùng chụp ảnh hoặc tải ảnh lên -> nén ảnh về target 500KB bằng Canvas API
+6. Nhấn Confirm -> tạo record `trees` và `photos` trong PocketBase
+7. Nếu OFFLINE: Lưu toàn bộ thông tin cây + file Blob ảnh đã nén vào Mutation Queue và Photo Queue của IndexedDB. UI sẽ hiển thị Toast thành công dạng Offline. Khi có mạng trở lại (qua Wifi), Service Worker sẽ tự động đồng bộ hóa FIFO lên server.
 ```
 
 **Camera integration:**
 ```typescript
-// Mở camera sau (facingMode: 'environment')
+// Mở camera sau của thiết bị di động
 navigator.mediaDevices.getUserMedia({
-  video: { facingMode: 'environment', width: 1920, height: 1080 }
+  video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
 })
-// Capture → canvas.toBlob() → blob URL → preview
-// Nén trước khi upload: compressImageSmart(file, 'general') → 500KB target
+// Capture ảnh từ video feed bằng Canvas -> chuyển thành Blob -> preview cục bộ
+// Nén trước khi lưu/upload: compressImageSmart(file, 'general') -> Target size 500KB
 ```
 
 ---
@@ -680,21 +727,22 @@ navigator.mediaDevices.getUserMedia({
 ### 5.5 `/zones` — Quản Lý Khu Vực
 
 **View mode (tất cả users):**
-- Danh sách zones: tên, mã, diện tích (ha), số cây, trạng thái
-- Nút "Xem vị trí" → chuyển sang `/map` và highlight zone
+- Danh sách zones hiển thị: tên, mã, diện tích (ha), số cây hiện tại thuộc vùng, sức khỏe trung bình của vùng, ngày kiểm tra gần nhất.
+- Nút "Xem vị trí" → chuyển sang `/map` tập trung (focus) vào tọa độ trung tâm của zone và highlight ranh giới zone.
+- Cảnh báo "Cần kiểm định" (Needs attention): Tự động hiển thị nếu đã quá 14 ngày chưa có đợt kiểm tra nào (`lastInspectionDate` cũ hơn 14 ngày trước) hoặc sức khỏe trung bình của vùng dưới 7.0/10.
 
-**Edit mode (`/admin-zones`, chỉ owner/admin):**
-- Vẽ polygon trên bản đồ bằng cách click các đỉnh
-- **Tính diện tích real-time:**
-  ```
-  1. Chuyển tọa độ GPS → hệ phẳng UTM (gần đúng):
-     x = (lng × π/180) × R × cos(lat_center)
-     y = (lat × π/180) × R
-  2. Công thức Shoelace:
-     Area = |Σ(x_i × y_{i+1} - x_{i+1} × y_i)| / 2
-  3. Chuyển sang Hecta: / 10000
-  ```
-- **Auto-assign zone cho cây**: Khi tạo cây mới, chạy **ray-casting** (point-in-polygon) để tự động gán `zoneCode`
+**Edit mode (`/admin-zones` hoặc qua Modal quản lý, chỉ owner/admin):**
+- Cho phép tạo vùng mới hoặc chỉnh sửa ranh giới bằng cách vẽ Polygon trực tiếp trên bản đồ MapLibre (sử dụng thư viện `MapboxDraw`).
+- **Tính diện tích thời gian thực (Shoelace + Latitude Centroid Scale)**: Khi vẽ hoặc chỉnh sửa các đỉnh tọa độ, hệ thống tự động tính diện tích thực tế của đa giác (Xem giải thuật ở mục 8.3).
+- **Sửa đổi ranh giới**: Cho phép thêm, dịch chuyển hoặc xóa các đỉnh (vertex) của đa giác.
+- **Xóa khu vực**: Chỉ Owner hoặc Super Admin được quyền xóa. Khi xóa zone, hệ thống sẽ xóa các ranh giới bản đồ nhưng giữ nguyên cây (cây sẽ chuyển sang trạng thái "Chưa có khu vực" để xử lý sau).
+- **Auto-assign zone cho cây (Ray Casting)**: 
+  Khi tạo cây mới ngoài vườn (On-Farm Work Mode) hoặc khi cập nhật GPS cho cây, hệ thống tự động chạy giải thuật Ray Casting (`@turf/boolean-point-in-polygon`) để kiểm tra tọa độ GPS của cây nằm trong đa giác của Zone nào. Nếu khớp, tự động gán `zoneId`, `zoneCode` và `zoneName` cho cây trồng đó mà không cần người dùng nhập thủ công.
+
+**Giải quyết sai biệt đơn vị diện tích (Sqm vs Hectare)**:
+Để giải quyết triệt để lỗi sai lệch hiển thị đơn vị diện tích (mét vuông vs hecta):
+- Nếu zone có ranh giới tọa độ đỉnh vẽ trên bản đồ: Hệ thống bắt buộc tính trực tiếp diện tích từ tọa độ bằng công thức toán học và hiển thị đơn vị `ha` (độ chính xác 1 chữ số thập phân).
+- Nếu zone không có tọa độ đỉnh (legacy data hoặc nhập thủ công): Đọc trường dữ liệu `area` từ database. Áp dụng logic kiểm tra thông minh: Nếu `area > 100` (được hiểu là hệ thống cũ đang lưu dưới đơn vị mét vuông $m^2$), tự động chia cho `10000` để hiển thị sang Hecta (`ha`). Ngược lại, nếu `area <= 100`, giữ nguyên giá trị vì đó là đơn vị hecta sẵn có.
 
 ---
 
@@ -840,12 +888,20 @@ Dùng cho: Coordinates Guard, nearby tree detection, distance display.
 ### 8.2 Point-in-Polygon (Ray Casting)
 Kiểm tra tọa độ cây có nằm trong polygon zone không. Dùng `@turf/boolean-point-in-polygon`.
 
-### 8.3 Polygon Area (Shoelace + UTM projection)
-```
-x_i = (lng_i × π/180) × R × cos(lat_center)
-y_i = (lat_i × π/180) × R
-Area = |Σ(x_i × y_{i+1} - x_{i+1} × y_i)| / 2 / 10000  (ha)
-```
+### 8.3 Polygon Area (Shoelace + UTM/Equirectangular projection)
+Công thức tính diện tích phẳng từ tọa độ GPS đa giác ranh giới khu vực:
+1. Tính vĩ độ trung bình (Centroid Latitude) để xác định tỷ lệ co giãn kinh độ theo xích đạo:
+   $$\varphi_0 = \frac{1}{N}\sum_{i=1}^{N} \text{latitude}_i$$
+   $$\text{lat0Rad} = \varphi_0 \times \frac{\pi}{180}$$
+2. Chuyển đổi các đỉnh tọa độ GPS $(\text{lat}_i, \text{lng}_i)$ sang tọa độ phẳng $(x_i, y_i)$ tính bằng mét (Equirectangular approximation):
+   $$x_i = (\text{lng}_i \times \frac{\pi}{180}) \times R \times \cos(\text{lat0Rad})$$
+   $$y_i = (\text{lat}_i \times \frac{\pi}{180}) \times R$$
+   Với $R = 6,371,000\text{ m}$ (Bán kính Trái Đất).
+3. Áp dụng công thức Shoelace để tính diện tích bề mặt đa giác khép kín:
+   $$\text{Area (mét vuông)} = \frac{1}{2} \left| \sum_{i=1}^{N} (x_i y_{i+1} - x_{i+1} y_i) \right|$$
+   *(Lưu ý: đỉnh cuối cùng $N+1$ trùng với đỉnh đầu tiên $1$ để khép kín đa giác).*
+4. Quy đổi sang Hectare:
+   $$\text{Area (ha)} = \frac{\text{Area (mét vuông)}}{10000}$$
 
 ### 8.4 GPS Burst Calibration
 ```
@@ -857,6 +913,15 @@ result = {
   accuracy: min(filtered.map(s => s.accuracy))
 }
 ```
+
+### 8.5 Bộ canh gác tọa độ sửa đổi (Coordinates Guard)
+Giải thuật kiểm soát khoảng cách khi di dời cây trồng tránh nhầm lẫn vị trí:
+1. Khi có tọa độ mới đề xuất $(\text{lat}_2, \text{lng}_2)$ cho cây có tọa độ cũ $(\text{lat}_1, \text{lng}_1)$, tính khoảng cách Haversine $d$:
+   $$d = 2R \times \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta\varphi}{2}\right) + \cos(\varphi_1)\cos(\varphi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)}\right)$$
+2. Phân loại kiểm tra:
+   - Nếu $d < 5\text{m}$: Tự động cho phép lưu không cần cảnh báo.
+   - Nếu $5\text{m} \le d \le 30\text{m}$: Yêu cầu hiển thị cảnh báo lệch mét kèm hộp kiểm (checkbox) xác nhận vị trí chính xác của người dùng trước khi cho phép lưu.
+   - Nếu $d > 30\text{m}$: Chặn hoàn toàn thao tác lưu (chỉ tài khoản `super_admin` mới được quyền ghi đè).
 
 ---
 
@@ -933,9 +998,16 @@ logger.error('Firestore error', e)  // Luôn hiện
 ## 12. PWA Requirements
 
 - `manifest.json`: name, icons, theme_color, background_color, start_url
-- Service Worker: cache app shell + MapLibre vector/raster tiles
-- IndexedDB: offline photo queue
-- `display: standalone` cho fullscreen mobile experience
+- **Service Worker (`public/sw.js`)**:
+  *   Thực hiện cache các tài nguyên tĩnh (App Shell) và các mảnh bản đồ vector/raster MapLibre.
+  *   **Quy tắc ngoại lệ (Bắt buộc)**: Service Worker phải bỏ qua (không can thiệp hoặc lưu cache) các yêu cầu mạng hướng tới:
+      - Các API của Firestore/Firebase (`googleapis.com`, `firebase`)
+      - Google Secure Token (`securetoken`)
+      - Google Analytics (`google-analytics`, `analytics.google`)
+      Điều này nhằm tránh việc làm gián đoạn hoặc lỗi đồng bộ hóa dữ liệu trực tuyến/real-time của Firebase/Firestore.
+  *   **Ngoại lệ của ngoại lệ**: Cho phép Service Worker lưu cache các yêu cầu GET hình ảnh lấy từ Firebase Storage để hiển thị được hình ảnh ngoại tuyến khi người dùng mở album ảnh lúc mất mạng.
+- **IndexedDB**: Offline photo queue và Mutation queue.
+- `display: standalone` cho trải nghiệm ứng dụng di động độc lập (fullscreen mobile experience).
 
 ---
 
@@ -1257,38 +1329,56 @@ User nhấn "Lưu GPS"
 
 ### A.6 Sub-Component Specs
 
-#### A.6.1 ImageGallery (Tách thành 5 files)
+#### A.6.1 ImageGallery (Tách thành 5 files & Quản lý Modal Stack)
 
-**Chức năng chính:**
-- Load ảnh từ: **PocketBase photos collection** (sử dụng API lấy URL từ file field `image_file` qua `pb.files.getUrl(record, record.image_file)`)
-- Hiển thị grid ảnh 2-3 cột responsive
-- Click ảnh → fullscreen viewer với **pinch-to-zoom** (mobile) + **mouse wheel zoom** (desktop) + **drag pan**
-- Double-tap → toggle zoom 1x ↔ 2.5x
-- Swipe left/right → next/prev ảnh
-- Swipe down → đóng viewer
-- Arrow keys → next/prev (desktop)
+**Cấu trúc Modular mới:**
+Để giảm tải dung lượng code (giảm từ 1,336 LOC xuống dưới 300 LOC mỗi file), ImageGallery được tách thành các file độc lập:
+1. `ImageGallery.tsx`: Lớp container hiển thị lưới ảnh dạng grid 2-3 cột, quản lý các bộ lọc tab niên vụ, và điều khiển trigger mở camera/thư viện ảnh.
+2. `PhotoViewerModal.tsx`: Giao diện modal xem ảnh fullscreen nền đen mờ (`backdrop-blur-md`), hỗ trợ vuốt trái/phải (`swipe`) để chuyển ảnh tiếp theo/trước đó, tích hợp tính năng zoom/pan.
+3. `DeleteConfirmModal.tsx`: Hộp thoại xác nhận xóa ảnh (chỉ hiển thị nút xóa cho Owner/Manager).
+4. `PhotoTypeModal.tsx`: Modal dạng BottomSheet chọn phân loại ảnh (`general` | `health` | `fruit_count`) ngay sau khi chọn file để hệ thống áp dụng mức nén tương ứng.
+5. `lib/hooks/use-image-zoom-pan.ts`: Custom hook quản lý trạng thái tọa độ x, y, scale và kích hoạt cử chỉ:
+   - **Pinch-to-zoom**: Thu phóng 2 ngón tay trên mobile.
+   - **Double-tap**: Nhấn đúp để chuyển đổi nhanh giữa zoom 1x và 2.5x.
+   - **Drag Pan**: Kéo rê ảnh để xem chi tiết khi đang phóng to.
+   - **Wheel zoom / Mouse zoom**: Cuộn chuột phóng to/thu nhỏ trên desktop.
+   - Giới hạn biên (Boundary lock) để không cho phép kéo ảnh lệch hẳn ra ngoài khung nhìn.
 
-**Upload ảnh:**
-1. Nút "Chụp ảnh" → `<input capture="environment" accept="image/*">`
-2. Nút "Thêm ảnh" → `<input accept="image/*">` (từ thư viện)
-3. Chọn file → hiện modal chọn photo type: general / health / fruit_count
-4. Nén bằng `compressImageSmart(file, photoType)`
-5. Upload → PocketBase: tạo record mới trong `photos` collection, đính kèm file blob nén dưới dạng multipart form-data.
-6. Record được lưu tự động trên PocketBase server và liên kết với record cây tương ứng.
-7. Log audit event: `PHOTO_UPLOADED` (lưu vào `activity_logs` collection)
-8. Refresh gallery + hiện badge "✨ Mới"
+**Định vị Ngày Chụp Ảnh (Date Parsing Fallback) & Sửa lỗi ngày mặc định:**
+*   **Trích xuất Timestamp từ tên file (`getTimestampFromUrl`)**:
+    Để khắc phục triệt để lỗi ảnh bị hiển thị sai ngày (ví dụ: ngày mặc định `01/01/2025` hoặc `01/01/1970`), hệ thống sử dụng giải thuật trích xuất kép:
+    1. Hàm `getImageDate` thực hiện decode đường dẫn URI của ảnh.
+    2. Tìm kiếm chuỗi số liên tiếp gồm 10 hoặc 13 chữ số đại diện cho Epoch Timestamp nằm trong tên file hoặc URL (ví dụ: trích xuất `1780456200000` từ `photo_1780456200000_0.jpg`).
+    3. Nếu trích xuất thành công và năm từ ngày trích xuất $\ge 2000$, ưu tiên hiển thị ngày này làm ngày chụp thực tế của ảnh.
+    4. Nếu trích xuất thất bại, mới sử dụng trường ngày lưu trữ trong database (`timestamp` hoặc `uploadDate`).
+*   **Quy chuẩn tên file khi upload**:
+    Khi chụp ảnh hoặc chọn ảnh từ thư viện, file bắt buộc phải được đổi tên thành `photo_${Date.now()}_${i}.jpg` (với `Date.now()` là số mili-giây hiện tại) trước khi gửi lên server để đảm bảo dấu thời gian được ghi vào tên file vật lý mãi mãi.
 
-**Season filter:**
-- Tabs: "Tất cả" | "Mùa 2026" (xanh) | "Mùa 2025" (xám)
-- Lọc theo `photo.seasonYear` hoặc `photo.timestamp.getFullYear()`
-
-**Xóa ảnh:** (Chỉ owner/manager có quyền)
-1. Nút 🗑️ trên photo → Confirm dialog
-2. Xóa PocketBase record (server sẽ tự động cascade xóa file vật lý tương ứng) → refresh gallery
+**Chống xung đột Z-Index trên iOS/PWA (React Portal):**
+*   **Yêu cầu Portal**: Tất cả các modal overlay hiển thị đè màn hình (`PhotoViewerModal`, `DeleteConfirmModal`, `PhotoTypeModal`) **bắt buộc sử dụng React Portal (`createPortal`)** để đưa các node HTML ra ngoài cùng của cây DOM (móc trực tiếp vào `document.body`). Điều này giúp tránh hoàn toàn lỗi bị che khuất modal hoặc sai lệch lớp đè do thuộc tính `overflow-y-auto` hoặc `z-index` stacking context của các scroll wrapper trên hệ điều hành iOS.
+*   **Hệ thống quản lý Z-Index tập trung (`lib/modal-z-index.ts`)**:
+    Quy định mức độ ưu tiên của các lớp hiển thị theo hằng số cố định:
+    ```typescript
+    export const MODAL_Z_INDEX = {
+      SIDEBAR: 30,
+      NAVIGATION: 40,
+      BOTTOM_TAB_BAR: 50,
+      MAP_OVERLAY: 10001,
+      TREE_DETAIL: 10002,
+      MANAGEMENT_MODAL: 10003,
+      PHOTO_VIEWER: 10004,
+      LOADING_OVERLAY: 10005,
+      ERROR_MODAL: 10006,
+    } as const
+    ```
+*   **Tailwind CSS Safelist**: Đăng ký các class z-index động như `z-[10001]` đến `z-[10006]` vào mảng `safelist` trong `tailwind.config.ts` để đảm bảo Tailwind không tối ưu hóa/loại bỏ chúng trong bản build production.
+*   **Chặn Scroll màn hình nền**: Sử dụng lớp quản lý `modalStack` để đếm số modal đang mở. Khi modal đầu tiên mở ra, set `document.body.style.overflow = 'hidden'` để khóa cuộn trang nền. Khi modal cuối cùng đóng lại, khôi phục `document.body.style.overflow = 'unset'` để nông dân tiếp tục cuộn xem thông tin cây.
 
 **Cache:**
 - Storage images cache bằng `Map<string, images>` trong memory
 - Cache key: `${treeId}-${qrCode}-${farmId}`
+
+---
 
 #### A.6.2 TreeNoteSystem
 
