@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Tree } from '@/lib/types'
 import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, PhotoIcon, EyeIcon, CalendarDaysIcon, MapPinIcon, CameraIcon, PlusIcon, TrashIcon, MagnifyingGlassPlusIcon, MagnifyingGlassMinusIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
+import { createPortal } from 'react-dom'
 import { PhotoWithUrls, getPhotosWithUrls, subscribeToTreePhotos, getTreePhotos } from '@/lib/photo-service'
 import { getTreeImagesByPattern } from '@/lib/storage'
 import { getModalZClass, modalStack } from '@/lib/modal-z-index'
@@ -38,6 +39,12 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
    const { showSuccess, showError } = useToast()
    const fileInputRef = useRef<HTMLInputElement>(null)
    const cameraInputRef = useRef<HTMLInputElement>(null)
+   const [mounted, setMounted] = useState(false)
+
+   useEffect(() => {
+     setMounted(true)
+     return () => setMounted(false)
+   }, [])
 
    console.log('🎯 ImageGallery: Component render for tree:', tree.id, 'name:', tree.name, 'qrCode:', tree.qrCode)
 
@@ -1032,8 +1039,8 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
         </div>
       </div>
 
-      {/* Enhanced Fullscreen Modal */}
-      {selectedImage !== null && (
+      {/* Enhanced Fullscreen Modal (using React Portal to render at body level to prevent z-index stacking conflicts in scroll wrappers) */}
+      {mounted && selectedImage !== null && createPortal(
         <div 
           className={`fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center ${getModalZClass('PHOTO_VIEWER')} animate-in fade-in duration-300`}
           onClick={(e) => {
@@ -1206,7 +1213,8 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Photo Type Selection Modal */}
