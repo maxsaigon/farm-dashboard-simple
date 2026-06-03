@@ -16,7 +16,11 @@ function convertToPhoto(doc: QueryDocumentSnapshot<DocumentData>): Photo {
     if (timestamp instanceof Date) return timestamp
     if (typeof timestamp?.toDate === 'function') return timestamp.toDate()
     if (typeof timestamp === 'string') return new Date(timestamp)
-    if (typeof timestamp === 'number') return new Date(timestamp)
+    if (typeof timestamp === 'number') {
+      // If it's in seconds (10 digits), convert to ms
+      const ms = timestamp < 9999999999 ? timestamp * 1000 : timestamp
+      return new Date(ms)
+    }
     return undefined
   }
   

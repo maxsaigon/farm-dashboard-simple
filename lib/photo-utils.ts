@@ -27,9 +27,10 @@ export const formatDate = (date?: Date | any): string => {
 export const getTimestampFromUrl = (url: string): Date | undefined => {
   try {
     let date: Date | undefined
+    const decodedUrl = decodeURIComponent(url)
 
-    // 1. Try to find timestamp in URL path: /photos/(\d+)/
-    const photosMatch = url.match(/\/photos%2F(\d+)/i) || url.match(/\/photos\/(\d+)/i)
+    // 1. Try to find timestamp in decoded URL path: /photos/(\d+)/
+    const photosMatch = decodedUrl.match(/\/photos\/(\d+)/i)
     if (photosMatch && photosMatch[1]) {
       const ts = parseInt(photosMatch[1], 10)
       if (ts > 0) {
@@ -40,7 +41,7 @@ export const getTimestampFromUrl = (url: string): Date | undefined => {
 
     // 2. Try to find 10-digit or 13-digit timestamp in the URL/filename
     if (!date) {
-      const filename = url.split('/').pop()?.split('?')[0] || ''
+      const filename = decodedUrl.split('/').pop()?.split('?')[0] || ''
       const tsMatch = filename.match(/(\d{10,13})/)
       if (tsMatch && tsMatch[1]) {
         const ts = parseInt(tsMatch[1], 10)
@@ -59,16 +60,27 @@ export const getTimestampFromUrl = (url: string): Date | undefined => {
 }
 
 export const getImageDate = (image: DisplayImage): Date | undefined => {
+  // Try to parse timestamp from filename first if available
+  if ('filename' in image && image.filename) {
+    const filenameDate = getTimestampFromUrl(image.filename)
+    if (filenameDate && filenameDate.getFullYear() >= 2000) {
+      return filenameDate
+    }
+  }
+  // Try to parse timestamp from imageUrl if available
+  if (image.imageUrl) {
+    const urlDate = getTimestampFromUrl(image.imageUrl)
+    if (urlDate && urlDate.getFullYear() >= 2000) {
+      return urlDate
+    }
+  }
+  // Fallback to database/Firestore timestamp
   if ('timestamp' in image && image.timestamp) {
     // Handle Firestore Timestamp or Date
     const date = (image.timestamp as any).toDate ? (image.timestamp as any).toDate() : new Date(image.timestamp)
     if (date.getFullYear() >= 2000) {
       return date
     }
-  }
-  // For storage images, try to parse timestamp from URL
-  if (image.imageUrl) {
-    return getTimestampFromUrl(image.imageUrl)
   }
   return undefined
 }
