@@ -2,14 +2,28 @@
 
 /**
  * Migration Script to fix 1970/pre-2000 Seasons and Photo Dates
- * This script connects to Firestore and repairs farms, photos, and trees.
+ * This script connects to Firestore using Firebase Admin SDK and repairs farms, photos, and trees.
  */
 
 // Import env loader first to ensure process.env is ready
 import './load-env'
+import admin from 'firebase-admin'
+import fs from 'fs'
+import path from 'path'
 
-import { db } from '../lib/firebase'
-import { collection, doc, getDocs, updateDoc, writeBatch, Timestamp } from 'firebase/firestore'
+const serviceAccountPath = path.join(__dirname, '../config/firebase-sa.json')
+if (!fs.existsSync(serviceAccountPath)) {
+  console.error(`❌ Cannot find service account key at: ${serviceAccountPath}`)
+  process.exit(1)
+}
+
+const serviceAccount = require(serviceAccountPath)
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+})
+
+const db = admin.firestore()
+const Timestamp = admin.firestore.Timestamp
 
 async function fix1970Seasons() {
   try {
@@ -17,7 +31,7 @@ async function fix1970Seasons() {
 
     // 1. Get all Farms
     console.log('\n📁 1. Scanning Farms...')
-    const farmsSnapshot = await getDocs(collection(db, 'farms'))
+    const farmsSnapshot = await db.collection('farms').get()
     console.log(`Found ${farmsSnapshot.size} farms.`)
 
     const farmSeasonMap = new Map<string, { currentSeasonYear: number; createdDate: Date }>()
@@ -62,20 +76,20 @@ async function fix1970Seasons() {
       farmSeasonMap.set(farmId, { currentSeasonYear, createdDate })
 
       if (farmUpdated) {
-        await updateDoc(doc(db, 'farms', farmId), {
+        await db.collection('farms').doc(farmId).update({
           currentSeasonYear,
           seasons: cleanSeasons
         })
-        console.log(`  ✅ Farm "${farmData.name || farmId}" successfully updated in Firestore.`)
+        console.log(`  ... Farm "${farmData.name || farmId}" successfully updated in Firestore.`)
       } else {
-        console.log(`  ℹ️ Farm "${farmData.name || farmId}" is OK.`)
+        console.log(`  ... Farm "${farmData.name || farmId}" is OK.`)
       }
     }
 
     // Helper to process photo documents
     const cleanPhotoDocs = async (photoDocs: any[], typeLabel: string) => {
       let photosMigrated = 0
-      let batchWrite = writeBatch(db)
+      let batchWrite = db.batch()
       let opCount = 0
 
       for (const photoDoc of photoDocs) {
@@ -120,7 +134,7 @@ async function fix1970Seasons() {
 
           if (opCount >= 400) {
             await batchWrite.commit()
-            batchWrite = writeBatch(db)
+            batchWrite = db.batch()
             opCount = 0
           }
         }
@@ -134,10 +148,10 @@ async function fix1970Seasons() {
 
     // 2. Clean Photos (Root Collection)
     console.log('\n📸 2. Scanning Root Photos Collection...')
-    const rootPhotosSnapshot = await getDocs(collection(db, 'photos'))
+    const rootPhotosSnapshot = await db.collection('photos').get()
     console.log(`Found ${rootPhotosSnapshot.size} root photos.`)
     const rootPhotosMigrated = await cleanPhotoDocs(rootPhotosSnapshot.docs, 'root')
-    console.log(`  ✅ Root photos migrated: ${rootPhotosMigrated}`)
+    console.log(`  ... Root photos migrated: ${rootPhotosMigrated}`)
 
     // 3. Clean Photos and Trees (Farm Subcollections)
     console.log('\n🌳 3. Scanning Farm Subcollections (Photos & Trees)...')
@@ -149,8 +163,7 @@ async function fix1970Seasons() {
       const farmName = farmDoc.data().name || farmId
       
       // A. Farm Subcollection Photos
-      const subPhotosRef = collection(db, 'farms', farmId, 'photos')
-      const subPhotosSnapshot = await getDocs(subPhotosRef)
+      const subPhotosSnapshot = await db.collection('farms').doc(farmId).collection('photos').get()
       if (!subPhotosSnapshot.empty) {
         console.log(`  Scanning ${subPhotosSnapshot.size} subcollection photos for farm "${farmName}"...`)
         const migratedCount = await cleanPhotoDocs(subPhotosSnapshot.docs, `farm ${farmId}`)
@@ -158,11 +171,10 @@ async function fix1970Seasons() {
       }
 
       // B. Farm Subcollection Trees (to fix seasonalStats keys)
-      const treesRef = collection(db, 'farms', farmId, 'trees')
-      const treesSnapshot = await getDocs(treesRef)
+      const treesSnapshot = await db.collection('farms').doc(farmId).collection('trees').get()
       if (!treesSnapshot.empty) {
         console.log(`  Scanning ${treesSnapshot.size} trees for farm "${farmName}"...`)
-        let batch = writeBatch(db)
+        let batch = db.batch()
         let opCount = 0
 
         for (const treeDoc of treesSnapshot.docs) {
@@ -197,7 +209,7 @@ async function fix1970Seasons() {
           }
 
           if (treeUpdated) {
-            batch.update(doc(db, 'farms', farmId, 'trees', treeDoc.id), {
+            batch.update(db.collection('farms').doc(farmId).collection('trees').doc(treeDoc.id), {
               seasonalStats: newSeasonalStats
             })
             opCount++
@@ -205,7 +217,7 @@ async function fix1970Seasons() {
 
             if (opCount >= 400) {
               await batch.commit()
-              batch = writeBatch(db)
+              batch = db.batch()
               opCount = 0
             }
           }
@@ -217,8 +229,8 @@ async function fix1970Seasons() {
       }
     }
 
-    console.log(`  ✅ Subcollection photos migrated: ${totalSubPhotosMigrated}`)
-    console.log(`  ✅ Trees seasonal stats keys fixed: ${totalTreesFixed}`)
+    console.log(`  ... Subcollection photos migrated: ${totalSubPhotosMigrated}`)
+    console.log(`  ... Trees seasonal stats keys fixed: ${totalTreesFixed}`)
 
     console.log('\n🎉 1970/pre-2000 seasons and photo dates cleanup completed successfully!')
   } catch (error) {

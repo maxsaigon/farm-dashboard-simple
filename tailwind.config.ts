@@ -6,6 +6,14 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  safelist: [
+    "z-[10001]",
+    "z-[10002]",
+    "z-[10003]",
+    "z-[10004]",
+    "z-[10005]",
+    "z-[10006]",
+  ],
   theme: {
     extend: {
       colors: {

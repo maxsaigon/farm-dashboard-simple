@@ -681,6 +681,95 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
     }).format(date)
   }
 
+  const getTimestampFromUrl = (url: string): Date | undefined => {
+    try {
+      let date: Date | undefined
+
+      // 1. Try to find timestamp in URL path: /photos/(\d+)/
+      const photosMatch = url.match(/\/photos%2F(\d+)/i) || url.match(/\/photos\/(\d+)/i)
+      if (photosMatch && photosMatch[1]) {
+        const ts = parseInt(photosMatch[1], 10)
+        if (ts > 0) {
+          // If it's in seconds (10 digits), convert to ms
+          date = new Date(ts < 9999999999 ? ts * 1000 : ts)
+        }
+      }
+
+      // 2. Try to find 10-digit or 13-digit timestamp in the URL/filename
+      if (!date) {
+        const filename = url.split('/').pop()?.split('?')[0] || ''
+        const tsMatch = filename.match(/(\d{10,13})/)
+        if (tsMatch && tsMatch[1]) {
+          const ts = parseInt(tsMatch[1], 10)
+          date = new Date(ts < 9999999999 ? ts * 1000 : ts)
+        }
+      }
+
+      // Ignore any parsed dates before year 2000 (likely invalid/1970)
+      if (date && date.getFullYear() >= 2000) {
+        return date
+      }
+    } catch (e) {
+      console.error('Error parsing timestamp from storage URL:', e)
+    }
+    return undefined
+  }
+
+  const getImageDate = (image: DisplayImage): Date | undefined => {
+    if ('timestamp' in image && image.timestamp) {
+      const date = new Date(image.timestamp)
+      if (date.getFullYear() >= 2000) {
+        return date
+      }
+    }
+    // For storage images, try to parse timestamp from URL
+    if (image.imageUrl) {
+      return getTimestampFromUrl(image.imageUrl)
+    }
+    return undefined
+  }
+
+  const formatDateFriendly = (date?: Date) => {
+    if (!date) return 'Không rõ thời gian'
+    return new Intl.DateTimeFormat('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }).format(date)
+  }
+
+  const formatDateOnly = (date?: Date) => {
+    if (!date) return ''
+    return new Intl.DateTimeFormat('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(date)
+  }
+
+  const getPhotoType = (image: DisplayImage): 'general' | 'health' | 'fruit_count' => {
+    if ('photoType' in image && image.photoType) {
+      return image.photoType as 'general' | 'health' | 'fruit_count'
+    }
+    // For storage images, try to parse from URL/filename
+    if (image.imageUrl) {
+      const filename = image.imageUrl.toLowerCase()
+      if (filename.includes('health') || filename.includes('disease')) return 'health'
+      if (filename.includes('fruit') || filename.includes('count')) return 'fruit_count'
+    }
+    return 'general'
+  }
+
+  const getPhotoTypeName = (image: DisplayImage): string => {
+    const type = getPhotoType(image)
+    if (type === 'health') return '🏥 Sức Khỏe'
+    if (type === 'fruit_count') return '🍎 Đếm Trái'
+    return '📸 Chung'
+  }
+
   if (loading) {
     return (
       <div className={`bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden ${className}`}>
@@ -918,19 +1007,24 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
                     </div>
                   )}
 
-                  {/* Image number indicator */}
-                  <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
-                    {index + 1}
-                  </div>
-
-                  {/* Season Badge */}
-                  {getSeasonLabel(image) && (
-                    <div className="absolute bottom-3 left-3 z-10">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-black/60 text-white backdrop-blur-sm">
-                        📅 Mùa {getSeasonLabel(image)}
-                      </span>
+                  {/* Bottom Info Badges */}
+                  <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between z-10">
+                    <div className="flex flex-wrap gap-1">
+                      {getSeasonLabel(image) && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/60 text-white backdrop-blur-sm">
+                          📅 Mùa {getSeasonLabel(image)}
+                        </span>
+                      )}
+                      {getImageDate(image) && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/60 text-white backdrop-blur-sm">
+                          🕒 {formatDateOnly(getImageDate(image))}
+                        </span>
+                      )}
                     </div>
-                  )}
+                    <div className="bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0">
+                      {index + 1}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -957,38 +1051,57 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
         >
           <div className="max-w-7xl max-h-full w-full h-full flex flex-col p-4 sm:p-6" onClick={(e) => e.stopPropagation()}>
             {/* Enhanced Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4 bg-black/40 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/10">
+            <div className="flex items-center justify-between mb-4 mt-2">
+              <div className="flex items-center space-x-4 bg-black/50 backdrop-blur-md rounded-2xl px-5 py-3.5 border border-white/10 max-w-[85%]">
                 <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">
-                      {tree.name || `Cây ${tree.qrCode}`}
-                    </h3>
-                    <p className="text-sm text-gray-300">
-                      Ảnh {selectedImage + 1} / {totalImages}
-                    </p>
+                  <div className="relative flex-shrink-0">
+                    <div className={`w-3.5 h-3.5 rounded-full ${
+                      getPhotoType(filteredImages[selectedImage]) === 'health' ? 'bg-red-500' :
+                      getPhotoType(filteredImages[selectedImage]) === 'fruit_count' ? 'bg-orange-500' : 'bg-blue-500'
+                    }`}></div>
+                    <div className={`absolute inset-0 rounded-full animate-ping opacity-75 ${
+                      getPhotoType(filteredImages[selectedImage]) === 'health' ? 'bg-red-400' :
+                      getPhotoType(filteredImages[selectedImage]) === 'fruit_count' ? 'bg-orange-400' : 'bg-blue-400'
+                    }`}></div>
                   </div>
-                </div>
-                {'timestamp' in filteredImages[selectedImage] && (
-                  <div className="hidden sm:flex items-center space-x-4 text-sm text-gray-300 border-l border-white/20 pl-4">
-                    <div className="flex items-center space-x-2">
-                      <CalendarDaysIcon className="h-4 w-4" />
-                      <span>{formatDate((filteredImages[selectedImage] as PhotoWithUrls).timestamp)}</span>
-                    </div>
-                    {(filteredImages[selectedImage] as PhotoWithUrls).latitude && (
-                      <div className="flex items-center space-x-2">
-                        <MapPinIcon className="h-4 w-4" />
-                        <span>GPS có sẵn</span>
-                      </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                      <span>{getPhotoTypeName(filteredImages[selectedImage])}</span>
+                      <span className="text-xs font-normal text-gray-400 px-2 py-0.5 bg-white/10 rounded-full">
+                        Ảnh {selectedImage + 1} / {totalImages}
+                      </span>
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-300 flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                      <span className="font-semibold text-green-400">{tree.variety || tree.name || `Cây ${tree.qrCode}`}</span>
+                      {tree.zoneName && (
+                        <>
+                          <span className="text-gray-500">•</span>
+                          <span className="text-gray-300">{tree.zoneName}</span>
+                        </>
+                      )}
+                      {(filteredImages[selectedImage] as PhotoWithUrls).latitude && (
+                        <>
+                          <span className="text-gray-500">•</span>
+                          <span className="text-xs text-blue-400 flex items-center">
+                            <MapPinIcon className="h-3 w-3 mr-0.5" />
+                            GPS
+                          </span>
+                        </>
+                      )}
+                    </p>
+                    {getImageDate(filteredImages[selectedImage]) && (
+                      <p className="text-xs text-gray-400 mt-1 flex items-center space-x-1.5">
+                        <CalendarDaysIcon className="h-3.5 w-3.5 flex-shrink-0 text-gray-500" />
+                        <span>Chụp lúc: {formatDateFriendly(getImageDate(filteredImages[selectedImage]))}</span>
+                      </p>
                     )}
                   </div>
-                )}
+                </div>
               </div>
               
               <button
                 onClick={() => setSelectedImage(null)}
-                className="bg-black/40 backdrop-blur-sm hover:bg-black/60 rounded-2xl p-4 text-white transition-all duration-200 border border-white/10 hover:border-white/30 group"
+                className="bg-black/50 backdrop-blur-md hover:bg-black/70 rounded-2xl p-3 sm:p-4 text-white transition-all duration-200 border border-white/10 hover:border-white/30 group flex-shrink-0"
                 aria-label="Đóng hình ảnh"
               >
                 <XMarkIcon className="h-6 w-6 group-hover:scale-110 transition-transform" />
