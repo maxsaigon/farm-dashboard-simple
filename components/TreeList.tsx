@@ -43,8 +43,8 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
   const [filterVariety, setFilterVariety] = useState<string>('all')
   const [filterZone, setFilterZone] = useState<string>('all')
   const [filterFruitCount, setFilterFruitCount] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<'name' | 'plantingDate' | 'healthStatus' | 'fruitCount'>('name')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [sortBy, setSortBy] = useState<'name' | 'plantingDate' | 'healthStatus' | 'fruitCount' | 'updatedAt'>('updatedAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [pullDistance, setPullDistance] = useState(0)
   const [refreshToken, setRefreshToken] = useState(0)
   const parentRef = useRef<HTMLDivElement>(null)
@@ -156,6 +156,17 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
       let bValue: string | number | Date
 
       switch (sortBy) {
+        case 'updatedAt':
+          const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : (a.updatedAt ? new Date(a.updatedAt).getTime() : 0)
+          const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : (b.updatedAt ? new Date(b.updatedAt).getTime() : 0)
+          const aCreateTime = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0)
+          const bCreateTime = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0)
+          const aPlantTime = a.plantingDate instanceof Date ? a.plantingDate.getTime() : (a.plantingDate ? new Date(a.plantingDate).getTime() : 0)
+          const bPlantTime = b.plantingDate instanceof Date ? b.plantingDate.getTime() : (b.plantingDate ? new Date(b.plantingDate).getTime() : 0)
+          
+          aValue = aTime || aCreateTime || aPlantTime || 0
+          bValue = bTime || bCreateTime || bPlantTime || 0
+          break
         case 'name':
           aValue = a.name || a.qrCode || a.id
           bValue = b.name || b.qrCode || b.id
@@ -410,6 +421,8 @@ export function TreeList({ onTreeSelect, selectedTreeId, showActions = true, cla
                 }}
                 className="appearance-none pl-2.5 pr-6 py-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-[11px] font-medium text-gray-600 cursor-pointer outline-none focus:ring-1 focus:ring-green-500"
               >
+                <option value="updatedAt-desc">Xếp: Mới cập nhật</option>
+                <option value="updatedAt-asc">Xếp: Cập nhật cũ nhất</option>
                 <option value="name-asc">Xếp: Tên A-Z</option>
                 <option value="name-desc">Xếp: Tên Z-A</option>
                 <option value="plantingDate-desc">Xếp: Ngày trồng mới nhất</option>

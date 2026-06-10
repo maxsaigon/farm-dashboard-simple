@@ -69,7 +69,7 @@ export default function MobileTreeList() {
 
   // Filter trees based on current filters
   const filteredTrees = useMemo(() => {
-    return trees.filter(tree => {
+    const filtered = trees.filter(tree => {
       // Search filter
       if (filters.search && !(tree.name?.toLowerCase().includes(filters.search.toLowerCase()) || 
           tree.id.toLowerCase().includes(filters.search.toLowerCase()))) {
@@ -108,6 +108,23 @@ export default function MobileTreeList() {
 
       return true
     })
+
+    // Sort by updatedAt desc by default to prioritize trees with newly updated data
+    filtered.sort((a, b) => {
+      const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : (a.updatedAt ? new Date(a.updatedAt).getTime() : 0)
+      const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : (b.updatedAt ? new Date(b.updatedAt).getTime() : 0)
+      const aCreateTime = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0)
+      const bCreateTime = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0)
+      const aPlantTime = a.plantingDate instanceof Date ? a.plantingDate.getTime() : (a.plantingDate ? new Date(a.plantingDate).getTime() : 0)
+      const bPlantTime = b.plantingDate instanceof Date ? b.plantingDate.getTime() : (b.plantingDate ? new Date(b.plantingDate).getTime() : 0)
+      
+      const aVal = aTime || aCreateTime || aPlantTime || 0
+      const bVal = bTime || bCreateTime || bPlantTime || 0
+      
+      return bVal - aVal // descending order (newest first)
+    })
+
+    return filtered
   }, [trees, filters])
 
   const handleQuickPhoto = (tree: Tree) => {
