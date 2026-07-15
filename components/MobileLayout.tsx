@@ -5,15 +5,8 @@ import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { 
   HomeIcon, 
   ViewfinderCircleIcon,
-  ChartBarIcon,
-  PhotoIcon,
   MapIcon,
-  CogIcon,
-  Bars3Icon,
-  XMarkIcon,
-  UserIcon,
   BellIcon,
-  RadioIcon,
   QueueListIcon
 } from '@heroicons/react/24/outline'
 
@@ -54,10 +47,7 @@ export default function MobileLayout({ children, currentTab = 'dashboard' }: Mob
     { id: 'dashboard', name: 'Tổng quan', icon: HomeIcon, href: '/' },
     { id: 'trees', name: 'Cây trồng', icon: QueueListIcon, href: '/trees' },
     { id: 'map', name: 'Bản đồ', icon: MapIcon, href: '/map' },
-    { id: 'positioning', name: 'Định vị', icon: RadioIcon, href: '/positioning' },
-    { id: 'photos', name: 'Hình ảnh', icon: PhotoIcon, href: '/photos', badge: 3 },
-    { id: 'analytics', name: 'Thống kê', icon: ChartBarIcon, href: '/analytics' },
-    { id: 'settings', name: 'Cài đặt', icon: CogIcon, href: '/settings' }
+    { id: 'camera', name: 'Chụp ảnh', icon: ViewfinderCircleIcon, href: '/camera' }
   ]
 
   const currentTabData = tabs.find(tab => tab.id === currentTab)

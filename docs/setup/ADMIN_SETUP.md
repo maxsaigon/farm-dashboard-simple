@@ -1,14 +1,24 @@
 # Admin User Setup Guide
 
+**Document status:** Historical admin setup notes; current security guidance added
+
+**Baseline:** Repository state verified on 2026-07-15
+
+**Review date:** 2026-07-15
+
+**Current notice:** The account-specific details below have been redacted. Use a disposable test account and never place passwords, real email addresses, UIDs, service-account keys, or other credentials in documentation. Firebase is the active runtime; PocketBase is inactive in the application runtime.
+
+> `NEXT_PUBLIC_ADMIN_EMAIL` and `NEXT_PUBLIC_ADMIN_UID` are exposed to every browser. They are not secrets and must not be used as backend authorization. The current client-side admin comparison and broad `../../firestore.rules` are not a production-safe admin model. Use trusted server-side role assignment or verified Firebase custom claims and enforce authorization in reviewed Security Rules. See [Deployment Guide](../deployment/DEPLOYMENT_GUIDE.md).
+
 ## Quick Setup for Testing
 
-The user `minhdai.bmt@gmail.com` (UID: `O6aFgoNhDigSIXk6zdYSDrFWhWG2`) has been configured as an admin user with full permissions.
+A historical test account was configured as an admin user. Its identifying values are intentionally omitted; create a new disposable account in an isolated test project instead.
 
 ### What's Been Set Up
 
 1. **Admin User Configuration**
-   - User ID: `O6aFgoNhDigSIXk6zdYSDrFWhWG2`
-   - Email: `minhdai.bmt@gmail.com`
+   - User ID: `[redacted-test-uid]`
+   - Email: `[redacted-test-email]`
    - Role: Admin with full permissions
    - Auto-setup on login
 
@@ -39,14 +49,13 @@ The user `minhdai.bmt@gmail.com` (UID: `O6aFgoNhDigSIXk6zdYSDrFWhWG2`) has been 
 
 1. **Start the Web App**:
    ```bash
-   cd "/Users/daibui/Documents/IOS APP/FarmManager/farm-dashboard-simple"
    npm run dev
    ```
 
 2. **Login with Admin Account**:
    - Go to `http://localhost:3000`
    - Click "Đăng Nhập" (Login)
-   - Login with: `minhdai.bmt@gmail.com`
+   - Login with a disposable test admin account; do not document its credentials
 
 3. **Verify Admin Access**:
    - Should see "Admin Mode" banner
@@ -107,7 +116,7 @@ AdminService.setupAdminUser().then(result => {
 - Remove hardcoded admin user ID
 - Implement proper role-based authentication
 - Add admin invitation system
-- Use environment variables for configuration
+- Do not treat `NEXT_PUBLIC_*` environment variables as secrets or authorization
 
 ### Troubleshooting
 

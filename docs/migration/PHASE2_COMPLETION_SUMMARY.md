@@ -1,5 +1,10 @@
 # ✅ Phase 2 Completion Summary - Advanced User & Permission Management
 
+> **Status:** Historical
+> **Baseline:** `0.1.0` / `7890775`
+> **Reviewed:** 2026-07-15
+> **Historical notice:** Completion claims reflect a point-in-time report. [CURRENT_STATE.md](../CURRENT_STATE.md), [ARCHITECTURE.md](../architecture/ARCHITECTURE.md), and the current code override this document. Admin remains partial; active auth reads `farmAccess`, while `FarmService` reads `userFarmAccess`. The current build passes, but tests are not reliable, and current runtime must not be described as production-ready.
+
 ## 🎉 Successfully Completed Features
 
 ### 2.1 Enhanced User Management ✅

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { collection, getDocs, doc, setDoc, deleteDoc, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 
 interface Zone {
   id: string
@@ -37,6 +38,7 @@ function hexToColorData(hex: string) {
 }
 
 export default function AdminZonesPage() {
+  const { loading: authLoading, user, isAdmin } = useSimpleAuth()
   const [zones, setZones] = useState<Zone[]>([])
   const [farms, setFarms] = useState<Farm[]>([])
   const [selectedFarm, setSelectedFarm] = useState<string>('')
@@ -53,8 +55,16 @@ export default function AdminZonesPage() {
   }
 
   useEffect(() => {
-    loadFarms()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!authLoading && user && isAdmin()) loadFarms()
+  }, [authLoading, user, isAdmin])
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Đang xác thực...</div>
+  }
+
+  if (!user || !isAdmin()) {
+    return <div className="min-h-screen flex items-center justify-center p-6 text-center">Bạn không có quyền quản trị khu vực.</div>
+  }
 
   const loadFarms = async () => {
     try {
@@ -173,10 +183,7 @@ export default function AdminZonesPage() {
     
     try {
       log(`Deleting zone: ${zoneName} (${zoneId})`)
-      // Delete from new path
       await deleteDoc(doc(db, 'farms', selectedFarm, 'zones', zoneId))
-      // Delete from legacy path
-      await deleteDoc(doc(db, 'zones', zoneId))
       
       setZones(prev => prev.filter(z => z.id !== zoneId))
       log(`Zone deleted successfully: ${zoneName}`)
@@ -188,7 +195,7 @@ export default function AdminZonesPage() {
   const duplicateZone = async (zone: Zone) => {
     try {
       log(`Duplicating zone: ${zone.name}`)
-      const newZoneRef = doc(collection(db, 'zones'))
+      const newZoneRef = doc(collection(db, 'farms', selectedFarm, 'zones'))
       const newId = newZoneRef.id
       const newZone = {
         ...zone,
@@ -203,7 +210,6 @@ export default function AdminZonesPage() {
         name: newZone.name,
         color: newZone.color,
         colorData,
-        boundary: newZone.boundary,
         boundaries: newZone.boundary,
         farmId: selectedFarm,
         treeCount: newZone.treeCount,
@@ -214,10 +220,7 @@ export default function AdminZonesPage() {
         updatedAt: new Date()
       }
       
-      // Write to new path
       await setDoc(doc(db, 'farms', selectedFarm, 'zones', newId), payload)
-      // Write to legacy path
-      await setDoc(doc(db, 'zones', newId), payload)
       
       setZones(prev => [...prev, newZone])
       log(`Zone duplicated successfully: ${newZone.name}`)
@@ -232,10 +235,9 @@ export default function AdminZonesPage() {
     
     try {
       log(`Clearing all zones for farm: ${selectedFarm}`)
-      const deletePromises = zones.map(zone => [
-        deleteDoc(doc(db, 'farms', selectedFarm, 'zones', zone.id)),
-        deleteDoc(doc(db, 'zones', zone.id))
-      ]).flat()
+      const deletePromises = zones.map(zone =>
+        deleteDoc(doc(db, 'farms', selectedFarm, 'zones', zone.id))
+      )
       await Promise.all(deletePromises)
       setZones([])
       log(`All zones cleared successfully`)
@@ -488,7 +490,6 @@ function ZoneModal({ zone, farmId, onClose, onSave, onLog }: ZoneModalProps) {
         name: zoneData.name,
         color: zoneData.color,
         colorData,
-        boundary: zoneData.boundary,
         boundaries: zoneData.boundary,
         farmId: farmId,
         treeCount: zoneData.treeCount,
@@ -503,25 +504,16 @@ function ZoneModal({ zone, farmId, onClose, onSave, onLog }: ZoneModalProps) {
       if (zone) {
         // Update existing zone
         onLog(`Updating zone: ${formData.name}`)
-        // Write to new path
         await setDoc(doc(db, 'farms', farmId, 'zones', zone.id), payload)
-        // Write to legacy path
-        await setDoc(doc(db, 'zones', zone.id), payload)
       } else {
         // Create new zone
         onLog(`Creating zone: ${formData.name}`)
-        const newZoneRef = doc(collection(db, 'zones'))
+        const newZoneRef = doc(collection(db, 'farms', farmId, 'zones'))
         activeId = newZoneRef.id
         zoneData.id = activeId
         payload.id = activeId
         
-        // Write to new path
         await setDoc(doc(db, 'farms', farmId, 'zones', activeId), {
-          ...payload,
-          createdAt: new Date()
-        })
-        // Write to legacy path
-        await setDoc(doc(db, 'zones', activeId), {
           ...payload,
           createdAt: new Date()
         })

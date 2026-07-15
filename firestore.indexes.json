@@ -1,6 +1,34 @@
 {
   "indexes": [
     {
+      "collectionGroup": "userFarmAccess",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "userFarmAccess",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "farmId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "activityLogs",
       "queryScope": "COLLECTION",
       "fields": [

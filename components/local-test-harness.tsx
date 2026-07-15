@@ -31,44 +31,7 @@ export default function LocalTestHarness() {
       return
     }
 
-    setLoading(true)
-    try {
-      log(`Attempting to switch role to: ${newRole}`)
-      const q = query(
-        collection(db, 'farmAccess'), 
-        where('userId', '==', user.uid), 
-        where('farmId', '==', currentFarm.id)
-      )
-      const snap = await getDocs(q)
-      
-      if (!snap.empty) {
-        // Update existing access
-        const docRef = doc(db, 'farmAccess', snap.docs[0].id)
-        await updateDoc(docRef, { role: newRole })
-        log(`Successfully updated role to ${newRole} in Firestore!`)
-      } else {
-        // Create new access
-        const newAccessRef = doc(collection(db, 'farmAccess'))
-        await setDoc(newAccessRef, {
-          id: newAccessRef.id,
-          userId: user.uid,
-          farmId: currentFarm.id,
-          role: newRole,
-          isActive: true,
-          grantedAt: new Date(),
-          grantedBy: 'mock-test-harness'
-        })
-        log(`Created new role assignment for ${newRole} in Firestore!`)
-      }
-      
-      // Refresh Auth Context
-      await refreshUserData()
-      log('Auth data refreshed.')
-    } catch (error) {
-      log(`Error changing role: ${error}`)
-    } finally {
-      setLoading(false)
-    }
+    log(`Role switching to ${newRole} is disabled. Seed access through the Firebase emulator instead.`)
   }
 
   // Seed Mock Zones
@@ -96,28 +59,18 @@ export default function LocalTestHarness() {
           ...baseZone,
           name: `Mock Zone ${i + 1}`,
           code: `MOCK-Z${i + 1}`,
-          boundaries: shiftedBoundary,
-          boundary: shiftedBoundary
+          boundaries: shiftedBoundary
         }
 
-        // Dual-write:
-        // 1. Subcollection path `/farms/{farmId}/zones/{zoneId}`
         await setDoc(doc(db, 'farms', currentFarm.id, 'zones', zone.id), {
           ...zone,
           updatedAt: new Date(),
           createdAt: new Date()
         })
 
-        // 2. Legacy global path `/zones/{zoneId}`
-        await setDoc(doc(db, 'zones', zone.id), {
-          ...zone,
-          updatedAt: new Date(),
-          createdAt: new Date()
-        })
-        
         log(`Seeded: ${zone.name}`)
       }
-      log('Successfully seeded 3 zones in both collections!')
+      log('Successfully seeded 3 farm-scoped zones!')
     } catch (error) {
       log(`Error seeding zones: ${error}`)
     } finally {
@@ -176,7 +129,6 @@ export default function LocalTestHarness() {
       for (const d of farmZonesSnapshot.docs) {
         if (d.data().name?.startsWith('Mock Zone')) {
           await deleteDoc(doc(db, 'farms', currentFarm.id, 'zones', d.id))
-          await deleteDoc(doc(db, 'zones', d.id))
           log(`Deleted zone: ${d.data().name}`)
         }
       }
@@ -244,7 +196,7 @@ export default function LocalTestHarness() {
                   {(['owner', 'manager', 'viewer'] as FarmRole[]).map(role => (
                     <button
                       key={role}
-                      disabled={loading || currentRole === role}
+                      disabled
                       onClick={() => handleRoleChange(role)}
                       className={`text-xs py-1.5 rounded-lg border font-medium transition-all ${
                         currentRole === role

@@ -701,7 +701,7 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
   const canSave = !!user && !!currentFarm
 
   return (
-    <div className="fixed inset-0 z-[50000] bg-white">
+    <div className="fixed inset-0 z-[50000] bg-white" data-testid="tree-showcase">
       <ToastContainer />
       
       {/* Header - Fixed */}
@@ -860,7 +860,7 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
                 <div className="font-medium text-gray-900">{tree.zoneName || tree.zoneCode || 'N/A'}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-500">Sức Khoẻ</div>
+                <div className="text-sm text-gray-500">Ghi chú sức khỏe</div>
                 <div className="font-medium text-gray-900 font-mono text-sm">{tree.healthNotes || 'N/A'}</div>
               </div>
               <div className="col-span-2">

@@ -7,7 +7,7 @@ import {
   ChartBarIcon, UsersIcon, BuildingOfficeIcon
 } from '@heroicons/react/24/outline'
 import { collection, query, where, getDocs, doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { auth, db } from '@/lib/firebase'
 
 interface RoleChangeRequest {
   id: string
@@ -23,7 +23,6 @@ interface SystemStats {
   totalUsers: number
   totalFarms: number
   activeUsers: number
-  systemHealth: 'good' | 'warning' | 'critical'
 }
 
 export default function SuperAdminPanel() {
@@ -31,8 +30,7 @@ export default function SuperAdminPanel() {
   const [systemStats, setSystemStats] = useState<SystemStats>({
     totalUsers: 0,
     totalFarms: 0,
-    activeUsers: 0,
-    systemHealth: 'good'
+    activeUsers: 0
   })
   const [systemSettings, setSystemSettings] = useState({
     allowSelfRegistration: true,
@@ -88,18 +86,25 @@ export default function SuperAdminPanel() {
 
   const grantFarmAccess = async (userId: string, farmId: string, role: string) => {
     try {
-      const accessRef = doc(collection(db, 'userFarmAccess'))
+      const adminUser = auth.currentUser
+      if (!adminUser) throw new Error('Admin authentication is required')
+      const accessId = `${userId}_${farmId}`
+      const accessRef = doc(db, 'userFarmAccess', accessId)
+      const now = new Date()
       await setDoc(accessRef, {
-        id: accessRef.id,
+        id: accessId,
         userId,
         farmId,
         role,
         permissions: role === 'manager' ?
           ['read', 'write', 'manage_zones', 'manage_investments'] :
           ['read'],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      })
+        isActive: true,
+        grantedBy: adminUser.uid,
+        grantedAt: now,
+        createdAt: now,
+        updatedAt: now
+      }, { merge: true })
 
       // Reload user farm access
       await loadUserFarmAccess(userId)
@@ -112,7 +117,11 @@ export default function SuperAdminPanel() {
 
   const revokeFarmAccess = async (accessId: string, userId: string) => {
     try {
-      await deleteDoc(doc(db, 'userFarmAccess', accessId))
+      await updateDoc(doc(db, 'userFarmAccess', accessId), {
+        isActive: false,
+        revokedAt: new Date(),
+        updatedAt: new Date()
+      })
       await loadUserFarmAccess(userId)
       alert('Đã thu hồi quyền truy cập!')
     } catch (error) {
@@ -137,17 +146,11 @@ export default function SuperAdminPanel() {
       for (const userDoc of usersSnapshot.docs) {
         const userData = userDoc.data()
 
-        // Skip super admin users from role assignment
-        if (userData.email === 'admin@farm.com' || userDoc.id === 'O6aFgoNhDigSIXk6zdYSDrFWhWG2') {
-          continue
-        }
-
         usersData.push({
           id: userDoc.id,
           name: userData.displayName || 'No Name',
           email: userData.email || '',
-          status: userData.accountStatus || 'active',
-          role: 'farm_viewer' // Default role for display
+          status: userData.accountStatus || 'active'
         })
       }
 
@@ -210,8 +213,7 @@ export default function SuperAdminPanel() {
       setSystemStats({
         totalUsers,
         totalFarms,
-        activeUsers,
-        systemHealth: 'good' // This would come from system monitoring service
+        activeUsers
       })
     } catch (error) {
       console.error('Error loading system stats:', error)
@@ -298,76 +300,15 @@ export default function SuperAdminPanel() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg p-4 border">
-          <div className="flex items-center">
-            <div className={`w-3 h-3 rounded-full mr-3 ${
-              systemStats.systemHealth === 'good' ? 'bg-green-500' :
-              systemStats.systemHealth === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
-            }`} />
-            <div>
-              <p className="font-bold">Hệ thống</p>
-              <p className="text-gray-600 capitalize">{systemStats.systemHealth}</p>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Role Change Requests */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-4 border-b">
-          <h3 className="font-semibold">Yêu cầu thay đổi vai trò</h3>
-        </div>
-        <div className="divide-y">
-          {roleRequests.length > 0 ? (
-            roleRequests.map((request) => (
-              <div key={request.id} className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{request.userName}</p>
-                    <p className="text-sm text-gray-600">
-                      {request.currentRole.replace('_', ' ')} → {request.requestedRole.replace('_', ' ')}
-                    </p>
-                    <p className="text-xs text-gray-500">{request.requestDate}</p>
-                  </div>
-                  {request.status === 'pending' ? (
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleRoleRequest(request.id, 'approve')}
-                        className="p-2 bg-green-100 text-green-600 rounded-lg"
-                      >
-                        <CheckIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleRoleRequest(request.id, 'reject')}
-                        className="p-2 bg-red-100 text-red-600 rounded-lg"
-                      >
-                        <XMarkIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      request.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {request.status}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="p-4 text-center">
-              <p className="text-gray-500">Không có yêu cầu thay đổi vai trò nào</p>
-            </div>
-          )}
-        </div>
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+        Role requests và system monitoring chưa có backend runtime nên không được hiển thị như dữ liệu hệ thống.
       </div>
 
-      {/* System Settings */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-4 border-b">
-          <h3 className="font-semibold">Cài đặt hệ thống</h3>
-        </div>
-        <div className="p-4 space-y-4">
+      <div className="bg-white rounded-lg shadow-sm border opacity-60">
+        <div className="p-4 border-b"><h3 className="font-semibold">Bản xem trước cài đặt (không lưu, không áp dụng)</h3></div>
+        <div className="p-4 space-y-4 pointer-events-none">
           <div className="flex items-center justify-between">
             <div>
               <span className="font-medium">Cho phép tự đăng ký</span>

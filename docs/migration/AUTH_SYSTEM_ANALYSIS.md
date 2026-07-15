@@ -1,5 +1,10 @@
 # Authentication System Analysis - Current Issues
 
+> **Status:** Historical
+> **Baseline:** `0.1.0` / `7890775`
+> **Reviewed:** 2026-07-15
+> **Historical notice:** Completion claims reflect a point-in-time report. [CURRENT_STATE.md](../CURRENT_STATE.md), [ARCHITECTURE.md](../architecture/ARCHITECTURE.md), and the current code override this document. Active auth reads `farmAccess`, while `FarmService` reads `userFarmAccess`; treat the architectures below as historical analysis, not current runtime documentation.
+
 ## 🚨 Critical Problems Identified
 
 ### 1. **Multiple Conflicting Auth Contexts**

@@ -1,5 +1,13 @@
 # HƯỚNG DẪN VẬN HÀNH & DI TRÚ NIÊN VỤ MỚI (FARMERS & MANAGERS)
 
+> Status: Current
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+Season selection, per-season tree statistics, photo season tags, and season-aware views are implemented. Legacy season migration is performed client-side after farm selection, not as an atomic server migration, and can remain incomplete if a client lacks access or the operation fails.
+
 Tài liệu này hướng dẫn chi tiết quy trình vận hành trên ứng dụng **FarmManager** khi trang trại bước vào một mùa vụ thu hoạch mới (ví dụ: chuyển giao từ niên vụ 2025 sang 2026), giúp cô lập số liệu cũ và cập nhật số liệu mới một cách chính xác mà không gây xáo trộn.
 
 ---

@@ -1,5 +1,13 @@
 # Tree Showcase UX Proposal (Lightweight)
 
+> Status: Design-only
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+This file remains a UX proposal and checklist, not the current specification. A tree showcase route/component exists, but checked proposal items and future interactions below are not independent implementation or production-readiness evidence.
+
 Goal: Prioritize three key elements above the fold for fast, field-friendly use:
 - Image of tree (hero gallery)
 - Zone (visual chip)

@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSystemAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    function accessPath(uid, farmId) {
+      return /databases/(default)/documents/userFarmAccess/$(uid + '_' + farmId);
+    }
+
+    function hasFarmAccess(farmId) {
+      return signedIn()
+        && firestore.exists(accessPath(request.auth.uid, farmId))
+        && firestore.get(accessPath(request.auth.uid, farmId)).data.isActive == true;
+    }
+
+    function canWriteFarm(farmId) {
+      return isSystemAdmin()
+        || (hasFarmAccess(farmId)
+          && firestore.get(accessPath(request.auth.uid, farmId)).data.role in ['owner', 'manager']);
+    }
+
+    match /farms/{farmId}/trees/{treeId}/photos/{photoId}/{fileName} {
+      allow read: if isSystemAdmin() || hasFarmAccess(farmId);
+      allow write: if canWriteFarm(farmId)
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

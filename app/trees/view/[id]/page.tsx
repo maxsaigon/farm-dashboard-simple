@@ -6,13 +6,17 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Tree } from '@/lib/types'
 import FullscreenTreeShowcase from '@/components/FullscreenTreeShowcase'
+import AuthGuard from '@/components/AuthGuard'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 
-export default function TreeViewPage() {
+function TreeViewContent() {
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
   const treeId = params?.id as string
-  const farmId = searchParams?.get('farm')
+  const requestedFarmId = searchParams?.get('farm')
+  const { currentFarm, canAccessFarm } = useSimpleAuth()
+  const farmId = currentFarm?.id
 
   const [tree, setTree] = useState<Tree | null>(null)
   const [loading, setLoading] = useState(true)
@@ -20,7 +24,7 @@ export default function TreeViewPage() {
 
   useEffect(() => {
     const loadTree = async () => {
-      if (!treeId || !farmId) {
+      if (!treeId || !farmId || !canAccessFarm(farmId) || (requestedFarmId && requestedFarmId !== farmId)) {
         setError('Thiếu thông tin cây hoặc trang trại')
         setLoading(false)
         return
@@ -46,7 +50,7 @@ export default function TreeViewPage() {
     }
 
     loadTree()
-  }, [treeId, farmId])
+  }, [treeId, farmId, requestedFarmId, canAccessFarm])
 
   if (loading) {
     return (
@@ -93,5 +97,13 @@ export default function TreeViewPage() {
       onClose={handleClose}
       onSaved={handleSaved}
     />
+  )
+}
+
+export default function TreeViewPage() {
+  return (
+    <AuthGuard requiredPermission="read" requireFarmAccess>
+      <TreeViewContent />
+    </AuthGuard>
   )
 }

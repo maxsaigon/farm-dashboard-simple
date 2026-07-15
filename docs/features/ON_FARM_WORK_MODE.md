@@ -1,6 +1,14 @@
 
 # Chế Độ Làm Việc On-Farm (On-Farm Work Mode)
 
+> Status: Partial
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+Fullscreen on-farm mode, nearby-tree calculations, tree creation, and foreground GPS are implemented. GPS does not remain reliable when iOS backgrounds or suspends the PWA, while photo/offline workflows are partial and AI features are absent.
+
 ## 📋 Tổng Quan
 
 **Chế độ làm việc On-Farm** là một tính năng mới được thiết kế đặc biệt cho nông dân làm việc trực tiếp trên nông trại. Chế độ này tối ưu hóa trải nghiệm mobile với giao diện fullscreen, GPS tracking tự động, và các tính năng hỗ trợ công việc thực địa.
@@ -315,10 +323,10 @@ const hasAccess = await FarmService.checkFarmAccess(
 - **GitHub Issues**: [Link to repo]
 
 ### Tài Liệu Liên Quan
-- [GPS Tracking Service](../lib/ios-optimized-gps.ts)
-- [Map Page Implementation](../app/map/page.tsx)
-- [OnFarmWorkMode Component](../components/OnFarmWorkMode.tsx)
-- [Architecture Guide](./architecture/ARCHITECTURE.md)
+- [GPS Tracking Service](../../lib/ios-optimized-gps.ts)
+- [Map Page Implementation](../../app/map/page.tsx)
+- [OnFarmWorkMode Component](../../components/OnFarmWorkMode.tsx)
+- [Architecture Guide](../architecture/ARCHITECTURE.md)
 
 ## 📝 Changelog
 
@@ -335,4 +343,4 @@ const hasAccess = await FarmService.checkFarmAccess(
 **Tác giả**: Kilo Code  
 **Ngày tạo**: 03/01/2025  
 **Phiên bản**: 1.0.0  
-**Trạng thái**: Production Ready ✅
+**Trạng thái hiện tại**: Partial; not production-ready.

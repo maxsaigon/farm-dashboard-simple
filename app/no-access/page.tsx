@@ -33,7 +33,7 @@ export default function NoAccessPage() {
           Không có quyền truy cập
         </h1>
         <p className="text-gray-600 mb-6">
-          Tài khoản của bạn chưa được cấp quyền truy cập vào bất kỳ trang trại nào.
+          Tài khoản của bạn không có quyền truy cập trang này hoặc quyền hiện tại chưa phù hợp.
         </p>
 
         {/* User Info */}

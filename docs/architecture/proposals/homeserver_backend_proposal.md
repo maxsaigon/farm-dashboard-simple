@@ -1,5 +1,11 @@
 # 🏠 Đề Xuất Backend Homeserver — Farm AI Data Hub
 
+> Status: Proposal
+> Baseline reviewed against current code: package `0.1.0`, Git commit `7890775` with local documentation changes
+> Last reviewed: 2026-07-15
+>
+> Current-code notice: Không có FastAPI/SQLite/Redis/Ollama/Caddy homeserver nào trong active runtime. Firebase Authentication, Cloud Firestore và Firebase Storage vẫn là backend đang hoạt động. PocketBase chỉ tồn tại dưới dạng dependency, helper và migration/setup experiment; không có active page/component dùng PocketBase làm nguồn dữ liệu runtime. Mọi endpoint, schema, sync interval, security pattern, hardware estimate và deployment command dưới đây là thiết kế đề xuất, chưa phải hệ thống đã triển khai hay production-ready.
+
 > Backend tự host trên Ubuntu homeserver, lưu trữ data + photo từ Farm Dashboard, phục vụ phân tích AI cây sầu riêng.
 
 ---
@@ -1309,4 +1315,3 @@ Sau khi phân tích sâu PocketBase, tôi cập nhật khuyến nghị:
 > - Vẫn đang **pre-v1.0** — chấp nhận rủi ro breaking changes
 > - Solo maintainer — project có thể bị abandon (tuy nhiên community rất active)
 > - Nếu dùng thay Firebase hoàn toàn: cần migration password (Firebase dùng scrypt, PocketBase dùng bcrypt → force password reset)
-

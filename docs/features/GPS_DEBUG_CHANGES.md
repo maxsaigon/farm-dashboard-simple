@@ -1,5 +1,13 @@
 # GPS Tracking Debug Changes - 2025-01-03
 
+> Status: Historical
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+Foreground browser GPS and map status UI are implemented. These 2025 debug expectations are not current device-test results, and browser tracking becomes unreliable when iOS backgrounds, suspends, or closes the PWA.
+
 ## 🔧 THAY ĐỔI ĐÃ THỰC HIỆN
 
 ### 1. Enhanced Console Logging

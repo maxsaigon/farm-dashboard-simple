@@ -1,5 +1,13 @@
 # 🎯 Farm Selector & Super Admin Implementation Complete
 
+> Status: Partial
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+Farm selection and owner/manager/viewer UI are implemented, but backend authorization is not production-safe: Firestore rules are broadly permissive and access flows use inconsistent `farmAccess` and `userFarmAccess` collections. Historical completion and security claims below must be read with those limitations.
+
 ## ✅ **Issues Fixed Successfully**
 
 ### **1. Super Admin Access Control - IMPLEMENTED**
@@ -188,9 +196,9 @@ const superAdminEmails = [
 6. Farm appears in user's farm selector
 ```
 
-## 🌾 **Production Ready**
+## 🌾 **Historical Readiness Claim (Superseded)**
 
-The farm selector and super admin system is **fully functional** with:
+The original report described the farm selector and super admin system as fully functional. That claim is not current production-readiness evidence; authorization and account-lifecycle gaps remain.
 
 - ✅ **Secure admin access** - Email-based authorization
 - ✅ **Multi-farm support** - Easy farm switching for users
@@ -200,4 +208,4 @@ The farm selector and super admin system is **fully functional** with:
 - ✅ **Persistent selection** - Farm choice remembered
 - ✅ **Visual feedback** - Clear current farm indication
 
-**Ready for production use with complete farm management capabilities!** 🚀
+**Current assessment:** partial internal-beta functionality; not production-ready.

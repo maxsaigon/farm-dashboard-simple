@@ -1,5 +1,15 @@
 # Báo Cáo Kiểm Tra Tối Ưu Hệ Thống Xác Thực
 
+**Document status:** Historical test report; not a current release gate
+
+**Baseline:** Repository state verified on 2026-07-15
+
+**Review date:** 2026-07-15
+
+**Current notice:** Preserve this report as historical evidence only. Its 2025 results and production-readiness claims do not describe the current test baseline and do not prove production readiness. See [Testing Guide](./TESTING_GUIDE.md).
+
+> Current baseline: `package.json` has no `test` script, no Jest configuration exists, and the existing unit test is unreliable because its expected authenticated state is not established by its mocks. Playwright is configured, but the stored result in `../../test-results/.last-run.json` is `failed`. On 2026-07-15, `npm run build` and `npx tsc --noEmit` passed; `npm run lint` completed with warnings. Historical reports are not release approval.
+
 **Ngày kiểm tra:** 2025-10-10  
 **Phiên bản:** Optimized Auth Context v2  
 **Trạng thái:** ✅ PASS - Tất cả kiểm tra thành công
@@ -245,6 +255,8 @@ No render-blocking scripts
 
 ## 🎉 Conclusion
 
+> **Superseded historical conclusion:** The statements below were recorded on 2025-10-10. They are not supported by the current automated-test baseline and do not approve the current codebase for production. See [`TESTING_GUIDE.md`](./TESTING_GUIDE.md).
+
 Hệ thống xác thực tối ưu đã được kiểm tra toàn diện và **PASS tất cả các test**:
 
 - ✅ Build production thành công
@@ -253,19 +265,19 @@ Hệ thống xác thực tối ưu đã được kiểm tra toàn diện và **P
 - ✅ Backward compatibility được duy trì
 - ✅ Sẵn sàng deploy production
 
-**Trạng thái:** READY FOR PRODUCTION 🚀
+**Historical status (superseded):** READY FOR PRODUCTION
 
 ---
 
 ## 📚 Related Documents
 
-- [Optimization Guide (EN)](./AUTH_OPTIMIZATION_GUIDE.md)
-- [Optimization Summary (VI)](./AUTH_OPTIMIZATION_SUMMARY_VI.md)
-- [Implementation File](../lib/optimized-auth-context.tsx)
-- [Layout Integration](../app/layout.tsx)
+- [Optimization Guide (EN)](../architecture/AUTH_OPTIMIZATION_GUIDE.md)
+- [Optimization Summary (VI)](../architecture/AUTH_OPTIMIZATION_SUMMARY_VI.md)
+- [Implementation File](../../lib/optimized-auth-context.tsx)
+- [Layout Integration](../../app/layout.tsx)
 
 ---
 
 **Tested by:** Kilo Code AI  
 **Date:** 2025-10-10  
-**Status:** ✅ APPROVED FOR PRODUCTION
+**Historical status (superseded):** APPROVED FOR PRODUCTION

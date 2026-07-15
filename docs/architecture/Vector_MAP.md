@@ -1,4 +1,12 @@
-Dựa trên yêu cầu của bạn, tôi sẽ đề xuất một giải pháp công nghệ tập trung vào việc xây dựng một web-app ReactJS để vẽ sơ đồ trang trại tùy chỉnh (custom farm map), phân vùng zones, hiển thị vị trí cây cối, và định vị vị trí người dùng (user localization) trong sơ đồ đó. Giải pháp này tránh việc overlay lên bản đồ thực tế (như OpenStreetMap hoặc Apple Maps) để giảm độ phức tạp và cải thiện trải nghiệm người dùng, thay vào đó chỉ làm việc trên một sơ đồ trừu tượng hoặc vector-based của trang trại. Điều này tương tự cách robot hút bụi sử dụng map nội bộ (floor plan) với định vị thời gian thực, nhưng ở đây chúng ta tận dụng GPS từ trình duyệt web thay vì LiDAR (vì web-app không dễ truy cập hardware cao cấp như vậy).
+# Đề Xuất Bản Đồ Vector Tùy Chỉnh
+
+> Status: Proposal
+> Baseline reviewed against current code: package `0.1.0`, Git commit `7890775` with local documentation changes
+> Last reviewed: 2026-07-15
+>
+> Current-code notice: Đề xuất Leaflet/react-leaflet dưới đây không phải runtime hiện tại. Ứng dụng đang dùng MapLibre GL + `react-map-gl`, raster OSM/Esri, GeoJSON zones, markers và Turf trong [`../../components/UnifiedMap.tsx`](../../components/UnifiedMap.tsx). Các component Leaflet pure-vector được nhắc tới không được tích hợp vào active `/map` route; offline và GPS chính xác cao cũng không được bảo đảm bởi đề xuất này.
+
+Dựa trên yêu cầu ban đầu, tài liệu đề xuất một web-app ReactJS để vẽ sơ đồ trang trại tùy chỉnh (custom farm map), phân vùng zones, hiển thị vị trí cây cối, và định vị vị trí người dùng (user localization) trong sơ đồ đó. Giải pháp tránh overlay lên bản đồ thực tế (như OpenStreetMap hoặc Apple Maps), thay vào đó chỉ làm việc trên một sơ đồ trừu tượng hoặc vector-based của trang trại. Điều này tương tự cách robot hút bụi sử dụng map nội bộ (floor plan) với định vị thời gian thực, nhưng tận dụng GPS từ trình duyệt web thay vì LiDAR.
 
 ### Giả định dữ liệu đầu vào
 - Trang trại 10ha: Diện tích lớn, nhưng GPS trên thiết bị di động (độ chính xác ~5-10m) có thể đủ cho việc pick cây gần vị trí.

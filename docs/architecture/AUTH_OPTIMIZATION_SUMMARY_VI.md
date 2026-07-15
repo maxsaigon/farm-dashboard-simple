@@ -1,5 +1,11 @@
 # Tóm Tắt Tối Ưu Hệ Thống Xác Thực
 
+> Status: Historical
+> Baseline reviewed against current code: package `0.1.0`, Git commit `7890775` with local documentation changes
+> Last reviewed: 2026-07-15
+>
+> Notice hiện trạng: Đây là báo cáo kết quả cũ, không phải đặc tả runtime hiện tại. Provider vẫn active tại [`../../lib/optimized-auth-context.tsx`](../../lib/optimized-auth-context.tsx), nhưng code hiện dùng key `farmDashboard_authState`, restore tối đa 7 ngày và freshness 5 phút; không có `storage` listener, key `_v2`, expiry 1 giờ hay timer refresh 2 giây như mô tả dưới đây. Các con số tốc độ/chi phí và checklist đã hoàn thành chưa được benchmark/test lại. Client guard không thay thế backend authorization; [`../../firestore.rules`](../../firestore.rules) hiện cho quyền rất rộng với mọi user đã xác thực.
+
 ## 🎯 Vấn Đề Đã Giải Quyết
 
 ### Trước Khi Tối Ưu
@@ -8,7 +14,7 @@
 - 📊 **15-20 lần đọc Firestore mỗi phiên** - Tốn kém và chậm
 - 😞 **Trải nghiệm người dùng kém** - Cảm giác ứng dụng chậm và không mượt
 
-### Sau Khi Tối Ưu
+### Kết Quả Từng Được Báo Cáo (Chưa Kiểm Chứng Lại)
 - ⚡ **Thời gian xác thực: 50-100ms** - Gần như tức thì!
 - ✨ **Không xác thực lại khi chuyển tab** - Mượt mà, không gián đoạn
 - 📊 **3-5 lần đọc Firestore mỗi phiên** - Giảm 70-80% chi phí
@@ -64,7 +70,7 @@ setTimeout(() => {
 
 ### Bước 1: Đã Tự Động Áp Dụng ✅
 
-File [`app/layout.tsx`](../app/layout.tsx:4) đã được cập nhật:
+File [`../../app/layout.tsx`](../../app/layout.tsx) hiện import provider:
 
 ```typescript
 // Đã thay đổi từ
@@ -78,7 +84,7 @@ import { SimpleAuthProvider } from "@/lib/optimized-auth-context"
 
 - ✅ Tất cả components hoạt động bình thường
 - ✅ Tất cả hooks hoạt động bình thường
-- ✅ API 100% tương thích ngược
+- Báo cáo cũ kỳ vọng API tương thích; chưa được kiểm chứng lại ở baseline hiện tại
 - ✅ Không cần sửa code nào khác
 
 ## 🎨 Trải Nghiệm Người Dùng Mới
@@ -143,16 +149,14 @@ Firestore:     Luôn mới // Làm mới trong nền
 
 ## 🧪 Kiểm Tra
 
-### Checklist Đã Hoàn Thành
+### Checklist Lịch Sử (Không Phải Kết Quả Test Hiện Tại)
 
-- [x] Đăng nhập hiển thị UI tức thì
-- [x] Chuyển tab không xác thực lại
-- [x] Làm mới trong nền hoạt động
-- [x] Cache hết hạn đúng sau 1 giờ
-- [x] Đồng bộ giữa các tab hoạt động
-- [x] Đăng xuất xóa cache
-- [x] Chế độ offline vẫn hoạt động
-- [x] Chế độ demo vẫn hoạt động
+- [ ] Benchmark thời gian đăng nhập tại baseline hiện tại
+- [ ] Kiểm tra hành vi đa tab; storage listener được mô tả không còn trong code
+- [ ] Kiểm tra refresh dữ liệu nền
+- [ ] Kiểm tra restore 7 ngày và freshness 5 phút đang có trong code
+- [ ] Kiểm tra đăng xuất xóa cache
+- [ ] Kiểm tra offline và demo fallback
 
 ### Cách Kiểm Tra
 
@@ -264,20 +268,20 @@ Tiết kiệm: 70-80% chi phí Firestore
 
 ## 🚀 Kết Luận
 
-Hệ thống xác thực đã được tối ưu hoàn toàn với:
+Tài liệu cũ từng báo cáo:
 
 - ⚡ **Nhanh hơn 50-100 lần** - Từ 3-5s xuống 50-100ms
 - 🔄 **Không xác thực lại** - Chuyển tab tức thì
 - 💰 **Tiết kiệm 70-80%** - Chi phí Firestore
 - 😊 **Trải nghiệm xuất sắc** - Người dùng hài lòng
-- ✅ **100% tương thích** - Không cần sửa code
+- **Tương thích** - Đây là kỳ vọng lịch sử, cần kiểm chứng lại với code hiện tại
 
-**Không cần làm gì thêm - Hệ thống đã sẵn sàng hoạt động!** 🎉
+Các kết quả trên chưa được tái lập tại baseline hiện tại và không chứng minh hệ thống sẵn sàng production. Cần xử lý rules backend rộng, mismatch `farmAccess`/`userFarmAccess`, và bổ sung test có thể chạy lại; xem [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ---
 
 📚 **Tài liệu chi tiết:** [`AUTH_OPTIMIZATION_GUIDE.md`](./AUTH_OPTIMIZATION_GUIDE.md)
 
-🔧 **File triển khai:** [`lib/optimized-auth-context.tsx`](../lib/optimized-auth-context.tsx)
+🔧 **File triển khai:** [`../../lib/optimized-auth-context.tsx`](../../lib/optimized-auth-context.tsx)
 
-📱 **File sử dụng:** [`app/layout.tsx`](../app/layout.tsx:4)
+📱 **File sử dụng:** [`../../app/layout.tsx`](../../app/layout.tsx)

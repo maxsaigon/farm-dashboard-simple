@@ -16,9 +16,8 @@ interface MobileFarm {
   owner: string
   location: string
   area: number
-  trees: number
+  trees: number | null
   users: number
-  status: 'active' | 'inactive'
   createdDate: string
 }
 
@@ -26,8 +25,6 @@ export default function FarmManagementMobile() {
   const [farms, setFarms] = useState<MobileFarm[]>([])
   const [filteredFarms, setFilteredFarms] = useState<MobileFarm[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('all')
-  const [showFilters, setShowFilters] = useState(false)
   const [selectedFarm, setSelectedFarm] = useState<MobileFarm | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -78,9 +75,8 @@ export default function FarmManagementMobile() {
             `${farmData.centerLatitude.toFixed(4)}, ${farmData.centerLongitude.toFixed(4)}` :
             'Chưa cập nhật vị trí',
           area: farmData.totalArea || 0,
-          trees: 0, // Will be calculated from tree data if needed
+          trees: null,
           users: usersCount,
-          status: 'active' as const,
           createdDate: farmData.createdDate ?
             new Date(farmData.createdDate).toLocaleDateString('vi-VN') :
             'Chưa xác định'
@@ -112,12 +108,8 @@ export default function FarmManagementMobile() {
       )
     }
 
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(farm => farm.status === selectedStatus)
-    }
-
     setFilteredFarms(filtered)
-  }, [farms, searchTerm, selectedStatus])
+  }, [farms, searchTerm])
 
   const FarmCard = ({ farm }: { farm: MobileFarm }) => (
     <div className="bg-white rounded-lg shadow-sm border p-4 mb-3">
@@ -131,11 +123,6 @@ export default function FarmManagementMobile() {
             <p className="text-sm text-gray-500">Chủ: {farm.owner}</p>
           </div>
         </div>
-        <span className={`px-2 py-1 rounded-full text-xs ${
-          farm.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-        }`}>
-          {farm.status}
-        </span>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
@@ -147,7 +134,7 @@ export default function FarmManagementMobile() {
           <span>🌳 {farm.area} ha</span>
         </div>
         <div className="flex items-center text-gray-600">
-          <span>🌲 {farm.trees} cây</span>
+          <span>🌲 {farm.trees === null ? 'Chưa thống kê' : `${farm.trees} cây`}</span>
         </div>
         <div className="flex items-center text-gray-600">
           <UsersIcon className="h-4 w-4 mr-1" />
@@ -157,7 +144,7 @@ export default function FarmManagementMobile() {
 
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-gray-500">Tạo: {farm.createdDate}</span>
-        <button className="text-blue-600 text-sm">
+        <button disabled title="Chưa triển khai" className="text-gray-400 text-sm cursor-not-allowed">
           <MapIcon className="h-4 w-4 inline mr-1" />
           Bản đồ
         </button>
@@ -171,11 +158,11 @@ export default function FarmManagementMobile() {
           <EyeIcon className="h-4 w-4 inline mr-1" />
           Xem
         </button>
-        <button className="flex-1 bg-green-50 text-green-600 py-2 rounded-lg text-sm">
+        <button disabled title="Chưa triển khai" className="flex-1 bg-gray-50 text-gray-400 py-2 rounded-lg text-sm cursor-not-allowed">
           <PencilIcon className="h-4 w-4 inline mr-1" />
           Sửa
         </button>
-        <button className="flex-1 bg-red-50 text-red-600 py-2 rounded-lg text-sm">
+        <button disabled title="Chưa triển khai" className="flex-1 bg-gray-50 text-gray-400 py-2 rounded-lg text-sm cursor-not-allowed">
           <TrashIcon className="h-4 w-4 inline mr-1" />
           Xóa
         </button>
@@ -188,7 +175,7 @@ export default function FarmManagementMobile() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Quản lý nông trại</h2>
-        <button className="bg-green-600 text-white p-2 rounded-lg">
+        <button disabled title="Chưa triển khai" className="bg-gray-300 text-gray-500 p-2 rounded-lg cursor-not-allowed">
           <PlusIcon className="h-5 w-5" />
         </button>
       </div>
@@ -206,31 +193,6 @@ export default function FarmManagementMobile() {
           />
         </div>
 
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center w-full p-2 border rounded-lg text-gray-700"
-        >
-          <span className="mr-2">🔍</span>
-          Bộ lọc
-          <span className="ml-auto text-gray-400">▼</span>
-        </button>
-
-        {showFilters && (
-          <div className="mt-3 p-3 bg-gray-50 rounded-lg space-y-3">
-            <div>
-              <label className="block text-sm font-medium mb-2">Trạng thái</label>
-              <select
-                className="w-full p-2 border rounded-lg"
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-              >
-                <option value="all">Tất cả</option>
-                <option value="active">Đang hoạt động</option>
-                <option value="inactive">Không hoạt động</option>
-              </select>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Farm List */}
@@ -278,29 +240,16 @@ export default function FarmManagementMobile() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Số cây:</span>
-                  <span className="font-medium">{selectedFarm.trees} cây</span>
+                  <span className="font-medium">{selectedFarm.trees === null ? 'Chưa thống kê' : `${selectedFarm.trees} cây`}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Người dùng:</span>
                   <span className="font-medium">{selectedFarm.users} người</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Trạng thái:</span>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    selectedFarm.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
-                    {selectedFarm.status}
-                  </span>
-                </div>
               </div>
 
               <div className="flex space-x-3 mt-6">
-                <button className="flex-1 bg-blue-600 text-white py-2 rounded-lg">
-                  Xem bản đồ
-                </button>
-                <button className="flex-1 bg-green-600 text-white py-2 rounded-lg">
-                  Chỉnh sửa
-                </button>
+                <button disabled className="flex-1 bg-gray-200 text-gray-500 py-2 rounded-lg cursor-not-allowed">Chưa triển khai</button>
               </div>
 
               <div className="mt-3">

@@ -1,5 +1,10 @@
 # Authentication System Migration Guide
 
+> **Status:** Partial
+> **Baseline:** `0.1.0` / `7890775`
+> **Reviewed:** 2026-07-15
+> **Historical notice:** Completion claims reflect a point-in-time report. Use this guide only where it agrees with [CURRENT_STATE.md](../CURRENT_STATE.md), [ARCHITECTURE.md](../architecture/ARCHITECTURE.md), and the current code, which override it. Active auth reads `farmAccess`, while `FarmService` reads `userFarmAccess`; validate the data model before applying migration steps.
+
 ## 🎯 From Complex to Simple: Firebase Auth Best Practices
 
 This guide outlines the migration from the current over-engineered auth system to a simplified, Firebase-native solution.

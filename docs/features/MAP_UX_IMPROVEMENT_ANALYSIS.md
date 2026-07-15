@@ -1,5 +1,13 @@
 # Map Page UX/UI Improvement Analysis
 
+> Status: Design-only
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+The active `/map` route implements MapLibre, tree/zone display, foreground GPS, and an on-farm mode. This UX analysis and its success metrics are design/historical material, not proof that every described interaction, accessibility behavior, or offline flow is implemented.
+
 ## Executive Summary
 
 The current `/map` page has significant usability issues for farmers and non-tech users. This analysis identifies key problems and provides farmer-friendly solutions focused on simplicity, clarity, and mobile-first design.

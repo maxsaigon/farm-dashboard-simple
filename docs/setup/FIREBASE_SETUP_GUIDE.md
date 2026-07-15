@@ -1,5 +1,15 @@
 # 🔥 Firebase Setup Guide
 
+**Document status:** Current local/staging setup guide; production deployment blocked
+
+**Baseline:** Repository state verified on 2026-07-15
+
+**Review date:** 2026-07-15
+
+**Current notice:** The active application runtime uses Firebase Auth, Firestore, and Storage. PocketBase packages and scripts exist but PocketBase is not imported by the application runtime. Use project-specific values from Firebase Console without placing passwords, service-account keys, or private credentials in documentation.
+
+> Security warning: current `../../firestore.rules` allows broad authenticated access, while `../../firebase.json` has no Storage rules entry and the repository has no `storage.rules`. Do not deploy production with current rules, Firebase test mode, or the illustrative rule snippets below. See [Deployment Guide](../deployment/DEPLOYMENT_GUIDE.md).
+
 ## Quick Setup Steps
 
 ### 1. **Get Firebase Configuration**
@@ -16,12 +26,12 @@
 Open `.env.local` and replace the empty values:
 
 ```env
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyC...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abc123
+NEXT_PUBLIC_FIREBASE_API_KEY=<firebase-web-api-key>
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=<firebase-auth-domain>
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=<firebase-project-id>
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=<firebase-storage-bucket>
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=<firebase-messaging-sender-id>
+NEXT_PUBLIC_FIREBASE_APP_ID=<firebase-web-app-id>
 ```
 
 ### 3. **Enable Firebase Services**
@@ -36,17 +46,17 @@ In your Firebase Console, enable these services:
 #### **Firestore Database**
 1. Go to **Firestore Database**
 2. Click **"Create database"**
-3. Choose **"Start in test mode"** (for development)
+3. For isolated local/staging development only, choose temporary test mode if required, then replace it immediately with reviewed rules before adding real data
 4. Select your preferred location
 
 #### **Storage**
 1. Go to **Storage**
 2. Click **"Get started"**
-3. Choose **"Start in test mode"** (for development)
+3. For isolated local/staging development only, choose temporary test mode if required; never use it with production or sensitive data
 
 ### 4. **Security Rules (Development)**
 
-For development, you can use these permissive rules:
+The following historical permissive examples are suitable only for a disposable Firebase project with no real data. Prefer Firebase Emulator Suite. Never deploy them to production:
 
 #### **Firestore Rules:**
 ```javascript
@@ -86,7 +96,7 @@ service firebase.storage {
 
 ## 🔒 Production Security Rules
 
-For production, use more secure rules:
+The following samples are illustrative only and are not validated production rules. Build and emulator-test rules against the current schema instead:
 
 #### **Firestore Rules (Production):**
 ```javascript

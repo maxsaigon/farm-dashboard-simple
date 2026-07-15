@@ -9,6 +9,7 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   updateProfile,
+  getIdTokenResult,
   User as FirebaseUser 
 } from 'firebase/auth'
 import { 
@@ -23,6 +24,8 @@ import {
   writeBatch
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
+import { FarmService } from './farm-service'
+import { FarmRole, Permission, ROLE_PERMISSIONS, roleHasPermission } from './access-control'
 
 // Safe date conversion helper
 function convertToDate(value: any): Date | null {
@@ -72,7 +75,7 @@ export interface SimpleUser {
   timezone: string
 }
 
-export type FarmRole = 'owner' | 'manager' | 'viewer'
+export type { FarmRole, Permission } from './access-control'
 
 export interface FarmAccess {
   farmId: string
@@ -82,15 +85,6 @@ export interface FarmAccess {
   grantedBy: string
   isActive: boolean
 }
-
-// Simple permissions based on role
-const ROLE_PERMISSIONS = {
-  owner: ['read', 'write', 'delete', 'manage_users', 'manage_settings'],
-  manager: ['read', 'write', 'manage_trees', 'manage_photos'],
-  viewer: ['read']
-} as const
-
-export type Permission = typeof ROLE_PERMISSIONS[FarmRole][number]
 
 interface SimpleAuthContextType {
   // Authentication state
@@ -154,6 +148,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   const [currentFarm, setCurrentFarmState] = useState<SimpleFarm | null>(null)
   const [farmAccess, setFarmAccess] = useState<FarmAccess[]>([])
   const [selectedSeasonYear, setSelectedSeasonYearState] = useState<number>(2025)
+  const [systemAdmin, setSystemAdmin] = useState(false)
 
   // Cache for auth data to prevent repeated Firestore queries
   const authCache = useRef({
@@ -286,6 +281,8 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         setFirebaseUser(firebaseUser)
         
         if (firebaseUser) {
+          const tokenResult = await getIdTokenResult(firebaseUser)
+          setSystemAdmin(tokenResult.claims.admin === true)
           // Check if the firebaseUser matches the initial user we restored from cache
           const currentUser = initialUser
           
@@ -317,6 +314,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
           setFarms([])
           setCurrentFarmState(null)
           setFarmAccess([])
+          setSystemAdmin(false)
           localStorage.removeItem(AUTH_STATE_KEY)
           // Clear auth cache
           authCache.current = {
@@ -345,50 +343,19 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         totalArea: 0,
         centerLatitude: 10.762622, // Default to Ho Chi Minh City area
         centerLongitude: 106.660172,
-        isActive: true,
-        createdDate: new Date()
-      }
-      
-      // Create farm document
-      const farmRef = doc(collection(db, 'farms'))
-      await setDoc(farmRef, {
-        ...defaultFarmData,
-        id: farmRef.id,
-        createdDate: serverTimestamp()
-      })
-
-      // Create farm access for the user as owner
-      const accessRef = doc(collection(db, 'farmAccess'))
-      const farmAccess: FarmAccess = {
-        farmId: farmRef.id,
-        userId: firebaseUser.uid,
-        role: 'owner',
-        grantedAt: new Date(),
-        grantedBy: firebaseUser.uid,
         isActive: true
       }
 
-      await setDoc(accessRef, {
-        ...farmAccess,
-        grantedAt: serverTimestamp()
-      })
+      const farmId = await FarmService.createFarm(defaultFarmData, firebaseUser.uid)
 
       return {
-        id: farmRef.id,
-        ...defaultFarmData
-      }
-    } catch (error) {
-      // Return demo farm when Firestore is unavailable
-      return {
-        id: 'demo-farm-001',
-        name: `Nông trại của ${userProfile.displayName || 'Demo User'}`,
-        ownerName: userProfile.displayName || firebaseUser.email || 'Demo Farmer',
-        totalArea: 2.5,
-        centerLatitude: 10.762622,
-        centerLongitude: 106.660172,
-        isActive: true,
+        id: farmId,
+        ...defaultFarmData,
         createdDate: new Date()
       }
+    } catch (error) {
+      console.error('[Auth] Failed to create default farm:', error)
+      return null
     }
   }
 
@@ -652,12 +619,11 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       return newUser
     }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      // Return demo user profile when Firestore is unavailable
+      console.error('[Auth] Failed to load user profile:', error)
       return {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        displayName: firebaseUser.displayName || 'Demo User',
+        displayName: firebaseUser.displayName,
         emailVerified: firebaseUser.emailVerified,
         createdAt: new Date(),
         preferredLanguage: 'vi',
@@ -668,7 +634,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
 
   const loadUserFarmAccess = async (userId: string): Promise<FarmAccess[]> => {
     try {
-      const accessRef = collection(db, 'farmAccess')
+      const accessRef = collection(db, 'userFarmAccess')
       const accessQuery = query(
         accessRef, 
         where('userId', '==', userId),
@@ -681,16 +647,8 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
         grantedAt: doc.data().grantedAt?.toDate() || new Date()
       })) as FarmAccess[]
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      // Return demo farm access for demo user
-      return [{
-        farmId: 'demo-farm-001',
-        userId: userId,
-        role: 'owner',
-        grantedAt: new Date(),
-        grantedBy: userId,
-        isActive: true
-      }]
+      console.error('[Auth] Failed to load farm access:', error)
+      return []
     }
   }
 
@@ -717,18 +675,8 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       const farms = await Promise.all(farmsPromises)
       return farms.filter(Boolean) as SimpleFarm[]
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      // Return demo farm for demo access
-      return access.map(a => ({
-        id: a.farmId,
-        name: 'Nông trại Demo',
-        ownerName: 'Demo Farmer',
-        totalArea: 2.5,
-        centerLatitude: 10.762622,
-        centerLongitude: 106.660172,
-        isActive: true,
-        createdDate: new Date()
-      }))
+      console.error('[Auth] Failed to load farms:', error)
+      return []
     }
   }
 
@@ -921,7 +869,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     const role = getUserRole(targetFarmId)
     if (!role) return false
     
-    return ROLE_PERMISSIONS[role].includes(permission as any)
+    return roleHasPermission(role, permission)
   }
 
   const canAccessFarm = (farmId: string): boolean => {
@@ -929,14 +877,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   }
 
   const isAdmin = (): boolean => {
-    // Super admin check - use environment variables for security
-    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@farm.com'
-    const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID || 'O6aFgoNhDigSIXk6zdYSDrFWhWG2'
-
-    return Boolean(
-      (user?.email && user.email === adminEmail) ||
-      (user?.uid && user.uid === adminUid)
-    )
+    return systemAdmin
   }
 
   const isFarmAdmin = (): boolean => {
@@ -958,7 +899,16 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   }
 
   const setCurrentFarm = (farm: SimpleFarm | null): void => {
-    setCurrentFarmState(farm)
+    if (!farm) {
+      setCurrentFarmState(null)
+      return
+    }
+    const verifiedFarm = farms.find(candidate => candidate.id === farm.id)
+    if (!verifiedFarm || !canAccessFarm(verifiedFarm.id)) {
+      console.warn('[Auth] Refused to select a farm without active access')
+      return
+    }
+    setCurrentFarmState(verifiedFarm)
   }
 
   const refreshUserData = async (): Promise<void> => {

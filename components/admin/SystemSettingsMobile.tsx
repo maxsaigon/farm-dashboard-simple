@@ -7,6 +7,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
 
 interface SystemSettings {
   notifications: {
@@ -30,6 +31,7 @@ interface SystemSettings {
 }
 
 export default function SystemSettingsMobile() {
+  const { user } = useSimpleAuth()
   const [settings, setSettings] = useState<SystemSettings>({
     notifications: {
       emailNotifications: true,
@@ -52,6 +54,8 @@ export default function SystemSettingsMobile() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || 'unknown'
+  const gitSha = process.env.NEXT_PUBLIC_GIT_SHA || 'unknown'
 
   useEffect(() => {
     loadSettings()
@@ -85,7 +89,7 @@ export default function SystemSettingsMobile() {
       await setDoc(settingsRef, {
         ...settings,
         updatedAt: new Date(),
-        updatedBy: 'admin' // You would get this from current user
+        updatedBy: user?.uid || null
       })
 
       alert('Cài đặt đã được lưu thành công!')
@@ -142,6 +146,10 @@ export default function SystemSettingsMobile() {
       <div>
         <h2 className="text-xl font-bold">Cài đặt hệ thống</h2>
         <p className="text-gray-600">Quản lý cấu hình và bảo mật</p>
+      </div>
+
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        Các giá trị này hiện chỉ được lưu trong Firestore. Ứng dụng chưa tự động áp dụng chính sách thông báo, mật khẩu, bảo trì hoặc sao lưu.
       </div>
 
       {/* Notifications */}
@@ -256,6 +264,14 @@ export default function SystemSettingsMobile() {
           </div>
         </div>
       </SettingSection>
+
+      <div className="bg-white rounded-lg border p-4">
+        <h3 className="font-semibold mb-3">Thông tin bản dựng</h3>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between gap-4"><span className="text-gray-600">Phiên bản gói</span><code>{appVersion}</code></div>
+          <div className="flex justify-between gap-4"><span className="text-gray-600">Git commit</span><code>{gitSha}</code></div>
+        </div>
+      </div>
 
       {/* Save Button */}
       <button

@@ -1,5 +1,32 @@
 # Enhanced Auth System - Deployment & Maintenance Guide
 
+**Document status:** Current deployment risk guide with historical sample material
+
+**Baseline:** Repository state verified on 2026-07-15
+
+**Review date:** 2026-07-15
+
+**Current notice:** Do not deploy this repository to production as-is. The rule and deployment snippets later in this document are historical examples, are not validated against the current schema, and must not be treated as production-safe configuration.
+
+## Current Deployment Baseline and Blockers
+
+- `../../firestore.rules` is now least-privilege and deny-by-default around deterministic `userFarmAccess` memberships. Its 8-test emulator matrix passes; deployed rules must still be reviewed separately.
+- `../../storage.rules` is referenced by `../../firebase.json` and limits farm photo paths by membership, image content type and size. Add dedicated Storage Rules emulator tests before production promotion.
+- `../../firebase.json` has no Firebase Hosting configuration. The repository also has no Vercel/Netlify hosting config and no CI workflow. There is no repository-defined production deployment pipeline or release gate.
+- Do not deploy production with Firebase “test mode,” broad authenticated-access rules, or any rule sample in this document. Design rules from the actual collection paths, validate tenant boundaries with Firebase Emulator rule tests, and review the deployed rules separately.
+- Browser-exposed Firebase configuration named `NEXT_PUBLIC_FIREBASE_*` identifies the Firebase web app and is not a server secret. Protect data with Firebase Auth, Security Rules, App Check where appropriate, and server-side authorization.
+- `NEXT_PUBLIC_ADMIN_EMAIL` and `NEXT_PUBLIC_ADMIN_UID` are public client bundle values. They are neither secrets nor an authorization boundary. Client-side admin checks must not grant backend access; enforce admin authorization in trusted server logic and Firebase Security Rules, preferably with verified custom claims or server-maintained role data.
+- Firebase Auth, Firestore, and Storage are the active application runtime. PocketBase is installed and has standalone client/migration scripts, but no application runtime imports the PocketBase client; treat PocketBase as inactive unless the architecture is intentionally migrated and tested.
+- `npm audit --omit=dev` still reports advisories whose available fixes require breaking Next.js/Firebase Admin upgrades. Plan, test, and deploy those major upgrades separately; do not use `npm audit fix --force` as an unreviewed release step.
+
+## Minimum Release Gate
+
+- Migrate persisted `farmAccess`, top-level photo/zone/tree records, verify conflicts, then remove legacy reads.
+- Add Storage Rules emulator tests for path ownership, content type, size, and unauthorized reads/writes.
+- Choose and configure a hosting target, secrets/environment delivery, preview/staging environment, rollback procedure, monitoring, backup/restore, and CI checks.
+- Require build, typecheck, unit, Firestore Rules and authenticated emulator E2E checks from [Testing Guide](../testing/TESTING_GUIDE.md). Lint still reports warnings.
+- Build from a clean immutable commit and verify Admin Settings reports the expected package version and Git SHA.
+
 ## 🚀 Production Deployment Checklist
 
 ### Pre-Deployment Requirements
@@ -36,13 +63,13 @@ npm run build
 # Test the build locally
 npm start
 
-# Deploy to your platform (Vercel, Netlify, etc.)
-npm run deploy
+# No deploy script, hosting target, or CI deployment is currently configured.
+# Add and review a platform-specific deployment process before use.
 ```
 
 ## 🔒 Firestore Security Rules
 
-### Complete Production Security Rules
+### Historical Security Rules Sample - Not Production Safe or Validated
 
 ```javascript
 rules_version = '2';
@@ -59,8 +86,8 @@ service cloud.firestore {
     }
     
     function isSuperAdmin() {
-      return isAuthenticated() && 
-        request.auth.uid == 'O6aFgoNhDigSIXk6zdYSDrFWhWG2';
+      // Historical placeholder only. Do not authorize by a client-exposed UID.
+      return false;
     }
     
     function hasRole(roleType, scopeType, scopeId) {
@@ -162,6 +189,8 @@ service cloud.firestore {
 ```
 
 ### Storage Security Rules
+
+> Historical sample only. It is not present as `storage.rules`, is not referenced by `firebase.json`, and has not been validated against current paths. Do not deploy it to production.
 
 ```javascript
 rules_version = '2';

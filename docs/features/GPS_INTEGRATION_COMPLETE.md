@@ -1,5 +1,13 @@
 # GPS Tracking Integration - Complete Guide
 
+> Status: Historical
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+This records an earlier foreground GPS integration. It is not evidence of current cross-device completion: real-device checks remain necessary, and iOS background or suspended-PWA tracking is unreliable.
+
 ## ✅ ĐÃ HOÀN THÀNH
 
 ### 1. Files đã cập nhật
@@ -506,7 +514,7 @@ You'll know it's working when you see:
 
 ## 🎉 READY TO TEST
 
-**All changes are complete and ready for testing on Vercel!**
+**Historical assessment:** the listed integration changes were ready for testing, not verified complete or production-ready.
 
 Deploy và test ngay để xem kết quả. Nếu có vấn đề, console logs sẽ cho biết chính xác lỗi ở đâu trong flow.
 

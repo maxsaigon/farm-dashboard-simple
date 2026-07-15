@@ -10,9 +10,10 @@ import {
   where, 
   orderBy,
   onSnapshot,
-  Timestamp
+  Timestamp,
+  writeBatch
 } from 'firebase/firestore'
-import { db } from './firebase'
+import { auth, db } from './firebase'
 import { Farm, UserFarmAccess, User } from './types'
 
 // Convert various date formats to JavaScript Date
@@ -62,23 +63,49 @@ export class FarmService {
   
   // Create a new farm
   static async createFarm(farm: Omit<Farm, 'id' | 'createdDate'>, ownerId: string): Promise<string> {
+    if (!auth.currentUser || auth.currentUser.uid !== ownerId) {
+      throw new Error('Authenticated owner is required to create a farm')
+    }
+
     const farmRef = doc(collection(db, 'farms'))
+    const accessId = `${ownerId}_${farmRef.id}`
+    const accessRef = doc(db, 'userFarmAccess', accessId)
+    const now = new Date()
     const farmData: Farm = {
       ...farm,
       id: farmRef.id,
-      createdDate: new Date()
+      ownerId,
+      createdBy: ownerId,
+      createdDate: now
     }
-    
-    await setDoc(farmRef, {
+
+    const accessData: UserFarmAccess = {
+      id: accessId,
+      userId: ownerId,
+      farmId: farmRef.id,
+      role: 'owner',
+      permissions: DEFAULT_PERMISSIONS.owner,
+      isActive: true,
+      grantedBy: ownerId,
+      grantedAt: now,
+      createdAt: now,
+      updatedAt: now
+    }
+
+    const batch = writeBatch(db)
+    batch.set(farmRef, {
       ...farmData,
-      createdDate: Timestamp.fromDate(farmData.createdDate)
+      createdDate: Timestamp.fromDate(now),
+      updatedAt: Timestamp.fromDate(now)
     })
-    
-    // Create owner access record
-    await this.grantFarmAccess(ownerId, farmRef.id, 'owner', [
-      'read', 'write', 'delete', 'manage_users', 'manage_zones', 'manage_investments'
-    ])
-    
+    batch.set(accessRef, {
+      ...accessData,
+      grantedAt: Timestamp.fromDate(now),
+      createdAt: Timestamp.fromDate(now),
+      updatedAt: Timestamp.fromDate(now)
+    })
+    await batch.commit()
+
     return farmRef.id
   }
   
@@ -86,7 +113,8 @@ export class FarmService {
   static async getUserFarms(userId: string): Promise<Farm[]> {
     const accessQuery = query(
       collection(db, 'userFarmAccess'),
-      where('userId', '==', userId)
+      where('userId', '==', userId),
+      where('isActive', '==', true)
     )
     
     const accessSnapshot = await getDocs(accessQuery)
@@ -161,43 +189,51 @@ export class FarmService {
     userId: string, 
     farmId: string, 
     role: 'owner' | 'manager' | 'viewer',
-    permissions: string[]
+    permissions: string[],
+    grantedBy = auth.currentUser?.uid
   ): Promise<void> {
-    const accessRef = doc(collection(db, 'userFarmAccess'))
+    if (!grantedBy) throw new Error('Authenticated grantor is required')
+
+    const accessId = `${userId}_${farmId}`
+    const accessRef = doc(db, 'userFarmAccess', accessId)
+    const now = new Date()
     const accessData: UserFarmAccess = {
-      id: accessRef.id,
+      id: accessId,
       userId,
       farmId,
       role,
       permissions,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      isActive: true,
+      grantedBy,
+      grantedAt: now,
+      createdAt: now,
+      updatedAt: now
     }
     
     await setDoc(accessRef, {
       ...accessData,
+      grantedAt: Timestamp.fromDate(accessData.grantedAt),
       createdAt: Timestamp.fromDate(accessData.createdAt),
       updatedAt: Timestamp.fromDate(accessData.updatedAt)
-    })
+    }, { merge: true })
   }
   
   // Revoke farm access
   static async revokeFarmAccess(userId: string, farmId: string, requesterId: string): Promise<void> {
     const requesterAccess = await this.getUserFarmAccess(requesterId, farmId)
-    if (!requesterAccess || (requesterAccess.role !== 'owner' && requesterAccess.role !== 'manager')) {
+    if (!requesterAccess || requesterAccess.role !== 'owner') {
       throw new Error('No permission to revoke access')
     }
     
-    const accessQuery = query(
-      collection(db, 'userFarmAccess'),
-      where('userId', '==', userId),
-      where('farmId', '==', farmId)
-    )
-    
-    const snapshot = await getDocs(accessQuery)
-    for (const doc of snapshot.docs) {
-      await deleteDoc(doc.ref)
-    }
+    const targetRef = doc(db, 'userFarmAccess', `${userId}_${farmId}`)
+    const target = await getDoc(targetRef)
+    if (!target.exists()) return
+    if (target.data().role === 'owner') throw new Error('Owner access cannot be revoked from the client')
+    await updateDoc(targetRef, {
+      isActive: false,
+      revokedAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    })
   }
   
   // Check if user has access to farm
@@ -212,19 +248,14 @@ export class FarmService {
   
   // Get user's access level for a farm
   static async getUserFarmAccess(userId: string, farmId: string): Promise<UserFarmAccess | null> {
-    const accessQuery = query(
-      collection(db, 'userFarmAccess'),
-      where('userId', '==', userId),
-      where('farmId', '==', farmId)
-    )
-    
-    const snapshot = await getDocs(accessQuery)
-    if (snapshot.empty) return null
-    
-    const data = snapshot.docs[0].data()
+    const accessDoc = await getDoc(doc(db, 'userFarmAccess', `${userId}_${farmId}`))
+    if (!accessDoc.exists() || accessDoc.data().isActive !== true) return null
+
+    const data = accessDoc.data()
     return {
       ...data,
-      id: snapshot.docs[0].id,
+      id: accessDoc.id,
+      grantedAt: data.grantedAt?.toDate() || new Date(),
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date()
     } as UserFarmAccess
@@ -338,7 +369,8 @@ export class FarmService {
   static subscribeToUserFarms(userId: string, callback: (farms: Farm[]) => void) {
     const accessQuery = query(
       collection(db, 'userFarmAccess'),
-      where('userId', '==', userId)
+      where('userId', '==', userId),
+      where('isActive', '==', true)
     )
     
     return onSnapshot(accessQuery, async (snapshot) => {

@@ -1,5 +1,19 @@
 # Canonical Schema Standardization Plan
 
+> Status: Current plan; migration incomplete
+> Baseline: package `0.1.0`, Git commit `7890775` with local documentation changes
+> Last reviewed: 2026-07-15
+
+This document records both the conflicting paths currently used by the application and the target canonical model. A row marked `canonical` describes the desired backend shape, not proof that every active reader and writer has migrated. See [`../CURRENT_STATE.md`](../CURRENT_STATE.md) for release blockers and [`../architecture/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) for the active Firebase runtime.
+
+Current blockers that affect this plan:
+
+- runtime reads and writes deterministic `userFarmAccess/{userId}_{farmId}` records; persisted `farmAccess` records remain migration input only;
+- photos still use both top-level and farm-scoped collections;
+- zones still use both top-level and farm-scoped collections;
+- current Firestore rules do not enforce the tenant boundaries implied by this model;
+- PocketBase and the homeserver backend are migration targets, not active runtime backends.
+
 ## Scope
 
 This document defines the canonical application schema inferred from the current codebase, not from older docs.

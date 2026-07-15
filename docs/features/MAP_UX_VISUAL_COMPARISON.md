@@ -1,5 +1,13 @@
 # Map Page UX/UI Visual Comparison
 
+> Status: Design-only
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+These diagrams are visual references rather than exact screenshots of the React runtime. The current map is implemented with partial foreground GPS and on-farm workflows, but the illustrated gestures, metrics, and offline experience are not all verified.
+
 ## Before vs After: Farmer Experience Transformation
 
 ### Current Interface Problems (Before)

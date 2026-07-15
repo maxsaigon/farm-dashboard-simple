@@ -1,10 +1,32 @@
 # 🧪 Testing Guide for TreeList and TreeDetail Components
 
+**Document status:** Current testing guide; automated core with additional manual coverage
+
+**Baseline:** Repository state verified on 2026-07-15
+
+**Review date:** 2026-07-15
+
+**Current notice:** This guide describes the current commands and known gaps. A successful build is not equivalent to passing unit, integration, E2E, security, or production-readiness validation.
+
+## Current Automated-Test Baseline
+
+| Check | Current state |
+|---|---|
+| Unit | `npm test` runs Jest; 5 access-control tests pass. |
+| Firestore Rules | `npm run test:rules:emulator` runs 8 cross-farm/role/escalation/deny-by-default tests. |
+| Playwright | `npm run test:e2e:emulator` seeds Auth/Firestore/Storage emulators, logs in through UI, persists IndexedDB auth state, and passes 3 mobile setup/critical-path tests. |
+| Build | `npm run build` passed on 2026-07-15. Next.js skipped lint during this build and performed its type validation. |
+| Standalone typecheck | `npx tsc --noEmit` passed on 2026-07-15. Run it after the build if `.next/types` has not yet been generated. |
+| Lint | `npm run lint` completed on 2026-07-15 with many warnings, including unused values, explicit `any`, hook dependency, unescaped entity, and raw `<img>` warnings. |
+
+Historical reports in this directory are retained for traceability. They do not prove the current application is production ready.
+
+Emulators require Java 21 or newer. On this workstation, use the Homebrew OpenJDK runtime if the system Java is older.
+
 ## 🚀 Quick Test Setup
 
 1. **Start the development server:**
    ```bash
-   cd "/Users/daibui/Documents/IOS APP/FarmManager/farm-dashboard-simple"
    npm run dev
    ```
 
@@ -130,7 +152,7 @@
 ### 🔐 Authentication & Authorization Tests
 
 #### ✅ Admin User Tests
-- [ ] **Admin Login**: Login with minhdai.bmt@gmail.com works
+- [ ] **Admin Login**: Login with a dedicated, non-production test admin account works
 - [ ] **Admin Banner**: Purple "Admin Mode" banner appears
 - [ ] **Cross-Farm Access**: Can see trees from all farms
 - [ ] **Full Permissions**: Can edit and delete any tree
@@ -238,6 +260,17 @@ You can also use browser dev tools:
 3. **Performance**: Analyze loading times
 4. **Mobile Simulation**: Test responsive design
 5. **React DevTools**: Inspect component state
+
+## Automated Commands
+
+```bash
+npm run build
+npx tsc --noEmit
+npm run lint
+npx playwright test
+```
+
+Run Playwright only against an isolated test Firebase project with disposable data and test accounts. Record the command, environment, commit, failures, and artifacts; do not replace a failed result with a narrative success claim.
 
 ---
 

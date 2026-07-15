@@ -13,14 +13,13 @@ interface TreeImagePreviewProps {
 }
 
 export function TreeImagePreview({ treeId, farmId, qrCode, className = '' }: TreeImagePreviewProps) {
-  // Use correct farmId - prioritize passed farmId, then fallback to known working farmId
-  const effectiveFarmId = farmId && farmId !== 'default' ? farmId : 'F210C3FC-F191-4926-9C15-58D6550A716A'
+  const effectiveFarmId = farmId && farmId !== 'default' ? farmId : ''
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     async function loadPreviewImage() {
-      if (!treeId) return
+      if (!treeId || !effectiveFarmId) return
       
       setLoading(true)
       
@@ -30,7 +29,7 @@ export function TreeImagePreview({ treeId, farmId, qrCode, className = '' }: Tre
         
         // Try to get from Firestore first (more metadata)
         try {
-          const firestorePhotos = await getTreePhotos(treeId)
+          const firestorePhotos = await getTreePhotos(effectiveFarmId, treeId)
           if (firestorePhotos.length > 0) {
             const photoWithUrl = await getPhotosWithUrls([firestorePhotos[0]], effectiveFarmId)
             if (photoWithUrl[0]?.thumbnailUrl || photoWithUrl[0]?.imageUrl) {

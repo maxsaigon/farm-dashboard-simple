@@ -44,9 +44,7 @@ export default function TreesPage() {
             />
           </div>
 
-          {/* Desktop Layout */}
-          <div className="hidden lg:grid lg:grid-cols-5 gap-6">
-            {/* Tree List - 2 columns */}
+          <div className="lg:grid lg:grid-cols-5 gap-6">
             <div className="lg:col-span-2">
               <TreeList
                 onTreeSelect={handleTreeSelect}
@@ -55,8 +53,7 @@ export default function TreesPage() {
               />
             </div>
 
-            {/* Tree Detail - 3 columns */}
-            <div className="lg:col-span-3">
+            <div className="hidden lg:block lg:col-span-3">
               {selectedTree && !showFullscreenTree ? (
                 <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
                   <div className="text-center py-12">
@@ -91,13 +88,6 @@ export default function TreesPage() {
             </div>
           </div>
 
-          {/* Mobile Layout */}
-          <div className="lg:hidden">
-            <TreeList
-              onTreeSelect={handleTreeSelect}
-              showActions={true}
-            />
-          </div>
         </div>
       </div>
 

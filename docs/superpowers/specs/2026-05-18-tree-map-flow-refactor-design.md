@@ -1,5 +1,9 @@
 # Tree + Map Flow Refactor Design
 
+> **Status:** Proposal | Baseline: `0.1.0` (`7890775`) | Reviewed: `2026-07-15`
+>
+> No proposed hook files are present in the repository as reviewed. This document is design-only, does not claim implementation, and current code overrides it where they differ.
+
 ## Goal
 
 Refactor the `map` and `trees` flows to reduce regression risk in core user journeys without expanding product scope or introducing new features.
@@ -16,8 +20,8 @@ The refactor is strictly focused on stabilizing these behaviors:
 
 In scope:
 
-- [`app/map/page.tsx`](/Volumes/Mac%20Work/React/farm-dashboard-simple/app/map/page.tsx)
-- [`app/trees/page.tsx`](/Volumes/Mac%20Work/React/farm-dashboard-simple/app/trees/page.tsx)
+- [`app/map/page.tsx`](../../../app/map/page.tsx)
+- [`app/trees/page.tsx`](../../../app/trees/page.tsx)
 - directly related map and tree detail components
 - new shared hooks/helpers for tree detail flow and map data flow
 

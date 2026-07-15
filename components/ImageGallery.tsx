@@ -8,7 +8,7 @@ import { subscribeToTreePhotos, getPhotosWithUrls, getTreePhotos, PhotoWithUrls 
 import { getTreeImagesByPattern } from '@/lib/storage'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { useToast } from './Toast'
-import { collection, addDoc, Timestamp, deleteDoc, doc } from 'firebase/firestore'
+import { collection, Timestamp, deleteDoc, doc, setDoc } from 'firebase/firestore'
 import { ref, uploadBytes, deleteObject } from 'firebase/storage'
 import { db, storage } from '@/lib/firebase'
 import { compressImageSmart, getCompressionInfo, needsCompression } from '@/lib/photo-compression'
@@ -45,8 +45,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
-  // Use correct farmId - prioritize tree.farmId, then fallback to known working farmId
-  const effectiveFarmId = tree.farmId && tree.farmId !== 'default' ? tree.farmId : 'F210C3FC-F191-4926-9C15-58D6550A716A'
+  const effectiveFarmId = currentFarm?.id === tree.farmId ? currentFarm.id : ''
   
   const [photos, setPhotos] = useState<PhotoWithUrls[]>([])
   const [storageImages, setStorageImages] = useState<{ general: string[], health: string[], fruitCount: string[] }>({
@@ -78,11 +77,11 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
 
   // Load photos from Firestore
   useEffect(() => {
-    if (!tree.id) return
+    if (!tree.id || !effectiveFarmId) return
 
     logger.debug('🔄 ImageGallery: Loading Firestore photos for tree:', tree.id)
 
-    const unsubscribe = subscribeToTreePhotos(tree.id, async (firestorePhotos) => {
+    const unsubscribe = subscribeToTreePhotos(effectiveFarmId, tree.id, async (firestorePhotos) => {
       logger.debug('📸 ImageGallery: Received Firestore photos:', firestorePhotos.length, 'photos')
       
       const photosWithUrls = await getPhotosWithUrls(firestorePhotos, effectiveFarmId)
@@ -233,7 +232,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       setLoading(true)
 
       // Reload photos from Firestore
-      const photosWithUrls = await getPhotosWithUrls(await getTreePhotos(tree.id), effectiveFarmId)
+      const photosWithUrls = await getPhotosWithUrls(await getTreePhotos(effectiveFarmId, tree.id), effectiveFarmId)
       setPhotos(photosWithUrls)
 
       // Clear cache and reload storage images
@@ -274,7 +273,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
       setDeletingPhotoId(photoToDelete.id)
 
       // Delete from Firestore
-      await deleteDoc(doc(db, 'photos', photoToDelete.id))
+      await deleteDoc(doc(db, 'farms', effectiveFarmId, 'photos', photoToDelete.id))
 
       // Try to delete from Storage (best effort)
       if (photoToDelete.originalPath || photoToDelete.localPath) {
@@ -373,11 +372,12 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
 
       // Generate unique filename
       const timestamp = Date.now()
+      const photoDocRef = doc(collection(db, 'farms', currentFarm.id, 'photos'))
       const fileExtension = 'jpg' // Force JPEG after compression
-      const filename = `compressed_${timestamp}.${fileExtension}`
+      const filename = `compressed.${fileExtension}`
       
       // Upload to Firebase Storage
-      const storagePath = `farms/${currentFarm.id}/trees/${tree.id}/photos/${timestamp}/${filename}`
+      const storagePath = `farms/${currentFarm.id}/trees/${tree.id}/photos/${photoDocRef.id}/compressed.jpg`
       const storageRef = ref(storage, storagePath)
 
       await uploadBytes(storageRef, fileToUpload)
@@ -401,8 +401,7 @@ export function ImageGallery({ tree, className = '' }: ImageGalleryProps) {
         seasonYear: selectedSeasonYear
       }
       
-      const photosRef = collection(db, 'photos')
-      const photoDocRef = await addDoc(photosRef, photoData)
+      await setDoc(photoDocRef, { id: photoDocRef.id, ...photoData })
 
       // Log photo upload to audit system
       try {

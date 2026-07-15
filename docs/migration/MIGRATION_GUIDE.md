@@ -1,5 +1,10 @@
 # Database Migration Guide: Unified iOS & Web Platform
 
+> **Status:** Partial
+> **Baseline:** `0.1.0` / `7890775`
+> **Reviewed:** 2026-07-15
+> **Historical notice:** Completion claims reflect a point-in-time report. Use this guide only where it agrees with [CURRENT_STATE.md](../CURRENT_STATE.md), [ARCHITECTURE.md](../architecture/ARCHITECTURE.md), and the current code, which override it. The access model is currently inconsistent: active auth reads `farmAccess`, while `FarmService` and this guide use `userFarmAccess`; validate migrations against current data before running them.
+
 ## Overview
 
 This guide documents the migration from the old userId-based web system to the new unified farmId-based system that is compatible with the iOS app.

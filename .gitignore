@@ -11,6 +11,12 @@ config/firebase-sa.json
 
 # testing
 /coverage
+/playwright/.auth/
+/playwright-report/
+/test-results/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
 
 # next.js
 /.next/

@@ -21,6 +21,13 @@ export default function PWARegistration() {
       return
     }
 
+    if (process.env.NODE_ENV === 'development') {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(registration => registration.unregister())
+      })
+      return
+    }
+
     const handleWaiting = (registration: ServiceWorkerRegistration) => {
       const worker = registration.waiting
       if (worker) {

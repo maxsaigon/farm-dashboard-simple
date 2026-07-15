@@ -965,22 +965,6 @@ const UnifiedMap = memo(({
         attributionControl={false}
       >
         {/* Base Map Sources */}
-        {(mapLayer === 'satellite' || activeLayer === 'hybrid') && (
-          <Source
-            id="satellite"
-            type="raster"
-            tiles={["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"]}
-            tileSize={256}
-            maxzoom={18}
-          >
-            <Layer
-              id="satellite-layer"
-              type="raster"
-              beforeId={activeLayer === 'hybrid' ? 'street-layer' : undefined}
-            />
-          </Source>
-        )}
-
         <Source
           id="street"
           type="raster"
@@ -996,6 +980,22 @@ const UnifiedMap = memo(({
             }}
           />
         </Source>
+
+        {(mapLayer === 'satellite' || activeLayer === 'hybrid') && (
+          <Source
+            id="satellite"
+            type="raster"
+            tiles={["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"]}
+            tileSize={256}
+            maxzoom={18}
+          >
+            <Layer
+              id="satellite-layer"
+              type="raster"
+              beforeId={activeLayer === 'hybrid' ? 'street-layer' : undefined}
+            />
+          </Source>
+        )}
 
         {/* Zones Layers */}
         {filters.showZones && (

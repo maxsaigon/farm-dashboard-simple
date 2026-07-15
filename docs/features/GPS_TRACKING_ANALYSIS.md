@@ -1,5 +1,13 @@
 # Phân Tích GPS Tracking và Giải Pháp cho iOS
 
+> Status: Historical
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+This analysis predates the active `watchPosition` integration. Foreground map/GPS is now partially implemented, while reliable iOS background tracking is still unavailable in the browser/PWA runtime.
+
 ## 📋 TÓM TẮT VẤN ĐỀ
 
 GPS Tracking hiện tại **KHÔNG HOẠT ĐỘNG** trên iOS Safari vì các lý do sau:
@@ -84,7 +92,7 @@ startTracking(config: BackgroundLocationConfig): Promise<void>
 
 ### Giải pháp 1: iOS-Optimized GPS Service (Đã tạo)
 
-File: [`lib/ios-optimized-gps.ts`](lib/ios-optimized-gps.ts)
+File: [`lib/ios-optimized-gps.ts`](../../lib/ios-optimized-gps.ts)
 
 **Cải tiến chính:**
 1. ✅ Sử dụng `watchPosition()` thay vì `getCurrentPosition()` trong interval

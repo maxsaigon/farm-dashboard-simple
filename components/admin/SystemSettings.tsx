@@ -405,21 +405,21 @@ export function SystemSettings() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
             <div className="bg-blue-50 rounded-lg p-4">
-              <div className="text-2xl font-bold text-blue-600">v1.0.0</div>
+              <div className="text-2xl font-bold text-blue-600">{process.env.NEXT_PUBLIC_APP_VERSION || 'unknown'}</div>
               <div className="text-sm text-gray-600">Phiên bản</div>
             </div>
           </div>
 
           <div className="text-center">
             <div className="bg-green-50 rounded-lg p-4">
-              <div className="text-2xl font-bold text-green-600">99.9%</div>
+              <div className="text-2xl font-bold text-green-600">Chưa đo</div>
               <div className="text-sm text-gray-600">Uptime</div>
             </div>
           </div>
 
           <div className="text-center">
             <div className="bg-purple-50 rounded-lg p-4">
-              <div className="text-2xl font-bold text-purple-600">24/7</div>
+              <div className="text-2xl font-bold text-purple-600">Chưa cấu hình</div>
               <div className="text-sm text-gray-600">Hỗ trợ</div>
             </div>
           </div>

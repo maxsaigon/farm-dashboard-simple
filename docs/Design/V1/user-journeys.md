@@ -1,6 +1,17 @@
 # 🧭 Quy trình Nghiệp vụ & Trải nghiệm Người dùng (Detailed User Journeys & Business Logic)
 
+> **Status:** Historical | Baseline: `0.1.0` (`7890775`) | Reviewed: `2026-07-15`
+>
+> Đây là tham chiếu V1 lịch sử. Runtime hiện tại dùng MapLibre thay Leaflet; routes, mã nguồn và hành vi hiện tại ghi đè tài liệu này khi có khác biệt.
+
 Tài liệu này đặc tả chi tiết các luồng trải nghiệm người dùng thực tế (User Journeys), cùng với các thuật toán, công thức tính toán và logic đồng bộ chạy ngầm của ứng dụng **FarmManager**.
+
+---
+
+## ⚠️ Sai lệch so với hiện tại
+
+- Các hành trình và thuật toán dưới đây mô tả baseline V1, không xác nhận rằng mọi chi tiết vẫn được triển khai.
+- Hệ thống bản đồ hiện tại dùng MapLibre thay Leaflet. Routes và mã nguồn hiện tại là nguồn sự thật khi có mâu thuẫn.
 
 ---
 

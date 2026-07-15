@@ -1,5 +1,13 @@
 # ✅ Trees Page Farm Integration - Verified Working
 
+> Status: Historical
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+The trees page still queries `farms/{farmId}/trees` for the selected farm, but this historical verification overstates access control. Client checks do not replace backend authorization, current Firestore rules are broadly permissive, and the tree detail route has a selected-farm enforcement gap.
+
 ## 🎯 **Verification Complete**
 
 I've thoroughly analyzed the `/trees` page implementation and confirmed it **correctly loads data from the selected farm**.
@@ -144,4 +152,4 @@ The `/trees` page is already correctly implemented to:
 - Test farm switching (should reload trees automatically)
 - Test access permissions (should handle properly)
 
-**🌾 The trees page farm integration is working perfectly!**
+**Current assessment:** farm-scoped loading is implemented, with unresolved backend authorization and route-isolation risks.

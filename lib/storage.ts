@@ -10,7 +10,10 @@ export async function getImageUrl(path: string): Promise<string | null> {
     const url = await getDownloadURL(imageRef)
     return url
   } catch (error) {
-    console.error('Error getting image URL:', error)
+    const errorCode = typeof error === 'object' && error && 'code' in error ? String(error.code) : ''
+    if (errorCode !== 'storage/object-not-found') {
+      console.error('Error getting image URL:', error)
+    }
     return null
   }
 }

@@ -1,5 +1,13 @@
 # Custom Fields UI/UX Wireframes & User Flow
 
+> Status: Design-only
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+These wireframes are visual proposals. The runtime exposes preset custom fields, but arbitrary field-definition management, gestures, auto-save, and complete offline behavior shown here are not implemented or verified.
+
 ## **USER FLOW OVERVIEW**
 
 ### **Primary User Journey: Adding Custom Data to Tree**

@@ -1,5 +1,13 @@
 # 📍 GPS Tracking Implementation Summary
 
+> Status: Historical
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+The active map uses foreground browser geolocation and an iOS-oriented `watchPosition` wrapper. The compatibility, accuracy, battery, and “production” claims below were not reproduced for this baseline; background iOS tracking remains unreliable.
+
 ## ✅ ĐÃ HOÀN THÀNH
 
 ### 1. iOS-Optimized GPS Service
@@ -310,7 +318,7 @@ console.log('Is iOS:', gps.getStatus().isIOS)
 ### After (iOS-Optimized):
 - ✅ GPS calls: Only when moved 5m (1-5 calls/minute)
 - ✅ Battery drain: Low (single watchPosition)
-- ✅ iOS compatibility: 100% (fully working)
+- ⚠️ iOS foreground compatibility was the historical goal; it is not verified at 100%
 - ✅ Accuracy: Consistent ±5-20m
 - ✅ Permission handling: iOS-compatible
 
@@ -364,13 +372,13 @@ console.log('Is iOS:', gps.getStatus().isIOS)
 
 ## 🎉 CONCLUSION
 
-GPS Tracking đã được fix hoàn toàn và tối ưu cho iOS!
+GPS tracking was improved for foreground iOS use; it is not a complete background-tracking solution.
 
 **Key Improvements:**
-1. ✅ Hoạt động 100% trên iOS Safari
+1. ⚠️ Uses an iOS-oriented foreground implementation; 100% compatibility is not verified
 2. ✅ Battery-efficient với distance filter
 3. ✅ Permission handling đúng cách
 4. ✅ Auto-detect và optimize cho iOS
 5. ✅ Comprehensive documentation
 
-**Ready for Production!** 🚀
+**Current assessment:** partial and not production-ready.

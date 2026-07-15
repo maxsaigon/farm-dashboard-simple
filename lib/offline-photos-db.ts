@@ -2,7 +2,8 @@ export interface PendingPhoto {
   id: string
   treeId: string
   farmId: string
-  photoType: 'general' | 'fruit' | 'disease' | 'growth' | 'maintenance'
+  photoType: 'general' | 'health' | 'fruit_count'
+  userId?: string
   userNotes?: string
   latitude?: number
   longitude?: number
@@ -10,10 +11,13 @@ export interface PendingPhoto {
   timestamp: string // Store Date as ISO string
   imageBlob: Blob
   seasonYear?: number
+  attemptCount?: number
+  lastAttemptAt?: string
+  lastError?: string
 }
 
 const DB_NAME = 'OfflinePhotosDB'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_NAME = 'pendingPhotos'
 
 export function openOfflineDB(): Promise<IDBDatabase> {
@@ -25,9 +29,10 @@ export function openOfflineDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
     request.onupgradeneeded = () => {
       const db = request.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' })
-      }
+      const store = db.objectStoreNames.contains(STORE_NAME)
+        ? request.transaction!.objectStore(STORE_NAME)
+        : db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+      if (!store.indexNames.contains('farmId')) store.createIndex('farmId', 'farmId')
     }
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error)
@@ -53,7 +58,12 @@ export async function getPendingPhotos(farmId?: string): Promise<PendingPhoto[]>
       const store = tx.objectStore(STORE_NAME)
       const request = store.getAll()
       request.onsuccess = () => {
-        const all = request.result as PendingPhoto[]
+        const all = (request.result as unknown as Array<Omit<PendingPhoto, 'photoType'> & { photoType: string }>).map(photo => {
+          const normalizedType = photo.photoType === 'fruit' ? 'fruit_count' :
+            ['disease', 'health_check'].includes(photo.photoType) ? 'health' :
+            ['growth', 'maintenance'].includes(photo.photoType) ? 'general' : photo.photoType
+          return { ...photo, photoType: normalizedType } as PendingPhoto
+        })
         if (farmId) {
           resolve(all.filter(p => p.farmId === farmId))
         } else {

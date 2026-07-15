@@ -15,6 +15,7 @@ import LargeTitleHeader from '@/components/ui/LargeTitleHeader'
 import BottomSheet from '@/components/ui/BottomSheet'
 import AuthGuard from '@/components/AuthGuard'
 import logger from '@/lib/logger'
+import { countTreesByZone } from '@/lib/zone-tree-count'
 
 // Dynamic import OnFarmWorkMode to avoid SSR issues
 const OnFarmWorkMode = dynamic(() => import('@/components/OnFarmWorkMode'), {
@@ -220,6 +221,10 @@ function MapPageContent() {
         loadTrees(farmId),
         loadZones(farmId)
       ])
+      const treeCounts = countTreesByZone(zonesData, treesData)
+      zonesData.forEach(zone => {
+        zone.treeCount = treeCounts.get(zone.id) || 0
+      })
       
       console.log('✅ [MapPage] Data loaded:', {
         treesCount: treesData.length,
@@ -322,7 +327,7 @@ function MapPageContent() {
           longitude: data.longitude || 0,
           ...data
         } as Tree
-      }).filter(tree => tree.latitude && tree.longitude && tree.latitude !== 0 && tree.longitude !== 0)
+      })
 
       return treesData
     } catch (error) {
@@ -335,15 +340,14 @@ function MapPageContent() {
     if (!farmId) return []
 
     try {
-      let zonesRef = collection(db, 'farms', farmId, 'zones')
-      let zonesSnapshot = await getDocs(zonesRef)
-
-      if (zonesSnapshot.empty) {
-        zonesRef = collection(db, 'zones')
-        zonesSnapshot = await getDocs(query(zonesRef, where('farmId', '==', farmId)))
-      }
+      const [canonical, legacy] = await Promise.all([
+        getDocs(collection(db, 'farms', farmId, 'zones')),
+        getDocs(query(collection(db, 'zones'), where('farmId', '==', farmId)))
+      ])
+      const merged = new Map(legacy.docs.map(snapshot => [snapshot.id, snapshot]))
+      canonical.docs.forEach(snapshot => merged.set(snapshot.id, snapshot))
       
-      const zonesData = zonesSnapshot.docs.map(doc => {
+      const zonesData = Array.from(merged.values()).map(doc => {
         const data = doc.data()
 
         const boundaries = data.boundary || data.boundaries || data.coordinates || data.polygon || data.points || []
@@ -364,12 +368,7 @@ function MapPageContent() {
         }
       })
 
-      const zonesWithBoundaries = zonesData.filter(zone => {
-        const hasBoundaries = zone.boundaries && Array.isArray(zone.boundaries) && zone.boundaries.length >= 3
-        return hasBoundaries
-      })
-      
-      return zonesWithBoundaries.length > 0 ? zonesWithBoundaries : zonesData.slice(0, 3)
+      return zonesData
       
     } catch (error) {
       logger.error('Error loading zones:', error)
@@ -940,7 +939,7 @@ function MapPageContent() {
             <>
               <UnifiedMapNoSSR
                 trees={showTrees ? getFilteredTrees(focusedZone ? getTreesForZone(trees, focusedZone) : trees) : []}
-                zones={showZones ? (focusedZone ? [focusedZone] : zones) : []}
+                zones={showZones ? (focusedZone ? [focusedZone] : zones).filter(zone => zone.boundaries.length >= 3) : []}
                 selectedTree={selectedTree}
                 selectedZone={selectedZone}
                 onTreeSelect={handleTreeSelect}

@@ -1,5 +1,13 @@
 # GPS Tracking - Final Fix Summary
 
+> Status: Historical
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+The described auto-enable change supports foreground GPS on the map, but “final” does not mean background-safe or production-verified. iOS may suspend browser geolocation after the PWA leaves the foreground.
+
 ## 🎯 VẤN ĐỀ CUỐI CÙNG ĐÃ FIX
 
 ### Vấn đề phát hiện từ console logs:
@@ -17,7 +25,7 @@
 
 ### Added Auto-Enable Logic
 
-**File:** [`components/UnifiedMap.tsx`](../../components/UnifiedMap.tsx:437-456)
+**File:** [`components/UnifiedMap.tsx`](../../components/UnifiedMap.tsx)
 
 ```typescript
 // Auto-enable GPS when backgroundTrackingEnabled prop is true

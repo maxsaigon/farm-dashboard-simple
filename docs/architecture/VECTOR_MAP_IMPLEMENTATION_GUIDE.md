@@ -1,5 +1,11 @@
 # 🗺️ Vector MAP Implementation Guide
 
+> Status: Proposal
+> Baseline reviewed against current code: package `0.1.0`, Git commit `7890775` with local documentation changes
+> Last reviewed: 2026-07-15
+>
+> Current-code notice: This is an unimplemented Leaflet-era plan, not a guide to the active map. `/map` currently integrates MapLibre [`../../components/UnifiedMap.tsx`](../../components/UnifiedMap.tsx); the proposed `VectorEnhancedMap.tsx` and `CustomFarmVectorMap.tsx` are not active components. Checkmarks below mean "included in the proposed design," not verified implementation. Claims about offline support, battery efficiency, GPS accuracy, performance, and compatibility require implementation and reproducible testing.
+
 ## 📊 Analysis Summary
 
 Based on the Vector_MAP.md technical document, I've created a comprehensive implementation plan for your farm dashboard with two approaches:
@@ -17,10 +23,10 @@ Based on the Vector_MAP.md technical document, I've created a comprehensive impl
 
 ## 🎯 Implementation Strategy
 
-### **Phase 1: Enhanced Current Map (Quick Implementation)**
+### **Phase 1: Proposed Enhanced Map**
 **File:** `components/VectorEnhancedMap.tsx`
 
-**Key Features Added:**
+**Features proposed:**
 - ✅ Real-time user tracking (like robot vacuum - updates every second)
 - ✅ Turf.js proximity detection (find trees within X meters)
 - ✅ Vector-based zone rendering with GeoJSON
@@ -28,10 +34,10 @@ Based on the Vector_MAP.md technical document, I've created a comprehensive impl
 - ✅ Nearby trees panel with distance calculation
 - ✅ Improved marker styling based on proximity
 
-### **Phase 2: Pure Vector Custom Map (Advanced)**
+### **Phase 2: Proposed Pure Vector Custom Map**
 **File:** `components/CustomFarmVectorMap.tsx`
 
-**Key Features:**
+**Features proposed:**
 - ✅ No OSM dependency - pure vector rendering
 - ✅ Custom coordinate system support (x,y meters → lat/lng)
 - ✅ Farm image overlay capability (drone/satellite images)
@@ -46,7 +52,7 @@ Based on the Vector_MAP.md technical document, I've created a comprehensive impl
 
 ```bash
 npm install @turf/turf
-# Turf.js is already compatible with your existing react-leaflet setup
+# Historical proposal assumed a react-leaflet setup; active runtime uses MapLibre
 ```
 
 ### 2. Update Map Page Integration
@@ -128,7 +134,7 @@ If you have drone/satellite images of your farm:
 gdal2tiles.py farm-image.jpg farm-tiles/
 ```
 
-## 🚀 Key Advantages Over Current Implementation
+## 🚀 Intended Advantages (Not Verified)
 
 ### **Technical Improvements:**
 
@@ -189,7 +195,7 @@ const nearest = treesNeedingAttention
 
 ## 📱 Mobile Optimization
 
-Both implementations are optimized for mobile:
+The proposal targets mobile, but these properties have not been verified:
 - Touch-friendly controls
 - Responsive design
 - GPS high accuracy mode
@@ -225,7 +231,7 @@ const mapStyles = {
 3. **Week 3:** Optimize performance and mobile experience
 4. **Week 4:** (Optional) Migrate to CustomFarmVectorMap for full vector control
 
-This approach gives you the benefits of the Vector_MAP.md proposal while maintaining compatibility with your existing system!
+This path was proposed as a way to pursue the benefits in `Vector_MAP.md`. Compatibility with the current MapLibre system is not established and would require a new design decision and tests.
 
 ## 🔍 Testing Checklist
 

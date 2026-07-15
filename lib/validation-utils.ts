@@ -98,18 +98,5 @@ export const rateLimiter = new RateLimiter()
 
 // Validate admin operation permissions
 export function canPerformAdminOperation(userId: string, operation: string): boolean {
-  const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID || 'O6aFgoNhDigSIXk6zdYSDrFWhWG2'
-  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@farm.com'
-
-  // Only allow specific admin operations for super admin
-  const allowedOperations = [
-    'user_management',
-    'farm_management',
-    'system_config',
-    'data_export',
-    'user_delete',
-    'farm_delete'
-  ]
-
-  return userId === adminUid && allowedOperations.includes(operation)
+  return false
 }

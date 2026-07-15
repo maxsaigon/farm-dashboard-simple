@@ -1,5 +1,8 @@
 ---
 name: ReNEW Farm Logic
+documentationStatus: Design-only
+baseline: 0.1.0/7890775
+reviewed: 2026-07-15
 colors:
   surface: '#f7f9fb'
   surface-dim: '#d8dadc'
@@ -107,6 +110,10 @@ spacing:
   stack-lg: 24px
   safe-area-bottom: 32px
 ---
+
+> **Design-only documentation** | Baseline: `0.1.0` (`7890775`) | Reviewed: `2026-07-15`
+>
+> Đây là định hướng thiết kế cho static mockups ReNEW, không phải runtime specification và không xác nhận mockup đã được triển khai. Mã nguồn hiện tại là nguồn sự thật.
 
 ## Brand & Style
 The brand personality is **Organic, Trustworthy, and High-Utility**. It is designed specifically for the Vietnamese agricultural sector, balancing the ruggedness of outdoor farm management with the precision of modern data tracking. The design system evokes a sense of reliability and growth, ensuring farmers feel empowered rather than overwhelmed by technology.

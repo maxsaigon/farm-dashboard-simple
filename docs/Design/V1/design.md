@@ -1,5 +1,9 @@
 # 🗺️ Tài liệu Hệ thống Giao diện Hiện hành (UI/UX System Design V1)
 
+> **Status:** Historical | Baseline: `0.1.0` (`7890775`) | Reviewed: `2026-07-15`
+>
+> V1 là tài liệu tham chiếu lịch sử, không phải đặc tả runtime hiện hành. Mã nguồn và routes hiện tại luôn được ưu tiên khi có khác biệt.
+
 Tài liệu này được lập ra nhằm giúp Agent trên **Google Stitch** (https://stitch.withgoogle.com/) hiểu rõ cấu trúc hiện tại, luồng điều hướng, phân quyền và danh sách tất cả các trang của hệ thống **FarmManager** (ứng dụng quản lý trang trại sầu riêng thông minh trên di động).
 
 ---
@@ -8,10 +12,10 @@ Tài liệu này được lập ra nhằm giúp Agent trên **Google Stitch** (h
 
 Để giúp Agent Stitch hiểu sâu sắc về các chức năng động, tương tác và các quy trình ngầm (thay vì chỉ xem hình ảnh tĩnh), hãy tham khảo các tài nguyên bổ sung dưới đây:
 
-1. **🎬 [Video Ghi hình Tương tác Thực tế](file:///Volumes/Mac%20Work/React/farm-dashboard-simple/docs/Design/V1/app-walkthrough.webm)**: Video ghi lại toàn bộ luồng tương tác thực tế từ màn hình Login, chọn trang trại, phóng to thu nhỏ bản đồ, bật chế độ On-farm Work Mode, mở BottomSheet chi tiết cây trồng, chỉnh sửa số lượng trái sầu riêng và duyệt qua giao diện quản trị Super Admin.
-2. **⚙️ [Đặc tả Tương tác Chi tiết dạng JSON](file:///Volumes/Mac%20Work/React/farm-dashboard-simple/docs/Design/V1/app-specification.json)**: Chứa cấu trúc đặc tả lập trình về mọi màn hình, phần tử UI tương tác (input, button, toggles), các sự kiện kích hoạt (onClick, onChange) tương ứng với các React state thay đổi và các truy vấn/ghi đè cơ sở dữ liệu Firestore.
-3. **🧭 [Tài liệu Quy trình Nghiệp vụ & Thuật toán](file:///Volumes/Mac%20Work/React/farm-dashboard-simple/docs/Design/V1/user-journeys.md)**: Giải thích chi tiết các thuật toán ngầm phức tạp như: định vị chính xác cao bằng GPS Burst, Coordinates Guard chặn lỗi tọa độ 30m, nén ảnh thông minh lưu trữ ngoại tuyến bằng IndexedDB, và thuật toán Point-in-polygon gán phân khu tự động.
-4. **⚙️ [Bản tả Kỹ thuật & Tương tác Component](file:///Volumes/Mac%20Work/React/farm-dashboard-simple/docs/Design/V1/functional-spec.md)**: Chi tiết về cấu trúc component Next.js, state React và các file schema Firestore.
+1. **🎬 [Video Ghi hình Tương tác Thực tế](./app-walkthrough.webm)**: Video ghi lại toàn bộ luồng tương tác thực tế từ màn hình Login, chọn trang trại, phóng to thu nhỏ bản đồ, bật chế độ On-farm Work Mode, mở BottomSheet chi tiết cây trồng, chỉnh sửa số lượng trái sầu riêng và duyệt qua giao diện quản trị Super Admin.
+2. **⚙️ [Đặc tả Tương tác Chi tiết dạng JSON](./app-specification.json)**: Chứa cấu trúc đặc tả lập trình về mọi màn hình, phần tử UI tương tác (input, button, toggles), các sự kiện kích hoạt (onClick, onChange) tương ứng với các React state thay đổi và các truy vấn/ghi đè cơ sở dữ liệu Firestore.
+3. **🧭 [Tài liệu Quy trình Nghiệp vụ & Thuật toán](./user-journeys.md)**: Giải thích chi tiết các thuật toán ngầm phức tạp như: định vị chính xác cao bằng GPS Burst, Coordinates Guard chặn lỗi tọa độ 30m, nén ảnh thông minh lưu trữ ngoại tuyến bằng IndexedDB, và thuật toán Point-in-polygon gán phân khu tự động.
+4. **⚙️ [Bản tả Kỹ thuật & Tương tác Component](./functional-spec.md)**: Chi tiết về cấu trúc component Next.js, state React và các file schema Firestore.
 
 ---
 
@@ -22,6 +26,13 @@ Tài liệu này được lập ra nhằm giúp Agent trên **Google Stitch** (h
 - **Trình bao bọc di động**: `MobileOnlyWrapper` chặn các thiết bị desktop và hiển thị thông báo yêu cầu truy cập bằng di động (trừ khi bật chế độ Developer Tools giả lập Mobile hoặc kích thước màn hình `< 768px` và có hỗ trợ cảm ứng).
 - **Database & Auth**: Firebase Auth (Email/Password) và Firestore database thời gian thực.
 - **Bản đồ**: Sử dụng thư viện Leaflet / OpenStreetMap hỗ trợ hiển thị ranh giới nông trại, ranh giới khu vực và vị trí các cây sầu riêng.
+
+---
+
+## ⚠️ Sai lệch so với hiện tại
+
+- Runtime hiện tại dùng **MapLibre**, không còn dùng Leaflet như baseline V1 mô tả.
+- Danh sách route, component, hành vi và hợp đồng dữ liệu trong V1 chỉ phản ánh baseline lịch sử. Routes và mã nguồn hiện tại là nguồn sự thật và ghi đè tài liệu này khi có khác biệt.
 
 ---
 

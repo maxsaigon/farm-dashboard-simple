@@ -1,8 +1,19 @@
 # ⚙️ Bản tả Kỹ thuật & Tương tác Hệ thống (Functional & Interactive UI/UX Spec)
 
+> **Historical documentation** | Baseline: `0.1.0` (`7890775`) | Reviewed: `2026-07-15`
+>
+> Đây là đặc tả V1 lịch sử, không phải hợp đồng implementation hiện hành. Runtime hiện tại dùng MapLibre thay Leaflet; routes và mã nguồn hiện tại ghi đè nội dung này khi có khác biệt.
+
 Tài liệu này cung cấp bản đồ chi tiết về các chức năng, trạng thái (React state), hành động của người dùng (User triggers) và cấu trúc cơ sở dữ liệu (Firestore schema) của ứng dụng **FarmManager**. 
 
 Mục tiêu là cung cấp cho **Google Stitch Agent** đầy đủ logic vận hành để khi thiết kế lại UI/UX, Agent không làm mất mát bất kỳ luồng nghiệp vụ hoặc tính năng ngầm nào của ứng dụng.
+
+---
+
+## ⚠️ Sai lệch so với hiện tại
+
+- Tên component, state, route và luồng dữ liệu bên dưới thuộc baseline V1 và có thể không còn khớp runtime.
+- MapLibre đã thay Leaflet trong implementation hiện tại. Luôn kiểm tra routes và mã nguồn hiện tại trước khi triển khai hoặc thay đổi hành vi.
 
 ---
 

@@ -1,5 +1,8 @@
 # ReNEW — Đặc Tả Hoàn Chỉnh: Farm Dashboard (Rebuild Specification)
 
+> [!WARNING]
+> **TÀI LIỆU QUY HOẠCH REBUILD (POCKETBASE):** Tài liệu này mô tả đặc tả thiết kế để rebuild ứng dụng sang hệ thống backend **PocketBase** trong tương lai. Codebase hiện tại đang chạy hoàn toàn trên nền tảng **Firebase** (Firestore, Auth, Storage). Vui lòng tham khảo [DOCUMENTATION.md](../DOCUMENTATION.md) để biết kiến trúc thực tế của codebase hiện tại.
+
 > Tài liệu này mô tả **MỌI CHI TIẾT** của ứng dụng quản lý trang trại sầu riêng, để một coding agent có thể build lại hoàn chỉnh từ đầu với code tốt hơn. Đọc kỹ từng phần trước khi code.
 
 ---

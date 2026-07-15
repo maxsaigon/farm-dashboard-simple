@@ -1,5 +1,13 @@
 # 📍 GPS Tracking - Hướng Dẫn Hoàn Chỉnh cho iOS
 
+> Status: Historical
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+This guide combines an old diagnosis and implementation plan. Foreground browser GPS is present in the current map, but the PWA cannot guarantee tracking while iOS suspends or closes it; proposed Capacitor work is not part of the runtime.
+
 ## 📋 MỤC LỤC
 
 1. [Tổng Quan Vấn Đề](#tổng-quan-vấn-đề)

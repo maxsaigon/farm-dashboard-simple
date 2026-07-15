@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
@@ -22,33 +22,25 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure'
   },
 
   /* Configure projects for major browsers */
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    /* Test against mobile viewports. */
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+      use: { ...devices['Pixel 5'] }
     },
     {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
+      name: 'mobile-chromium-authenticated',
+      dependencies: ['setup'],
+      testMatch: /critical-authenticated\.spec\.ts/,
+      use: {
+        ...devices['Pixel 5'],
+        storageState: 'playwright/.auth/mobile-chromium.json'
+      }
     },
 
     /* Test against branded browsers. */
@@ -64,8 +56,8 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'npm run dev',
+    command: 'NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-farm-dashboard NEXT_PUBLIC_FIREBASE_API_KEY=demo-api-key NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=demo-farm-dashboard.firebaseapp.com NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=demo-farm-dashboard.appspot.com NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789 NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:e2e npm run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 })

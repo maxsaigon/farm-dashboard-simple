@@ -1,5 +1,11 @@
 # Authentication System Optimization Guide
 
+> Status: Partial
+> Baseline: package `0.1.0`, Git commit `7890775` with local documentation changes
+> Last reviewed: 2026-07-15
+>
+> Current-code notice: `SimpleAuthProvider` is active through [`../../app/layout.tsx`](../../app/layout.tsx), but this guide mixes implemented caching with an earlier intended design. Runtime uses `farmDashboard_authState` with a seven-day restore window and a five-minute freshness check. It does not contain the documented `storage` listener, `farmDashboard_authState_v2`, one-hour expiry, or two-second refresh timer. Performance numbers and completed test claims below are historical estimates, not current reproducible benchmarks or security/readiness evidence. Authorization remains limited by the broad [`../../firestore.rules`](../../firestore.rules); client auth guards are not backend security.
+
 ## Overview
 
 This document describes the optimization of the SimpleAuthProvider authentication system to dramatically reduce loading times and eliminate repeated authentication checks when switching between tabs.
@@ -115,7 +121,7 @@ Firestore Reads:  ~15-20 per session
 User Experience:  Poor (constant loading)
 ```
 
-### After Optimization
+### Reported After Optimization (Historical, Not Re-verified)
 ```
 Initial Load:     50-100ms (instant)
 Tab Switch:       0ms (instant sync)
@@ -145,10 +151,9 @@ import { SimpleAuthProvider } from "@/lib/simple-auth-context"
 import { SimpleAuthProvider } from "@/lib/optimized-auth-context"
 ```
 
-2. **No Code Changes Required**
-- API is 100% compatible
-- All hooks work the same
-- All components work without changes
+2. **Original Migration Expectation**
+- The earlier report expected API compatibility
+- Hook and component compatibility must be checked against current code
 
 ### Storage Keys
 
@@ -214,16 +219,15 @@ if (result) {
 
 Prevents unnecessary re-renders.
 
-## Testing Checklist
+## Historical Testing Checklist (Not Re-verified At Current Baseline)
 
-- [x] Initial login shows instant UI
-- [x] Tab switching doesn't trigger re-authentication
-- [x] Background refresh works silently
-- [x] Cache expires correctly after 1 hour
-- [x] Cross-tab sync works properly
-- [x] Logout clears all cached data
-- [x] Offline mode still works
-- [x] Demo mode still works
+- [ ] Initial login timing benchmark
+- [ ] Cross-tab behavior (the documented storage listener is absent)
+- [ ] Background refresh behavior
+- [ ] Current seven-day restore and five-minute freshness behavior
+- [ ] Logout cache clearing
+- [ ] Offline behavior
+- [ ] Demo fallback behavior
 
 ## Monitoring
 
@@ -335,13 +339,8 @@ localStorage.removeItem('farmDashboard_authState_v2')
    - WebSocket connections
    - Instant updates across devices
 
-## Conclusion
+## Historical Conclusion And Current Caveat
 
-The optimized authentication system provides:
-- ✅ **50-100x faster** initial load
-- ✅ **Instant** tab switching
-- ✅ **90% reduction** in Firestore reads
-- ✅ **Excellent** user experience
-- ✅ **100% backward compatible**
+The original report attributed faster loading and fewer Firestore reads to this design. Those magnitudes have not been reproduced at the current baseline and should not be treated as guarantees. The active provider does restore cached state and cache Firestore-derived auth data, but its behavior differs from several snippets above and it does not resolve backend authorization or the `farmAccess`/`userFarmAccess` mismatch.
 
-No code changes required in components - just update the import in [`app/layout.tsx`](../app/layout.tsx:4)!
+The provider import is already active in [`../../app/layout.tsx`](../../app/layout.tsx). Use [`ARCHITECTURE.md`](./ARCHITECTURE.md) for current behavior.

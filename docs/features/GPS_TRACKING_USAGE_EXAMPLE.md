@@ -1,5 +1,13 @@
 # Hướng Dẫn Sử Dụng iOS-Optimized GPS
 
+> Status: Partial
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+The `useIOSOptimizedGPS` API exists and supports foreground tracking. The Leaflet example is illustrative rather than part of the MapLibre runtime, and none of these examples provide reliable iOS background tracking.
+
 ## 🎯 Quick Start
 
 ### 1. Import và Setup

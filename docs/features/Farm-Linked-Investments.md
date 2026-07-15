@@ -1,5 +1,13 @@
 # Farm-Linked Investments: Design, Data Model, Sync, and Usage
 
+> Status: Historical
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+This Swift/Core Data architecture is not the active Next.js runtime. Current investments are implemented as farm-scoped Firestore CRUD with CSV export, and `lib/investment-service.ts` performs client-side migration from legacy investment paths; retain the Swift material below only as historical design context.
+
 Last updated: 2025-09-17
 
 ## Summary

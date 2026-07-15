@@ -1,5 +1,13 @@
 # GPS Tracking Solution for iOS Browsers
 
+> Status: Proposal
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+Capacitor and native background geolocation described here are proposals and are not installed in the active runtime. The current implementation provides foreground web GPS only; iOS background tracking remains unreliable.
+
 ## 🎯 Vấn đề hiện tại
 
 GPS Tracking không hoạt động trên iOS Safari vì:

@@ -1,6 +1,12 @@
 {
   "appName": "FarmManager",
   "version": "1.0.0",
+  "documentationStatus": {
+    "status": "Historical",
+    "baseline": "0.1.0/7890775",
+    "reviewed": "2026-07-15"
+  },
+  "implementationNotice": "Historical V1 reference only. The current runtime uses MapLibre instead of Leaflet; current routes and source code override this document where they differ.",
   "techStack": {
     "framework": "Next.js 14.2 (App Router)",
     "styling": "Tailwind CSS",

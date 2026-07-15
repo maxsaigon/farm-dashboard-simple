@@ -1,5 +1,10 @@
 # Enhanced Multi-Tenant Authentication System
 
+> **Status:** Historical
+> **Baseline:** `0.1.0` / `7890775`
+> **Reviewed:** 2026-07-15
+> **Historical notice:** Completion claims reflect a point-in-time report. [CURRENT_STATE.md](../CURRENT_STATE.md), [ARCHITECTURE.md](../architecture/ARCHITECTURE.md), and the current code override this document. This document describes a superseded auth architecture: active auth reads `farmAccess`, while `FarmService` reads `userFarmAccess`; admin remains partial.
+
 ## Overview
 
 The Enhanced Authentication System is a comprehensive multi-tenant farm management platform that replaces the simple hardcoded admin system with a scalable, role-based architecture. This system supports multiple farmers, organizations, and collaborative farm management.

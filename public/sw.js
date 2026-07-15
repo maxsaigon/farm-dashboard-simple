@@ -1,26 +1,16 @@
 // Farm Manager Service Worker
-const CACHE_NAME = 'farm-manager-v1.0.1'
-const STATIC_CACHE_NAME = 'farm-manager-static-v1.0.1'
-const DYNAMIC_CACHE_NAME = 'farm-manager-dynamic-v1.0.1'
-const IMAGE_CACHE_NAME = 'farm-manager-images-v1.0.1'
+const STATIC_CACHE_NAME = 'farm-manager-static-v3'
+const IMAGE_CACHE_NAME = 'farm-manager-images-v3'
 
 // Resources to cache immediately
 const STATIC_ASSETS = [
   '/',
   '/login',
   '/trees',
-  '/dashboard',
-  '/photos',
   '/manifest.json',
-  '/favicon.ico'
-]
-
-// API endpoints to cache
-const API_CACHE_PATTERNS = [
-  /\/api\/trees/,
-  /\/api\/photos/,
-  /\/api\/farms/,
-  /\/api\/user/
+  '/icons/favicon.ico',
+  '/icons/web-app-manifest-192x192.png',
+  '/icons/web-app-manifest-512x512.png'
 ]
 
 // Image patterns to cache
@@ -64,7 +54,6 @@ self.addEventListener('activate', event => {
         return Promise.all(
           cacheNames.map(cacheName => {
             if (cacheName !== STATIC_CACHE_NAME && 
-                cacheName !== DYNAMIC_CACHE_NAME && 
                 cacheName !== IMAGE_CACHE_NAME) {
               console.log('[SW] Deleting old cache:', cacheName)
               return caches.delete(cacheName)
@@ -90,6 +79,10 @@ self.addEventListener('fetch', event => {
   // Skip Chrome extension requests
   if (url.protocol === 'chrome-extension:') return
 
+  // Next.js build assets are content-versioned and must not be served from an
+  // old app-shell cache after a deployment or during local hot reload.
+  if (url.pathname.startsWith('/_next/')) return
+
   // Skip Firebase, Firestore, Google Auth, and Google Analytics services
   if (
     url.hostname.includes('googleapis.com') ||
@@ -109,8 +102,6 @@ self.addEventListener('fetch', event => {
   // Handle different types of requests
   if (isImageRequest(request)) {
     event.respondWith(handleImageRequest(request))
-  } else if (isAPIRequest(request)) {
-    event.respondWith(handleAPIRequest(request))
   } else if (isNavigationRequest(request)) {
     event.respondWith(handleNavigationRequest(request))
   } else {
@@ -141,50 +132,6 @@ async function handleImageRequest(request) {
   } catch (error) {
     console.error('[SW] Image request failed:', error)
     return new Response('Image not available offline', { status: 404 })
-  }
-}
-
-// Handle API requests with network-first, then cache
-async function handleAPIRequest(request) {
-  try {
-    const networkResponse = await Promise.race([
-      fetch(request),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Network timeout')), 5000)
-      )
-    ])
-    
-    if (networkResponse.ok) {
-      const cache = await caches.open(DYNAMIC_CACHE_NAME)
-      cache.put(request, networkResponse.clone())
-      console.log('[SW] API response cached:', request.url)
-    }
-    
-    return networkResponse
-  } catch (error) {
-    console.log('[SW] Network failed, trying cache for:', request.url)
-    
-    const cache = await caches.open(DYNAMIC_CACHE_NAME)
-    const cachedResponse = await cache.match(request)
-    
-    if (cachedResponse) {
-      // Add offline indicator to response
-      const offlineResponse = cachedResponse.clone()
-      return addOfflineHeader(offlineResponse)
-    }
-    
-    // Return offline fallback for API requests
-    return new Response(JSON.stringify({
-      error: 'Offline',
-      message: 'This data is not available offline',
-      offline: true
-    }), {
-      status: 503,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Offline': 'true'
-      }
-    })
   }
 }
 
@@ -237,101 +184,9 @@ function isImageRequest(request) {
          request.destination === 'image'
 }
 
-function isAPIRequest(request) {
-  return API_CACHE_PATTERNS.some(pattern => pattern.test(request.url)) ||
-         request.url.includes('/api/')
-}
-
 function isNavigationRequest(request) {
   return request.mode === 'navigate' || 
-         (request.method === 'GET' && request.headers.get('accept').includes('text/html'))
-}
-
-function addOfflineHeader(response) {
-  const headers = new Headers(response.headers)
-  headers.set('X-Offline', 'true')
-  headers.set('X-Cache-Source', 'service-worker')
-  
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: headers
-  })
-}
-
-// Background sync for offline actions
-self.addEventListener('sync', event => {
-  console.log('[SW] Background sync triggered:', event.tag)
-  
-  if (event.tag === 'photo-upload') {
-    event.waitUntil(syncPhotos())
-  } else if (event.tag === 'tree-update') {
-    event.waitUntil(syncTreeUpdates())
-  }
-})
-
-// Sync offline photos
-async function syncPhotos() {
-  try {
-    const offlinePhotos = await getOfflineData('photos')
-    
-    for (const photo of offlinePhotos) {
-      try {
-        const response = await fetch('/api/photos', {
-          method: 'POST',
-          body: photo.formData
-        })
-        
-        if (response.ok) {
-          await removeOfflineData('photos', photo.id)
-          console.log('[SW] Photo synced successfully:', photo.id)
-        }
-      } catch (error) {
-        console.error('[SW] Failed to sync photo:', photo.id, error)
-      }
-    }
-  } catch (error) {
-    console.error('[SW] Photo sync failed:', error)
-  }
-}
-
-// Sync offline tree updates
-async function syncTreeUpdates() {
-  try {
-    const offlineUpdates = await getOfflineData('trees')
-    
-    for (const update of offlineUpdates) {
-      try {
-        const response = await fetch(`/api/trees/${update.treeId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(update.data)
-        })
-        
-        if (response.ok) {
-          await removeOfflineData('trees', update.id)
-          console.log('[SW] Tree update synced:', update.treeId)
-        }
-      } catch (error) {
-        console.error('[SW] Failed to sync tree update:', update.id, error)
-      }
-    }
-  } catch (error) {
-    console.error('[SW] Tree sync failed:', error)
-  }
-}
-
-// IndexedDB helpers for offline data
-async function getOfflineData(type) {
-  // Implementation would use IndexedDB to store/retrieve offline data
-  return []
-}
-
-async function removeOfflineData(type, id) {
-  // Implementation would remove synced data from IndexedDB
-  console.log(`[SW] Removing offline ${type} data:`, id)
+         (request.method === 'GET' && (request.headers.get('accept') || '').includes('text/html'))
 }
 
 // Handle push notifications
@@ -344,20 +199,18 @@ self.addEventListener('push', event => {
     
     const options = {
       body: data.body || 'Farm Manager notification',
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/badge-72x72.png',
+      icon: '/icons/web-app-manifest-192x192.png',
+      badge: '/icons/favicon-96x96.png',
       tag: data.tag || 'farm-manager',
       data: data.data || {},
       actions: [
         {
           action: 'view',
-          title: 'Xem',
-          icon: '/icons/view-action.png'
+          title: 'Xem'
         },
         {
           action: 'dismiss',
-          title: 'Bỏ qua',
-          icon: '/icons/dismiss-action.png'
+          title: 'Bỏ qua'
         }
       ],
       requireInteraction: data.urgent || false

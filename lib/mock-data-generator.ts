@@ -82,13 +82,17 @@ export function generateMockInvestment(farmId: string, userId: string, override?
 }
 
 export function generateMockUserFarmAccess(userId: string, farmId: string, role: 'owner' | 'manager' | 'viewer' = 'viewer'): UserFarmAccess {
+  const now = new Date()
   return {
-    id: `mock-access-${Math.random().toString(36).substr(2, 9)}`,
+    id: `${userId}_${farmId}`,
     userId,
     farmId,
     role,
     permissions: role === 'owner' ? ['read', 'write', 'admin'] : role === 'manager' ? ['read', 'write'] : ['read'],
-    createdAt: new Date(),
-    updatedAt: new Date()
+    isActive: true,
+    grantedBy: userId,
+    grantedAt: now,
+    createdAt: now,
+    updatedAt: now
   }
 }

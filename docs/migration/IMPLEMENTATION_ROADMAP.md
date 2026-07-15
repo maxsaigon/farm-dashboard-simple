@@ -1,5 +1,10 @@
 # Map UX/UI Implementation Roadmap
 
+> **Status:** Historical
+> **Baseline:** `0.1.0` / `7890775`
+> **Reviewed:** 2026-07-15
+> **Historical notice:** Completion claims reflect a point-in-time report. [CURRENT_STATE.md](../CURRENT_STATE.md), [ARCHITECTURE.md](../architecture/ARCHITECTURE.md), and the current architecture/code override this roadmap; verify referenced source paths and implementation state before following its steps.
+
 ## 🎯 Summary of Improvements
 
 I've analyzed and improved the `/map` page UX/UI with a farmer-first approach. The improvements transform a complex technical interface into an intuitive, mobile-friendly tool for agricultural workers.

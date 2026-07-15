@@ -1,5 +1,13 @@
 # Quy Trình Tạo Cây Mới - On-Farm Work Mode
 
+> Status: Partial
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+On-farm tree creation and foreground GPS are implemented. Photo storage uses mixed Firestore paths and offline photo handling is partial; the standalone `/camera` route only simulates saving, and no AI analysis pipeline is active. Examples and performance figures below are historical guidance, not current test results or production-readiness evidence.
+
 ## 📋 Tổng Quan
 
 Tài liệu này mô tả chi tiết quy trình tạo cây mới trong chế độ On-Farm Work Mode, đảm bảo dữ liệu được lưu đúng cách và đồng bộ với Firebase.
@@ -419,7 +427,7 @@ if (!navigator.onLine) {
 - Photo upload: < 3 seconds per photo (on 4G)
 - Total time (3 photos): < 15 seconds
 
-### Actual Measurements
+### Historical Measurements (Not Reverified)
 ```
 Tree creation:     ~1.5s  ✅
 Photo compression: ~0.8s  ✅
@@ -429,11 +437,11 @@ Total (3 photos):  ~10s   ✅
 
 ## 🔗 Related Files
 
-- [`components/OnFarmWorkMode.tsx`](../components/OnFarmWorkMode.tsx) - Main component
-- [`lib/firestore.ts`](../lib/firestore.ts) - createTree function
-- [`lib/photo-compression.ts`](../lib/photo-compression.ts) - Compression logic
-- [`lib/storage.ts`](../lib/storage.ts) - Upload functions
-- [`app/map/page.tsx`](../app/map/page.tsx) - Integration
+- [`components/OnFarmWorkMode.tsx`](../../components/OnFarmWorkMode.tsx) - Main component
+- [`lib/firestore.ts`](../../lib/firestore.ts) - createTree function
+- [`lib/photo-compression.ts`](../../lib/photo-compression.ts) - Compression logic
+- [`lib/storage.ts`](../../lib/storage.ts) - Upload functions
+- [`app/map/page.tsx`](../../app/map/page.tsx) - Integration
 
 ## 🚀 Future Enhancements
 
@@ -454,4 +462,4 @@ Total (3 photos):  ~10s   ✅
 
 **Version**: 1.0.0  
 **Last Updated**: 03/01/2025  
-**Status**: Production Ready ✅
+**Historical status (superseded)**: This workflow is partial and is not production-ready.

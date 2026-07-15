@@ -1,5 +1,5 @@
 import { db } from './firebase'
-import { where, orderBy, limit, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore'
+import { where, orderBy, limit, DocumentData, QueryDocumentSnapshot, collection, getDocs, query, onSnapshot } from 'firebase/firestore'
 import { Photo } from './types'
 import { getImageUrl, getThumbnailUrl } from './storage'
 import { FirestoreSafe, safeGetDocs, safeOnSnapshot, safeQuery, safeCollection } from './firestore-safe'
@@ -55,10 +55,10 @@ function convertToPhoto(doc: QueryDocumentSnapshot<DocumentData>): Photo {
 /**
  * Get photos for a specific tree
  */
-export async function getTreePhotos(treeId: string): Promise<Photo[]> {
+export async function getTreePhotos(farmId: string, treeId: string): Promise<Photo[]> {
   try {
     // Validate inputs
-    if (!treeId || typeof treeId !== 'string') {
+    if (!farmId || !treeId || typeof treeId !== 'string') {
       return []
     }
 
@@ -67,40 +67,14 @@ export async function getTreePhotos(treeId: string): Promise<Photo[]> {
       return []
     }
 
-    const photosRef = safeCollection('photos')
-    if (!photosRef) {
-      return []
-    }
-    
-    // Try with orderBy first, fallback to simple query if index doesn't exist
-    try {
-      const q = safeQuery(
-        photosRef,
-        where('treeId', '==', treeId),
-        orderBy('timestamp', 'desc')
-      )
-      if (!q) {
-        throw new Error('Query building failed')
-      }
-      
-      const docs = await safeGetDocs(q)
-      return docs.map(convertToPhoto)
-    } catch (indexError: any) {
-      // Fallback to simple query without orderBy
-      const simpleQ = safeQuery(
-        photosRef,
-        where('treeId', '==', treeId)
-      )
-      if (!simpleQ) {
-        return []
-      }
-      
-      const docs = await safeGetDocs(simpleQ)
-      const photos = docs.map(convertToPhoto)
-      
-      // Sort manually by timestamp
-      return photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-    }
+    const [canonical, legacy] = await Promise.all([
+      getDocs(query(collection(db, 'farms', farmId, 'photos'), where('treeId', '==', treeId))),
+      getDocs(query(collection(db, 'photos'), where('farmId', '==', farmId), where('treeId', '==', treeId)))
+    ])
+    const merged = new Map<string, Photo>()
+    legacy.docs.forEach(snapshot => merged.set(snapshot.id, convertToPhoto(snapshot)))
+    canonical.docs.forEach(snapshot => merged.set(snapshot.id, convertToPhoto(snapshot)))
+    return Array.from(merged.values()).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
   } catch (error) {
     return []
   }
@@ -110,55 +84,37 @@ export async function getTreePhotos(treeId: string): Promise<Photo[]> {
  * Subscribe to photos for a specific tree
  */
 export function subscribeToTreePhotos(
+  farmId: string,
   treeId: string,
   callback: (photos: Photo[]) => void
 ): () => void {
   try {
-    const photosRef = safeCollection('photos')
-    if (!photosRef) {
+    if (!farmId || !treeId) {
       callback([])
       return () => {}
     }
     
-    // Try with orderBy first, fallback to simple query if index doesn't exist
-    try {
-      const q = safeQuery(
-        photosRef,
-        where('treeId', '==', treeId),
-        orderBy('timestamp', 'desc')
-      )
-      
-      if (!q) {
-        callback([])
-        return () => {}
-      }
-      
-      return safeOnSnapshot(q, (docs) => {
-        const photos = docs.map(convertToPhoto)
-        callback(photos)
-      }, (error) => {
-        callback([])
-      })
-    } catch (indexError) {
-      // Fallback to simple query without orderBy
-      const simpleQ = safeQuery(
-        photosRef,
-        where('treeId', '==', treeId)
-      )
-
-      if (!simpleQ) {
-        callback([])
-        return () => {}
-      }
-      
-      return safeOnSnapshot(simpleQ, (docs) => {
-        const photos = docs.map(convertToPhoto)
-        // Sort manually by timestamp
-        const sortedPhotos = photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-        callback(sortedPhotos)
-      }, (error) => {
-        callback([])
-      })
+    let canonicalPhotos: Photo[] = []
+    let legacyPhotos: Photo[] = []
+    const emit = () => {
+      const merged = new Map<string, Photo>()
+      legacyPhotos.forEach(photo => merged.set(photo.id, photo))
+      canonicalPhotos.forEach(photo => merged.set(photo.id, photo))
+      callback(Array.from(merged.values()).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()))
+    }
+    const unsubscribeCanonical = onSnapshot(
+      query(collection(db, 'farms', farmId, 'photos'), where('treeId', '==', treeId)),
+      snapshot => { canonicalPhotos = snapshot.docs.map(convertToPhoto); emit() },
+      () => { canonicalPhotos = []; emit() }
+    )
+    const unsubscribeLegacy = onSnapshot(
+      query(collection(db, 'photos'), where('farmId', '==', farmId), where('treeId', '==', treeId)),
+      snapshot => { legacyPhotos = snapshot.docs.map(convertToPhoto); emit() },
+      () => { legacyPhotos = []; emit() }
+    )
+    return () => {
+      unsubscribeCanonical()
+      unsubscribeLegacy()
     }
   } catch (error) {
     return () => {}
@@ -170,7 +126,7 @@ export function subscribeToTreePhotos(
  */
 export async function getFarmPhotos(farmId: string): Promise<Photo[]> {
   try {
-    const photosRef = safeCollection('photos')
+    const photosRef = collection(db, 'farms', farmId, 'photos')
     if (!photosRef) {
       return []
     }
@@ -313,70 +269,58 @@ export async function getPhotoWithUrls(photo: Photo, actualFarmId?: string): Pro
   const photoWithUrls: PhotoWithUrls = { ...photo, isLoading: true }
   
   try {
-    // Correct Firebase Storage path structure
-    const correctPaths: string[] = []
-    
     // Use actualFarmId if provided, otherwise fall back to photo.farmId
     const effectiveFarmId = actualFarmId || photo.farmId
+    const explicitMainPaths = [
+      photo.compressedPath,
+      photo.aiReadyPath,
+      photo.originalPath,
+      photo.localPath
+    ].filter(Boolean) as string[]
+    const inferredPaths: string[] = []
 
     if (effectiveFarmId && photo.treeId && photo.id) {
       const basePath = `farms/${effectiveFarmId}/trees/${photo.treeId}/photos/${photo.id}`
 
-      correctPaths.push(
-        `${basePath}/thumbnail.jpg`,
+      inferredPaths.push(
         `${basePath}/compressed.jpg`,
         `${basePath}/ai_ready.jpg`,
-        `${basePath}/${photo.filename}` // If filename is provided
+        `${basePath}/thumbnail.jpg`,
+        ...(photo.filename ? [`${basePath}/${photo.filename}`] : [])
       )
     }
-    
-    // Legacy/fallback paths for backwards compatibility
+
     const fallbackPaths = [
-      photo.originalPath,
-      photo.compressedPath,
-      photo.aiReadyPath,
-      photo.thumbnailPath,
-      photo.localPath,
       `trees/${photo.treeId}/${photo.filename}`,
       `photos/${photo.id}/${photo.filename}`,
       `farm-photos/${photo.farmId}/${photo.filename}`
     ].filter(Boolean) as string[]
-    
-    const allPaths = [...correctPaths, ...fallbackPaths]
-    
+
     let imageUrl: string | null = null
     let thumbnailUrl: string | null = null
-    
-    // Try to get thumbnail first (prioritize thumbnail.jpg from correct path)
-    for (const path of allPaths) {
-      if (path.includes('thumbnail.jpg') || path === photo.thumbnailPath) {
-        thumbnailUrl = await getImageUrl(path)
-        if (thumbnailUrl) {
-          break
-        }
+
+    if (photo.thumbnailPath) {
+      thumbnailUrl = await getImageUrl(photo.thumbnailPath)
+    }
+
+    // Persisted paths are authoritative. Inferred paths only support newer
+    // records that do not yet contain explicit Storage metadata.
+    const mainPaths = Array.from(new Set([
+      ...explicitMainPaths,
+      ...inferredPaths.filter(path => !path.includes('thumbnail.jpg')),
+      ...fallbackPaths
+    ]))
+    for (const path of mainPaths) {
+      imageUrl = await getImageUrl(path)
+      if (imageUrl) {
+        break
       }
     }
 
-    // Try to get main image (prioritize compressed.jpg, then ai_ready.jpg)
-    for (const path of allPaths) {
-      if (path.includes('compressed.jpg') || path.includes('ai_ready.jpg') || path === photo.compressedPath || path === photo.aiReadyPath) {
-        imageUrl = await getImageUrl(path)
-        if (imageUrl) {
-          break
-        }
-      }
-    }
-
-    // If no compressed image found, try any remaining paths
-    if (!imageUrl) {
-      for (const path of allPaths) {
-        if (!path.includes('thumbnail.jpg')) { // Skip thumbnails for main image
-          imageUrl = await getImageUrl(path)
-          if (imageUrl) {
-            break
-          }
-        }
-      }
+    if (!imageUrl && effectiveFarmId && photo.treeId && photo.id) {
+      imageUrl = await getImageUrl(
+        `farms/${effectiveFarmId}/trees/${photo.treeId}/photos/${photo.id}/thumbnail.jpg`
+      )
     }
     
     photoWithUrls.imageUrl = imageUrl || undefined

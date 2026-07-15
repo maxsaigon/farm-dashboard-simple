@@ -1,8 +1,16 @@
 # Tree Note System Documentation
 
+> Status: Current
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+Tree notes are implemented as a basic farm/tree-scoped Firestore list with note creation and live updates. Mentions are parsed/displayed but do not send notifications; attachments, editing, reactions, task assignment, and advanced collaboration remain future work.
+
 ## Overview
 
-The Tree Note System is a real-time collaborative tool that enables team members to communicate and coordinate work on individual trees. It provides a timeline-based interface for quick notes, observations, and task tracking directly within the tree showcase view.
+The Tree Note System provides a timeline-based interface for basic notes and observations on individual trees. It does not currently implement a full task-tracking or notification workflow.
 
 ## Features
 

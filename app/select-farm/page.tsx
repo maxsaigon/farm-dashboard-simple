@@ -76,14 +76,15 @@ function SelectFarmContent() {
       // 2. Refresh user data inside SimpleAuthProvider so farms array gets updated
       await refreshUserData()
 
+      const createdFarm = await FarmService.getFarm(farmId, user.uid)
+
       // 3. Clear inputs & close modal
       setNewFarmName('')
       setNewFarmArea('0')
       setShowCreateModal(false)
 
-      // 4. Find the newly created farm in the updated farms list and select it
-      // Let's reload state and redirect
-      router.push('/')
+      if (createdFarm) setCurrentFarm(createdFarm as SimpleFarm)
+      router.push('/map')
     } catch (err) {
       console.error('Error creating farm:', err)
       setError('Không thể tạo nông trại. Vui lòng thử lại.')
@@ -160,10 +161,12 @@ function SelectFarmContent() {
                 const accessDate = getAccessDate(farm.id)
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={farm.id}
                     onClick={() => handleSelectFarm(farm)}
-                    className={`group relative p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
+                    aria-pressed={isSelected}
+                    className={`group relative w-full text-left p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                       isSelected
                         ? 'border-emerald-600 bg-emerald-50/70 shadow-md scale-[1.01]'
                         : 'border-gray-100 hover:border-emerald-300 hover:bg-emerald-50/10 bg-white'
@@ -213,7 +216,7 @@ function SelectFarmContent() {
                         Tạm dừng
                       </div>
                     )}
-                  </div>
+                  </button>
                 )
               })
             )}

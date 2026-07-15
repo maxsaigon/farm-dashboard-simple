@@ -79,6 +79,8 @@ export interface Photo {
 export interface Farm {
   id: string
   name: string
+  ownerId?: string
+  createdBy?: string
   ownerName?: string
   totalArea?: number
   createdDate: Date
@@ -101,8 +103,12 @@ export interface UserFarmAccess {
   farmId: string
   role: 'owner' | 'manager' | 'viewer'
   permissions: string[]
+  isActive: boolean
+  grantedBy: string
+  grantedAt: Date
   createdAt: Date
   updatedAt: Date
+  revokedAt?: Date
 }
 
 // Manual entry data

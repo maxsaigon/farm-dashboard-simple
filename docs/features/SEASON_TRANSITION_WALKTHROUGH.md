@@ -1,5 +1,13 @@
 # Tài liệu Nghiệm thu Hệ thống Quản lý Mùa vụ (Season Management System)
 
+> Status: Current
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+The season features described here are integrated, including client-side legacy migration. This is not proof of atomic or universally completed migration: each farm still depends on a permitted client successfully running the migration, and the historical build statements below apply only to their recorded run.
+
 Tài liệu này tổng hợp toàn bộ các thay đổi, giải pháp kỹ thuật, và kết quả kiểm thử của Hệ thống Quản lý Mùa vụ cho ứng dụng **FarmManager**, sẵn sàng phục vụ niên vụ 2026 chính thức bắt đầu và bảo vệ dữ liệu niên vụ 2025.
 
 ---
@@ -67,9 +75,9 @@ npm run build
 ```
 
 **Kết quả biên dịch:**
-- Lưới định tuyến ứng dụng (App Route pages) được tối ưu hóa hoàn toàn.
-- Type check thành công 100%, không phát sinh bất kỳ cảnh báo hoặc lỗi TypeScript nào.
-- Firebase Client SDK và dịch vụ offline được cấu hình tương thích hoàn hảo.
+- The historical build generated the application routes successfully.
+- The historical type check completed without TypeScript errors; this is not a 100% quality or test-coverage claim.
+- Firebase client and offline configuration compiled, but offline behavior remains partial and requires runtime verification.
 
 ---
 

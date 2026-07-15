@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation'
 import { useSimpleAuth } from '@/lib/optimized-auth-context'
 import { collection, getDocs, doc, updateDoc, setDoc, deleteDoc, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { countTreesByZone } from '@/lib/zone-tree-count'
 import {
   MapIcon,
   PlusIcon,
@@ -100,6 +101,7 @@ export default function SimplifiedZoneManagement() {
   
   // State variables
   const [zones, setZones] = useState<Zone[]>([])
+  const [totalFarmTrees, setTotalFarmTrees] = useState(0)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [saving, setSaving] = useState(false)
@@ -140,9 +142,10 @@ export default function SimplifiedZoneManagement() {
       const legacyZonesQuery = query(legacyZonesRef, where('farmId', '==', currentFarm.id))
 
       // Fetch both concurrently to avoid sequential loading bottlenecks
-      const [farmZonesSnapshot, legacyZonesSnapshot] = await Promise.all([
+      const [farmZonesSnapshot, legacyZonesSnapshot, farmTreesSnapshot] = await Promise.all([
         getDocs(farmZonesRef),
-        getDocs(legacyZonesQuery)
+        getDocs(legacyZonesQuery),
+        getDocs(collection(db, 'farms', currentFarm.id, 'trees'))
       ])
 
       const mergedMap = new Map<string, Zone>()
@@ -234,10 +237,20 @@ export default function SimplifiedZoneManagement() {
         mergedMap.set(doc.id, processDoc(doc))
       })
 
-      setZones(Array.from(mergedMap.values()))
+      const mergedZones = Array.from(mergedMap.values())
+      const treeCounts = countTreesByZone(
+        mergedZones,
+        farmTreesSnapshot.docs.map(snapshot => snapshot.data())
+      )
+      setZones(mergedZones.map(zone => ({
+        ...zone,
+        treeCount: treeCounts.get(zone.id) || 0
+      })))
+      setTotalFarmTrees(farmTreesSnapshot.size)
     } catch (error) {
       console.error('Error loading zones:', error)
       setZones([])
+      setTotalFarmTrees(0)
     } finally {
       setLoading(false)
     }
@@ -288,7 +301,7 @@ export default function SimplifiedZoneManagement() {
 
     setSaving(true)
     try {
-      const activeId = editingZone?.id || doc(collection(db, 'zones')).id
+      const activeId = editingZone?.id || doc(collection(db, 'farms', currentFarm.id, 'zones')).id
       const boundaryPoints = editingZone?.boundaries || []
 
       // Calculate area dynamically if boundary has points
@@ -308,7 +321,6 @@ export default function SimplifiedZoneManagement() {
         code: formData.code.trim().toUpperCase() || '',
         color: formData.color,
         colorData,
-        boundary: boundaryPoints,
         boundaries: boundaryPoints,
         farmId: currentFarm.id,
         treeCount: formData.treeCount,
@@ -328,10 +340,7 @@ export default function SimplifiedZoneManagement() {
         payload.averageHealth = editingZone.averageHealth || 8.0
       }
 
-      // Write to Firestore - path 1 (scoped)
       await setDoc(doc(db, 'farms', currentFarm.id, 'zones', activeId), payload)
-      // Write to Firestore - path 2 (legacy global)
-      await setDoc(doc(db, 'zones', activeId), payload)
 
       // Reload zones to get updated UI
       await loadZones()
@@ -350,10 +359,7 @@ export default function SimplifiedZoneManagement() {
 
     try {
       const zoneId = deleteConfirmZone.id
-      // Delete from scoped path
       await deleteDoc(doc(db, 'farms', currentFarm.id, 'zones', zoneId))
-      // Delete from legacy global path
-      await deleteDoc(doc(db, 'zones', zoneId))
 
       setZones(prev => prev.filter(z => z.id !== zoneId))
       setDeleteConfirmZone(null)
@@ -371,8 +377,6 @@ export default function SimplifiedZoneManagement() {
 
   // Calculate simple stats
   const totalZones = zones.length
-  const totalTrees = zones.reduce((sum, zone) => sum + zone.treeCount, 0)
-  
   // Calculate average health of all zones
   const activeZones = zones.filter(z => z.isActive)
   const averageHealthVal = activeZones.length > 0 
@@ -398,15 +402,6 @@ export default function SimplifiedZoneManagement() {
           await updateDoc(farmZoneRef, {
             lastInspectionDate: new Date()
           })
-          try {
-            const legacyZoneRef = doc(db, 'zones', zone.id)
-            await updateDoc(legacyZoneRef, {
-              lastInspectionDate: new Date()
-            })
-          } catch (e) {
-            console.warn('Failed to update legacy zone path:', e)
-          }
-          
           setZones(prev => prev.map(z =>
             z.id === zone.id
               ? { ...z, lastInspectionDate: new Date(), needsAttention: false }
@@ -500,7 +495,7 @@ export default function SimplifiedZoneManagement() {
             <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600 mb-2">
               <ChartBarIcon className="h-5 w-5" />
             </div>
-            <div className="text-xl font-bold text-green-600">{totalTrees}</div>
+            <div className="text-xl font-bold text-green-600">{totalFarmTrees}</div>
             <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-0.5">Cây trồng</div>
           </div>
 

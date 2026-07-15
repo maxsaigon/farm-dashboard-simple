@@ -1,5 +1,15 @@
 # 🔥 Firebase Environment Variables Setup
 
+**Document status:** Current quick setup for local/staging use; production deployment blocked
+
+**Baseline:** Repository state verified on 2026-07-15
+
+**Review date:** 2026-07-15
+
+**Current notice:** Firebase Auth, Firestore, and Storage are the active application runtime. PocketBase dependencies and migration scripts exist, but PocketBase is inactive in the application runtime. Use placeholders in documentation and obtain project-specific Firebase web configuration directly from Firebase Console.
+
+> Do not deploy production from this quick guide. Current `../../firestore.rules` grants broad authenticated access, and `../../firebase.json` has no Storage rules entry or hosting configuration. There is no `storage.rules` file or CI deployment workflow. See [Deployment Guide](../deployment/DEPLOYMENT_GUIDE.md).
+
 ## 🚨 **Quick Fix Applied**
 
 I've added fallback configuration so the app will run without Firebase environment variables, but **you'll need to set up your Firebase project** for authentication to work properly.
@@ -34,12 +44,12 @@ Create a file named `.env.local` in your project root:
 ```bash
 # Copy this to .env.local and replace with your Firebase values
 
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyA...your_actual_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789012
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:abcdef123456789
+NEXT_PUBLIC_FIREBASE_API_KEY=<firebase-web-api-key>
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=<firebase-auth-domain>
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=<firebase-project-id>
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=<firebase-storage-bucket>
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=<firebase-messaging-sender-id>
+NEXT_PUBLIC_FIREBASE_APP_ID=<firebase-web-app-id>
 ```
 
 ### **Step 4: Enable Authentication**
@@ -52,11 +62,11 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:abcdef123456789
 ### **Step 5: Set up Firestore**
 1. In Firebase Console → **Firestore Database**
 2. Click "Create database"
-3. Choose "Start in test mode" (for now)
+3. Use temporary test mode only in a disposable project with no real data; prefer the Firebase Emulator Suite
 4. Select location (asia-southeast1 for Vietnam)
 
 ### **Step 6: Configure Firestore Rules**
-Replace the default rules with:
+The following broad authenticated-access rule is an unsafe historical sample. Do not deploy it to production; use it only in a disposable environment if unavoidable:
 
 ```javascript
 rules_version = '2';
@@ -76,9 +86,9 @@ service cloud.firestore {
 ```
 ✅ Firebase initialized successfully
 ✅ Firestore initialized with custom settings
-🔐 User signed in: your.email@domain.com
-🏗️ Creating default farm for new user: your.email@domain.com
-✅ Created default farm: [farm-id] for user: your.email@domain.com
+🔐 User signed in: [test-user-email]
+🏗️ Creating default farm for new user: [test-user-email]
+✅ Created default farm: [farm-id] for user: [test-user-email]
 ```
 
 ### **Expected Flow:**
@@ -125,7 +135,7 @@ service cloud.firestore {
 2. **🔧 TODO**: Set up Firebase project (5-10 minutes)
 3. **📝 TODO**: Create `.env.local` with your config
 4. **🧪 TODO**: Test authentication flow
-5. **🚀 TODO**: Deploy with real Firebase
+5. **🚀 TODO**: Complete the security and release gates in the [Deployment Guide](../deployment/DEPLOYMENT_GUIDE.md) before any production deployment
 
 ## 🔗 **Helpful Links**
 

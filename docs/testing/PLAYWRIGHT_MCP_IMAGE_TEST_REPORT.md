@@ -1,5 +1,15 @@
 # 🧪 Playwright MCP Image Loading Test Report
 
+**Document status:** Historical test report; not a current release gate
+
+**Baseline:** Repository state verified on 2026-07-15
+
+**Review date:** 2026-07-15
+
+**Current notice:** Preserve this August 2025 report as historical evidence only. Its success and production-readiness statements do not override the current failed stored Playwright result and do not prove production readiness. See [Testing Guide](./TESTING_GUIDE.md).
+
+> Current baseline: `package.json` has no `test` script, no Jest configuration exists, and the existing unit test is unreliable because its expected authenticated state is not established by its mocks. Playwright is configured, but `../../test-results/.last-run.json` records `status: "failed"`. On 2026-07-15, build and standalone typecheck passed; lint completed with warnings.
+
 ## Test Summary
 **Date:** August 18, 2025  
 **Test Tool:** Playwright MCP  
@@ -172,7 +182,9 @@ To test with actual images, you need:
 
 ## 🎉 Conclusion
 
-**✅ SUCCESS:** The Firebase Storage image integration is **100% functional** and ready for production use.
+> **Superseded historical conclusion:** This run had no representative image data and cannot establish end-to-end Storage correctness or production readiness. The stored current Playwright result is failed; see [`TESTING_GUIDE.md`](./TESTING_GUIDE.md).
+
+**Historical claim (superseded):** The original report described the Firebase Storage image integration as fully functional and ready for production use.
 
 **Playwright MCP Verification:**
 - All components render correctly ✅

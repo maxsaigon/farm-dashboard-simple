@@ -1,5 +1,13 @@
 # Custom Fields Design Summary
 
+> Status: Design-only
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+The active tree UI supports values from predefined custom-field presets only. User-defined field schemas, farm-level definition CRUD, the described offline queue, and several gestures/accessibility behaviors below are design targets, not verified runtime features.
+
 ## **OVERVIEW**
 
 I have designed a comprehensive UI/UX solution for adding custom fields to tree records in your durian farm management app. This solution is specifically optimized for Vietnamese farmers working outdoors with mobile devices, emphasizing simplicity, accessibility, and farmer-friendly interactions.
@@ -68,7 +76,7 @@ I have designed a comprehensive UI/UX solution for adding custom fields to tree 
 - **Swipe gestures** for quick actions (edit/delete)
 - **Bottom sheet modals** for easy thumb reach
 - **Responsive design** that adapts to all screen sizes
-- **Offline support** with auto-sync when connected
+- **Offline support** with auto-sync when connected (design target)
 
 ### **Comprehensive Field Types**
 - **🍎 Fruit Count**: Number input with quick +/- buttons
@@ -83,7 +91,7 @@ I have designed a comprehensive UI/UX solution for adding custom fields to tree 
 - **8 predefined field templates** covering common use cases
 - **Quick text phrases** for common observations
 - **Category-based organization** (Harvest, Health, Care, etc.)
-- **Custom field creation** for unique farm requirements
+- **Custom field creation** for unique farm requirements (not implemented; presets only)
 
 ---
 
@@ -195,7 +203,7 @@ CustomFieldsSection (Main container)
 
 ### **Technical Performance**
 - **Load time**: <2 seconds for field interface on 3G
-- **Offline capability**: 100% functionality without internet
+- **Offline capability target**: functionality without internet; not verified or fully implemented
 - **Touch accuracy**: 95%+ successful taps with thick gloves
 - **Sunlight readability**: Readable at 1000+ lux brightness
 

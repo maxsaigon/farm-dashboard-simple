@@ -16,15 +16,11 @@ export default function AdminPage() {
   const { user, isAdmin, loading } = useSimpleAuth()
   const router = useRouter()
   const [currentSection, setCurrentSection] = useState<AdminSection>('dashboard')
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const isSuperAdmin = isAdmin()
 
   useEffect(() => {
     if (!loading && (!user || !isAdmin())) {
-      router.push('/login')
-    }
-    // Check for super admin (you can customize this logic)
-    if (user?.email === 'admin@farm.com' || user?.uid === 'O6aFgoNhDigSIXk6zdYSDrFWhWG2') {
-      setIsSuperAdmin(true)
+      router.push(user ? '/no-access' : '/login')
     }
   }, [user, isAdmin, loading])
 
@@ -45,10 +41,10 @@ export default function AdminPage() {
         <div className="text-center">
           <p className="text-gray-600 mb-4">Bạn cần quyền super admin để truy cập khu vực này.</p>
           <button
-            onClick={() => router.push('/login')}
+            onClick={() => router.push(user ? '/no-access' : '/login')}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
-            Đăng nhập
+            Quay lại
           </button>
         </div>
       </div>

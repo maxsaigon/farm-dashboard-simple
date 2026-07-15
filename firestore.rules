@@ -1,108 +1,253 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions for role checking
-    function isAuthenticated() {
+    function signedIn() {
       return request.auth != null;
     }
 
-    function isOwner() {
-      return isAuthenticated() && request.auth.uid == 'O6aFgoNhDigSIXk6zdYSDrFWhWG2';
+    function isSystemAdmin() {
+      return signedIn() && request.auth.token.admin == true;
     }
 
-    // Note: Firestore rules cannot efficiently query collections
-    // Instead, we allow users to read farmAccess documents where they are the userId
-    // and check permissions in the document rules
+    function accessPath(uid, farmId) {
+      return /databases/$(database)/documents/userFarmAccess/$(uid + '_' + farmId);
+    }
 
-    // Users collection - users can read/write their own profile
+    function hasFarmAccess(farmId) {
+      return signedIn()
+        && exists(accessPath(request.auth.uid, farmId))
+        && get(accessPath(request.auth.uid, farmId)).data.userId == request.auth.uid
+        && get(accessPath(request.auth.uid, farmId)).data.farmId == farmId
+        && get(accessPath(request.auth.uid, farmId)).data.isActive == true;
+    }
+
+    function farmRole(farmId) {
+      return get(accessPath(request.auth.uid, farmId)).data.role;
+    }
+
+    function canReadFarm(farmId) {
+      return isSystemAdmin() || hasFarmAccess(farmId);
+    }
+
+    function canWriteFarm(farmId) {
+      return isSystemAdmin()
+        || (hasFarmAccess(farmId) && farmRole(farmId) in ['owner', 'manager']);
+    }
+
+    function isFarmOwner(farmId) {
+      return isSystemAdmin()
+        || (hasFarmAccess(farmId) && farmRole(farmId) == 'owner');
+    }
+
+    function validRole(role) {
+      return role in ['owner', 'manager', 'viewer'];
+    }
+
+    function validAccessIdentity(accessId) {
+      return request.resource.data.id == accessId
+        && accessId == request.resource.data.userId + '_' + request.resource.data.farmId;
+    }
+
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isOwner());
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isOwner());
-      allow create: if isAuthenticated();
+      allow get: if signedIn() && (request.auth.uid == userId || isSystemAdmin());
+      allow list: if isSystemAdmin();
+
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && !request.resource.data.keys().hasAny(['isAdmin', 'admin', 'role', 'roles']);
+
+      allow update: if isSystemAdmin()
+        || (signedIn()
+          && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'displayName',
+            'phoneNumber',
+            'photoURL',
+            'preferredLanguage',
+            'language',
+            'timezone',
+            'lastLoginAt',
+            'emailVerified',
+            'isEmailVerified',
+            'preferences',
+            'updatedAt'
+          ]));
+
+      allow delete: if isSystemAdmin();
     }
 
-    // Farms collection - simplified access control
-    // For now, allow authenticated users to read/write farms
-    // TODO: Implement proper farm-level access control
     match /farms/{farmId} {
-      allow read: if isAuthenticated() || isOwner();
-      allow write: if isAuthenticated() || isOwner();
-      allow create: if isAuthenticated();
-      allow delete: if isAuthenticated() || isOwner();
+      allow get: if canReadFarm(farmId);
+      allow list: if isSystemAdmin();
 
-      // Subcollections inherit farm permissions
+      allow create: if signedIn()
+        && request.resource.data.id == farmId
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.createdBy == request.auth.uid;
+
+      allow update: if canWriteFarm(farmId)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdBy == resource.data.createdBy;
+
+      allow delete: if isFarmOwner(farmId);
+
+      match /trees/{treeId} {
+        allow read: if canReadFarm(farmId);
+        allow create, update: if canWriteFarm(farmId)
+          && request.resource.data.farmId == farmId;
+        allow delete: if isFarmOwner(farmId);
+
+        match /notes/{noteId} {
+          allow read: if canReadFarm(farmId);
+          allow create, update: if canWriteFarm(farmId);
+          allow delete: if isFarmOwner(farmId);
+        }
+      }
+
+      match /photos/{photoId} {
+        allow read: if canReadFarm(farmId);
+        allow create, update: if canWriteFarm(farmId)
+          && request.resource.data.farmId == farmId;
+        allow delete: if canWriteFarm(farmId);
+      }
+
+      match /zones/{zoneId} {
+        allow read: if canReadFarm(farmId);
+        allow create, update: if canWriteFarm(farmId)
+          && request.resource.data.farmId == farmId;
+        allow delete: if isFarmOwner(farmId);
+      }
+
+      match /investments/{investmentId} {
+        allow read: if canReadFarm(farmId);
+        allow create: if canWriteFarm(farmId)
+          && request.resource.data.farmId == farmId
+          && request.resource.data.createdBy == request.auth.uid;
+        allow update: if canWriteFarm(farmId)
+          && request.resource.data.farmId == farmId
+          && request.resource.data.createdBy == resource.data.createdBy;
+        allow delete: if isFarmOwner(farmId)
+          || (canWriteFarm(farmId) && resource.data.createdBy == request.auth.uid);
+      }
+
+      match /manualEntries/{entryId} {
+        allow read: if canReadFarm(farmId);
+        allow create, update: if canWriteFarm(farmId);
+        allow delete: if isFarmOwner(farmId);
+      }
+
       match /{document=**} {
-        allow read: if isAuthenticated() || isOwner();
-        allow write: if isAuthenticated() || isOwner();
-        allow create: if isAuthenticated() || isOwner();
-        allow delete: if isAuthenticated() || isOwner();
+        allow read, write: if false;
       }
     }
 
-    // Farm access control
-    match /farmAccess/{accessId} {
-      allow read: if isAuthenticated() &&
-        (request.auth.uid == resource.data.userId ||
-         isOwner());
-      allow write: if isAuthenticated() &&
-        (request.auth.uid == resource.data.userId ||
-         isOwner());
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() &&
-        (request.auth.uid == resource.data.userId ||
-         isOwner());
-    }
-
-    // Admin-only collections (super admin only)
-    match /adminConfig/{document=**} {
-      allow read, write: if isOwner();
-    }
-
-    // Farm invitations
-    match /farmInvitations/{invitationId} {
-      allow read: if isAuthenticated() &&
-        (request.auth.uid == resource.data.invitedBy ||
-         isOwner());
-      allow write: if isAuthenticated() || isOwner();
-      allow create: if isAuthenticated() || isOwner();
-    }
-
-    // User farm access (legacy collection)
     match /userFarmAccess/{accessId} {
-      allow read: if isAuthenticated() &&
-        (request.auth.uid == resource.data.userId ||
-         isOwner());
-      allow write: if isAuthenticated() || isOwner();
+      allow get, list: if signedIn()
+        && (isSystemAdmin()
+          || resource.data.userId == request.auth.uid
+          || isFarmOwner(resource.data.farmId));
+
+      allow create: if isSystemAdmin()
+        || (signedIn()
+          && validAccessIdentity(accessId)
+          && validRole(request.resource.data.role)
+          && request.resource.data.isActive == true
+          && (isFarmOwner(request.resource.data.farmId)
+            || (request.resource.data.userId == request.auth.uid
+              && request.resource.data.role == 'owner'
+              && request.resource.data.grantedBy == request.auth.uid
+              && getAfter(/databases/$(database)/documents/farms/$(request.resource.data.farmId)).data.ownerId == request.auth.uid)));
+
+      allow update: if isSystemAdmin()
+        || (isFarmOwner(resource.data.farmId)
+          && validAccessIdentity(accessId)
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.farmId == resource.data.farmId
+          && validRole(request.resource.data.role));
+
+      allow delete: if isSystemAdmin()
+        || (isFarmOwner(resource.data.farmId) && resource.data.role != 'owner');
     }
 
-    // Zones collection
-    match /zones/{zoneId} {
-      allow read: if isAuthenticated() || isOwner();
-      allow write: if isAuthenticated() || isOwner();
-      allow create: if isAuthenticated() || isOwner();
-      allow delete: if isAuthenticated() || isOwner();
+    // Read-only during migration to userFarmAccess. New writes are forbidden.
+    match /farmAccess/{accessId} {
+      allow get, list: if signedIn()
+        && (isSystemAdmin() || resource.data.userId == request.auth.uid);
+      allow create, update, delete: if false;
     }
 
-    // Investments collection
-    match /investments/{investmentId} {
-      allow read: if isAuthenticated() || isOwner();
-      allow write: if isAuthenticated() || isOwner();
-      allow create: if isAuthenticated() || isOwner();
-      allow delete: if isAuthenticated() || isOwner();
+    match /farmInvitations/{invitationId} {
+      allow read: if isSystemAdmin()
+        || (signedIn()
+          && (resource.data.invitedBy == request.auth.uid
+            || isFarmOwner(resource.data.farmId)));
+      allow create: if signedIn()
+        && isFarmOwner(request.resource.data.farmId)
+        && request.resource.data.invitedBy == request.auth.uid;
+      allow update, delete: if isSystemAdmin() || isFarmOwner(resource.data.farmId);
     }
 
-    // Global collections with restricted access
-    match /audit/{document=**} {
-      allow read, write: if isOwner();
+    match /adminConfig/{document=**} {
+      allow read, write: if isSystemAdmin();
     }
 
     match /system/{document=**} {
-      allow read, write: if isOwner();
+      allow read, write: if isSystemAdmin();
     }
 
-    // Allow all other collections for authenticated users (temporary)
+    match /auditLogs/{document=**} {
+      allow read: if isSystemAdmin();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    match /activityLogs/{document=**} {
+      allow read: if isSystemAdmin();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    // Persisted legacy data remains readable by its farm membership during migration.
+    match /photos/{photoId} {
+      allow read: if canReadFarm(resource.data.farmId);
+      allow write: if false;
+    }
+
+    match /zones/{zoneId} {
+      allow read: if canReadFarm(resource.data.farmId);
+      allow write: if false;
+    }
+
+    match /trees/{treeId} {
+      allow read: if canReadFarm(resource.data.farmId);
+      allow write: if false;
+    }
+
+    match /trackingSessions/{document=**} {
+      allow read, write: if isSystemAdmin();
+    }
+
+    match /locationUpdates/{document=**} {
+      allow read, write: if isSystemAdmin();
+    }
+
+    match /geofenceEvents/{document=**} {
+      allow read, write: if isSystemAdmin();
+    }
+
+    match /systemAlerts/{document=**} {
+      allow read, write: if isSystemAdmin();
+    }
+
+    match /systemMetrics/{document=**} {
+      allow read, write: if isSystemAdmin();
+    }
+
     match /{document=**} {
-      allow read, write, create, delete: if isAuthenticated() || isOwner();
+      allow read, write: if false;
     }
   }
 }

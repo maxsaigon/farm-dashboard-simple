@@ -1,5 +1,10 @@
 # 🎉 Build Issues Successfully Fixed!
 
+> **Status:** Historical
+> **Baseline:** `0.1.0` / `7890775`
+> **Reviewed:** 2026-07-15
+> **Historical notice:** Completion claims reflect a point-in-time report. [CURRENT_STATE.md](../CURRENT_STATE.md), [ARCHITECTURE.md](../architecture/ARCHITECTURE.md), and the current code override this document. The current build passes, but tests are not reliable; admin remains partial, and current runtime must not be described as production-ready.
+
 ## ✅ **Build Status: SUCCESSFUL**
 
 ```

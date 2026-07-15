@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { MobileInput, MobileSelect } from './MobileCards'
 import MobileLayout from './MobileLayout'
 import { 
@@ -16,6 +16,12 @@ import {
   ClockIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
+import { useSimpleAuth } from '@/lib/optimized-auth-context'
+import { db, storage } from '@/lib/firebase'
+import { collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { ref, uploadBytes } from 'firebase/storage'
+import { savePendingPhoto } from '@/lib/offline-photos-db'
+import { compressImageSmart } from '@/lib/photo-compression'
 
 interface CaptureLocation {
   latitude: number
@@ -34,7 +40,7 @@ interface PhotoMetadata {
     condition: string
   }
   notes: string
-  category: 'health_check' | 'fruit_count' | 'disease' | 'growth' | 'general'
+  category: 'health' | 'fruit_count' | 'general'
   qualityScore?: number
 }
 
@@ -45,6 +51,9 @@ interface CameraError {
 
 export default function MobileCameraCapture() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { user, currentFarm, selectedSeasonYear, hasPermission } = useSimpleAuth()
+  const treeId = searchParams.get('treeId')
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -62,7 +71,7 @@ export default function MobileCameraCapture() {
   const [metadata, setMetadata] = useState<PhotoMetadata>({
     timestamp: new Date(),
     notes: '',
-    category: 'health_check'
+    category: 'health'
   })
 
   // Initialize camera
@@ -184,29 +193,74 @@ export default function MobileCameraCapture() {
   }
 
   const savePhoto = async () => {
-    if (!capturedPhoto) return
+    if (!capturedPhoto || !treeId || !user || !currentFarm || !hasPermission('write')) {
+      setError({ type: 'storage', message: 'Cần chọn cây và có quyền cập nhật để lưu ảnh.' })
+      return
+    }
 
     setIsSaving(true)
     try {
-      // Convert captured photo to blob for upload
       const response = await fetch(capturedPhoto)
       const blob = await response.blob()
-      
-      // Create form data
-      const formData = new FormData()
-      formData.append('photo', blob, `photo_${Date.now()}.jpg`)
-      formData.append('metadata', JSON.stringify({
-        ...metadata,
-        location: location || undefined
-      }))
+      const treeSnapshot = await getDoc(doc(db, 'farms', currentFarm.id, 'trees', treeId))
+      if (!treeSnapshot.exists()) throw new Error('Tree is not in the selected farm')
 
-      // Upload photo (replace with actual API call)
+      const photoRef = doc(collection(db, 'farms', currentFarm.id, 'photos'))
+      const pendingPhoto = {
+        id: photoRef.id,
+        userId: user.uid,
+        treeId,
+        farmId: currentFarm.id,
+        photoType: metadata.category,
+        userNotes: metadata.notes,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+        timestamp: metadata.timestamp.toISOString(),
+        imageBlob: blob,
+        seasonYear: selectedSeasonYear,
+        attemptCount: 0
+      } as const
 
-      // Simulate upload delay
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Navigate back to trees or photos page
-      router.push('/photos')
+      const queuePhoto = async (reason?: unknown) => {
+        await savePendingPhoto({
+          ...pendingPhoto,
+          lastError: reason instanceof Error ? reason.message : undefined
+        })
+      }
+
+      if (!navigator.onLine) {
+        await queuePhoto()
+      } else {
+        try {
+          const file = new File([blob], `${photoRef.id}.jpg`, { type: 'image/jpeg' })
+          const compressed = await compressImageSmart(file, metadata.category)
+          const storagePath = `farms/${currentFarm.id}/trees/${treeId}/photos/${photoRef.id}/compressed.jpg`
+          await uploadBytes(ref(storage, storagePath), compressed)
+          await setDoc(photoRef, {
+            id: photoRef.id,
+            treeId,
+            farmId: currentFarm.id,
+            filename: 'compressed.jpg',
+            photoType: metadata.category,
+            userNotes: metadata.notes,
+            latitude: location?.latitude ?? null,
+            longitude: location?.longitude ?? null,
+            timestamp: metadata.timestamp,
+            uploadDate: serverTimestamp(),
+            compressedPath: storagePath,
+            originalPath: storagePath,
+            uploadedToServer: true,
+            serverProcessed: false,
+            needsAIAnalysis: metadata.category === 'fruit_count',
+            seasonYear: selectedSeasonYear,
+            createdBy: user.uid
+          })
+        } catch (uploadError) {
+          await queuePhoto(uploadError)
+        }
+      }
+
+      router.push(`/trees?highlightTree=${encodeURIComponent(treeId)}`)
       
     } catch (err) {
       setError({
@@ -234,7 +288,7 @@ export default function MobileCameraCapture() {
 
   if (error?.type === 'permission') {
     return (
-      <MobileLayout currentTab="photos">
+      <MobileLayout currentTab="camera">
         <div className="h-full flex items-center justify-center p-6">
           <div className="text-center max-w-sm">
             <ExclamationTriangleIcon className="h-16 w-16 text-red-500 mx-auto mb-4" />
@@ -265,7 +319,7 @@ export default function MobileCameraCapture() {
   }
 
   return (
-    <MobileLayout currentTab="photos">
+    <MobileLayout currentTab="camera">
       <div className="h-full flex flex-col bg-black">
         {/* Camera View or Captured Photo */}
         <div className="flex-1 relative overflow-hidden">
@@ -354,6 +408,7 @@ export default function MobileCameraCapture() {
                 onClick={() => setFlashMode(prev => 
                   prev === 'off' ? 'auto' : prev === 'auto' ? 'on' : 'off'
                 )}
+                aria-label={`Đèn flash: ${flashMode === 'off' ? 'tắt' : flashMode === 'auto' ? 'tự động' : 'bật'}`}
                 className="p-3 text-white hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
               >
                 {flashMode === 'on' ? <SunIcon className="h-6 w-6" /> : 
@@ -365,6 +420,7 @@ export default function MobileCameraCapture() {
               <button
                 onClick={capturePhoto}
                 disabled={!isInitialized || isCapturing}
+                aria-label="Chụp ảnh"
                 className="w-20 h-20 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="w-16 h-16 bg-white border-4 border-gray-300 rounded-full flex items-center justify-center">
@@ -375,6 +431,7 @@ export default function MobileCameraCapture() {
               {/* Camera switch */}
               <button
                 onClick={switchCamera}
+                aria-label="Đổi camera"
                 className="p-3 text-white hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
               >
                 <ArrowPathIcon className="h-6 w-6" />
@@ -397,10 +454,8 @@ export default function MobileCameraCapture() {
                   category: value as PhotoMetadata['category']
                 }))}
                 options={[
-                  { value: 'health_check', label: 'Kiểm tra sức khỏe' },
+                  { value: 'health', label: 'Kiểm tra sức khỏe' },
                   { value: 'fruit_count', label: 'Đếm quả' },
-                  { value: 'disease', label: 'Bệnh tật' },
-                  { value: 'growth', label: 'Theo dõi sinh trưởng' },
                   { value: 'general', label: 'Tổng quát' }
                 ]}
                 required

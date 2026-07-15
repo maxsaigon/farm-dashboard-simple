@@ -1,5 +1,13 @@
 # iOS-Like UX Optimization Plan for Farm Manager (Web)
 
+> Status: Proposal
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+This is a planning checklist, not a completion report. The mobile shell, manifest, service worker, offline indicator, and some iOS-oriented UI exist, but PWA/offline behavior, gestures, accessibility, and image/photo resilience remain partial and are not established by the checked boxes below.
+
 Goal: Elevate the Next.js (React) app to feel closer to a native iOS SwiftUI experience while keeping the current architecture and data model intact. This plan is incremental, developer-friendly, and focused on highest impact for mobile-first users.
 
 Scope reviewed
@@ -221,11 +229,11 @@ public/manifest.json & public/sw.js
 
 ## Tracking table
 - [ ] Phase 0
-- [x] Phase 1 (completed: BottomSheet, edge-swipe back, BottomTabBar, LargeTitleHeader on Trees/Map/Zones)
-- [x] Phase 2 (completed: pull-to-refresh, photo gestures, motion removed for build stability)
-- [x] Phase 3 (completed: TreeList virtualization, map+bottom sheet master-detail, camera polish)
-- [x] Phase 4 (completed: offline indicator, Firestore persistence, PWA features)
-- [x] Phase 5 (completed: iOS blur effects, design tokens, dynamic type, haptics)
+- [x] Phase 1 (historically marked complete; not fully reverified)
+- [x] Phase 2 (historically marked complete; not fully reverified)
+- [x] Phase 3 (historically marked complete; camera/offline upload remains partial)
+- [x] Phase 4 (historically marked complete; PWA/offline behavior remains partial)
+- [x] Phase 5 (historically marked complete; accessibility/device coverage remains partial)
 
 
 ## References

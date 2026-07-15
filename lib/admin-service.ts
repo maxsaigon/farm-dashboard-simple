@@ -16,10 +16,10 @@ import { Farm, Tree, ManualEntry, Photo } from './types'
 import { EnhancedUser, EnhancedFarm } from './types-enhanced'
 import { Zone } from './gps-tracking-service'
 
-// Admin user configuration - Use environment variables for security
+// Legacy setup metadata only. Runtime authorization uses Firebase custom claims and Security Rules.
 export const ADMIN_CONFIG = {
-  uid: process.env.NEXT_PUBLIC_ADMIN_UID || 'O6aFgoNhDigSIXk6zdYSDrFWhWG2',
-  email: process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@farm.com',
+  uid: '',
+  email: '',
   displayName: 'Super Admin',
   permissions: [
     'read',
@@ -37,7 +37,7 @@ export class AdminService {
   
   // Check if user is admin
   static isAdmin(userId: string): boolean {
-    return userId === ADMIN_CONFIG.uid
+    return false
   }
   
   // Convert various date formats to JavaScript Date

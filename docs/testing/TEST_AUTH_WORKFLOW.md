@@ -1,5 +1,15 @@
 # 🧪 Auth Testing Workflow - Ready to Test!
 
+**Document status:** Historical manual workflow; requires revalidation
+
+**Baseline:** Repository state verified on 2026-07-15
+
+**Review date:** 2026-07-15
+
+**Current notice:** The workflow below is retained as historical manual guidance. Use disposable accounts in an isolated Firebase test project; do not use real credentials. Completion of this checklist does not prove production readiness. See [Testing Guide](./TESTING_GUIDE.md).
+
+> Current automation baseline: no package `test` script, no Jest config, unreliable existing unit test, and a stored failed Playwright result. Build and standalone typecheck passed on 2026-07-15; lint completed with warnings.
+
 ## ✅ **Login/Logout Functionality Available**
 
 The auth system is **fully implemented** with login/logout functionality in both desktop and mobile navigation:
@@ -25,7 +35,7 @@ Open: http://localhost:3001
 ### **Step 2: Sign In**
 1. **Desktop**: Click "Đăng nhập" button in top navigation
 2. **Mobile**: Tap menu (≡) → "Đăng nhập" button
-3. **Use**: `daibui.sg@gmail.com` / your password
+3. **Use**: a disposable test account created for the isolated test project
 
 ### **Step 3: Expected Results**
 After signing in, you should see:
@@ -38,9 +48,9 @@ After signing in, you should see:
 
 #### **🔍 Console Messages:**
 ```
-🔐 User signed in: daibui.sg@gmail.com
-🏗️ Creating default farm for new user: daibui.sg@gmail.com
-✅ Created default farm: [farm-id] for user: daibui.sg@gmail.com
+🔐 User signed in: [test-user-email]
+🏗️ Creating default farm for new user: [test-user-email]
+✅ Created default farm: [farm-id] for user: [test-user-email]
 ```
 
 #### **📊 Database Records Created:**

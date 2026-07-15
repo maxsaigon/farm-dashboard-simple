@@ -372,17 +372,14 @@ async function getZoneNameMap(farmId: string): Promise<Map<string, string>> {
   const zoneNameMap = new Map<string, string>()
   
   try {
-    // Try to load zones from farm-specific collection first
-    let zonesRef = collection(db, 'farms', farmId, 'zones')
-    let zonesSnapshot = await getDocs(zonesRef)
-    
-    // If no zones found in farm collection, try global zones collection filtered by farmId
-    if (zonesSnapshot.empty) {
-      zonesRef = collection(db, 'zones')
-      zonesSnapshot = await getDocs(query(zonesRef, where('farmId', '==', farmId)))
-    }
-    
-    zonesSnapshot.docs.forEach(doc => {
+    const [canonical, legacy] = await Promise.all([
+      getDocs(collection(db, 'farms', farmId, 'zones')),
+      getDocs(query(collection(db, 'zones'), where('farmId', '==', farmId)))
+    ])
+    const merged = new Map(legacy.docs.map(snapshot => [snapshot.id, snapshot]))
+    canonical.docs.forEach(snapshot => merged.set(snapshot.id, snapshot))
+
+    merged.forEach(doc => {
       const data = doc.data()
       const zoneName = data.name || `Zone ${doc.id}`
       

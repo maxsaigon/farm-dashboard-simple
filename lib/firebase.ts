@@ -1,7 +1,7 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
 import { getFirestore, connectFirestoreEmulator, Firestore, initializeFirestore, CACHE_SIZE_UNLIMITED, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
-import { getAuth, Auth } from 'firebase/auth'
-import { getStorage, FirebaseStorage } from 'firebase/storage'
+import { connectAuthEmulator, getAuth, Auth } from 'firebase/auth'
+import { connectStorageEmulator, getStorage, FirebaseStorage } from 'firebase/storage'
 
 // Fallback configuration for development
 const fallbackConfig = {
@@ -47,11 +47,13 @@ try {
 
   // Initialize Firebase services with safer settings for v12+
   try {
-    // Enable persistent offline cache using persistentLocalCache & persistentMultipleTabManager
+    const useEmulators = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true'
     db = initializeFirestore(app, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-        cacheSizeBytes: 40 * 1024 * 1024 // 40MB cache size
+      ...(useEmulators ? {} : {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+          cacheSizeBytes: 40 * 1024 * 1024
+        })
       }),
       experimentalForceLongPolling: false,
       ignoreUndefinedProperties: true, // Help with type safety
@@ -63,6 +65,16 @@ try {
 
   auth = getAuth(app)
   storage = getStorage(app)
+
+  if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true') {
+    const emulatorState = globalThis as typeof globalThis & { __farmFirebaseEmulatorsConnected?: boolean }
+    if (!emulatorState.__farmFirebaseEmulatorsConnected) {
+      connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+      connectFirestoreEmulator(db, '127.0.0.1', 8080)
+      connectStorageEmulator(storage, '127.0.0.1', 9199)
+      emulatorState.__farmFirebaseEmulatorsConnected = true
+    }
+  }
 
   console.log('[Firebase] ✅ Firebase initialized successfully')
   console.log('[Firebase] - App name:', app.name)

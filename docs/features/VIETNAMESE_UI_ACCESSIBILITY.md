@@ -1,5 +1,13 @@
 # Vietnamese UI Text & Accessibility Specifications
 
+> Status: Design-only
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+This is a Vietnamese copy and accessibility specification, not an audit result. Some text and preset custom-field UI are present, but arbitrary custom fields, gestures, voice behavior, complete offline sync, and checklist conformance are not verified.
+
 ## **VIETNAMESE UI TEXT LIBRARY**
 
 ### **Custom Fields Interface Text**

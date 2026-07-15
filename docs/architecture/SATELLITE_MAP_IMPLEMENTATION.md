@@ -1,5 +1,11 @@
 # Satellite Map Implementation - Auto-Switching Hybrid Mode
 
+> Status: Partial
+> Baseline: package `0.1.0`, Git commit `7890775` with local documentation changes
+> Last reviewed: 2026-07-15
+>
+> Current-code notice: Satellite/street/hybrid/auto modes are active in [`../../components/UnifiedMap.tsx`](../../components/UnifiedMap.tsx), but the implementation has migrated from Leaflet `TileLayer` to MapLibre GL raster `Source`/`Layer`. Esri is configured with `maxzoom={18}` and auto switches at zoom 19. References below to Leaflet imports, `LayersControl`, backup restoration, CSS-only transitions, exact old line numbers, and universal compatibility describe the earlier implementation and are retained only as migration history. Tile availability, licensing/attribution requirements, smoothness and fallback behavior are not absolute guarantees.
+
 ## Tổng quan
 
 Đã thêm chức năng xem bản đồ vệ tinh sử dụng **Esri World Imagery** (miễn phí) vào trang map hiện tại với 3 chế độ xem và tính năng **tự động chuyển đổi thông minh**:
@@ -14,7 +20,7 @@
 - `components/UnifiedMap.tsx` - Thêm satellite layer, layer toggle và auto-switching logic
 - `app/globals.css` - Thêm CSS transitions cho chuyển đổi mượt mà
 
-### Files backup:
+### Historical backup noted by the original report:
 - `components/UnifiedMap.backup.tsx` - Bản backup của code gốc
 
 ### Tính năng mới:
@@ -97,7 +103,7 @@ Mở `components/UnifiedMap.tsx` và:
 5. Xóa Map Layer Toggle control (dòng ~900-935)
 6. Đổi `top-36` thành `top-4` cho Compact GPS Status (dòng ~1210)
 
-## Technical Details
+## Historical Leaflet Technical Details
 
 ### Auto-Switching Logic
 ```tsx
@@ -129,11 +135,11 @@ const handleZoomEnd = () => {
 - Smooth transitions với CSS: `transition: opacity 0.5s ease-in-out`
 - OSM layer luôn được render để đảm bảo có data ở mọi zoom level
 
-### Performance Notes
+### Historical Performance Notes (Not Re-verified)
 - Esri tiles được cache bởi browser
 - CSS transitions tối ưu cho chuyển đổi mượt mà
-- Không ảnh hưởng đến hiệu suất GPS tracking
-- Tương thích với tất cả tính năng hiện có
+- Chưa có benchmark hiện tại chứng minh mức ảnh hưởng tới GPS tracking
+- Cần regression test thay vì giả định tương thích với mọi tính năng
 - Auto-switching chỉ trigger khi zoom thay đổi (không continuous)
 
 ## Alternatives
@@ -165,7 +171,7 @@ Nếu gặp vấn đề:
 
 - **Esri World Imagery**: Miễn phí cho sử dụng phi thương mại
 - **OpenStreetMap**: Dữ liệu bản đồ mở
-- **Leaflet**: Thư viện bản đồ JavaScript
+- **MapLibre GL**: Renderer đang active; Leaflet chỉ thuộc implementation lịch sử
 
 ## Giải thích Auto-Switching
 
@@ -192,4 +198,4 @@ Esri World Imagery không có dữ liệu ở zoom level cao (20+), dẫn đến
 
 **Ngày tạo**: 2025-01-08
 **Phiên bản**: 2.0 (Auto-Switching)
-**Trạng thái**: ✅ Hoạt động tốt với auto-switching thông minh
+**Trạng thái lịch sử**: Báo cáo từng ghi nhận hoạt động tốt; baseline hiện tại chỉ xác nhận feature có trong code MapLibre, chưa xác nhận production readiness hoặc mọi điều kiện tile/network.

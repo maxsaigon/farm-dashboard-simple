@@ -169,42 +169,44 @@ erDiagram
 ## Cấu trúc Thư mục
 
 ```
-/Users/daibui/Documents/React/farm-dashboard-simple/
-├── app/                          # Next.js App Router
-│   ├── layout.tsx               # Root layout
-│   ├── page.tsx                 # Home page (redirects to /map)
-│   ├── globals.css              # Global styles
-│   ├── login/                   # Authentication page
-│   ├── map/                     # Main map dashboard
-│   ├── trees/                   # Tree management page
-│   ├── camera/                  # Camera capture page
-│   ├── admin/                   # Admin panel
-│   ├── admin-zones/             # Zone management for admins
-│   ├── money/                   # Investment/Money management
-│   ├── zones/                   # Zone management
-│   └── no-access/               # Access denied page
-├── components/                  # React components
-│   ├── UnifiedMap.tsx           # Main map component
-│   ├── TreeDetail.tsx           # Tree details component
-│   ├── TreeShowcase.tsx         # Tree showcase component
-│   ├── AuthGuard.tsx            # Authentication guard
-│   ├── Navigation.tsx           # Main navigation
-│   ├── admin/                   # Admin-specific components
-│   └── ui/                      # UI components
-├── lib/                         # Utility libraries
-│   ├── firebase.ts              # Firebase configuration
-│   ├── simple-auth-context.tsx  # Authentication context
-│   ├── farm-service.ts          # Farm data services
-│   ├── types.ts                 # TypeScript type definitions
-│   └── services/                # Various service modules
-├── storage/                     # Archived unused files
-│   ├── components/              # Unused components
-│   ├── pages/                   # Debug/test pages
-│   └── lib/                     # Unused libraries
-├── docs/                        # Documentation
-├── public/                      # Static assets
-├── scripts/                     # Setup and utility scripts
-└── e2e/                         # End-to-end tests
+/Volumes/Mac Work/React/farm-dashboard-simple/
+├── app/                          # Next.js App Router (Các trang chính)
+│   ├── layout.tsx               # Layout gốc chứa SimpleAuthProvider
+│   ├── page.tsx                 # Trang chủ (Tự động chuyển hướng)
+│   ├── globals.css              # Custom CSS styling toàn hệ thống
+│   ├── login/                   # Trang Đăng nhập (Email/Password)
+│   ├── map/                     # Bản đồ chính (Leaflet + Satellite + Work Mode)
+│   ├── trees/                   # Quản lý & Showcase cây trồng
+│   ├── camera/                  # Chụp ảnh thực địa tích hợp GPS & AI
+│   ├── admin/                   # Bảng điều khiển quản trị hệ thống
+│   ├── admin-zones/             # Quản lý & Vẽ ranh giới khu vực (Admin/Owner)
+│   ├── money/                   # Quản lý chi phí đầu tư
+│   ├── zones/                   # Xem phân khu nông trại
+│   └── no-access/               # Trang báo từ chối quyền truy cập
+├── components/                  # Các Component React dùng chung
+│   ├── UnifiedMap.tsx           # Component bản đồ tích hợp
+│   ├── OnFarmWorkMode.tsx       # Chế độ làm việc thực địa (GPS Tracker)
+│   ├── TreeDetail.tsx           # Chi tiết thông tin một cây trồng
+│   ├── TreeShowcase.tsx         # Showcase cây trồng dạng thẻ
+│   ├── AuthGuard.tsx            # Component bảo vệ Route theo quyền hạn
+│   ├── Navigation.tsx           # Thanh điều hướng chính (Mobile/Desktop)
+│   ├── admin/                   # Các component dành riêng cho trang Admin
+│   └── ui/                      # Các component giao diện nhỏ (UI Elements)
+├── lib/                         # Thư viện & Dịch vụ (Services)
+│   ├── firebase.ts              # Cấu hình Firebase Web Client SDK
+│   ├── optimized-auth-context.tsx # Context quản lý xác thực & Cache 3 cấp
+│   ├── farm-service.ts          # Quản lý trang trại và quyền truy cập
+│   ├── photo-service.ts         # Xử lý upload ảnh và liên kết cây
+│   ├── gps-tracking-service.ts  # Dịch vụ theo dõi tọa độ GPS thực địa
+│   ├── types.ts                 # Định nghĩa các TypeScript types cơ bản
+│   └── types-enhanced.ts        # Định nghĩa kiểu dữ liệu nâng cao
+├── archive/                     # Nơi lưu trữ các file code cũ không sử dụng
+│   ├── components/              # Component cũ lưu trữ
+│   └── test-files/              # Các kịch bản test cũ
+├── docs/                        # Tài liệu dự án (Tổ chức theo các thư mục con)
+├── public/                      # Tài sản tĩnh (Icons, Manifest, Service Worker)
+├── scripts/                     # CLI Scripts quản trị chạy bằng Node.js/tsx
+└── e2e/                         # Các kịch bản kiểm thử E2E (Playwright)
 ```
 
 ## Các Trang Chính
@@ -251,52 +253,55 @@ erDiagram
 ## Các Component Chính
 
 ### Core Components
-- **UnifiedMap**: Component bản đồ chính sử dụng Leaflet
-- **TreeDetail**: Hiển thị thông tin chi tiết cây trồng
+- **UnifiedMap**: Component bản đồ chính sử dụng Leaflet và Esri Satellite
+- **OnFarmWorkMode**: Chế độ làm việc thực địa tối ưu hóa mobile
+- **TreeDetail**: Hiển thị thông tin chi tiết và lịch sử cây trồng
 - **TreeShowcase**: Giao diện showcase cho cây
 - **AuthGuard**: Bảo vệ route yêu cầu xác thực
 - **Navigation**: Thanh điều hướng chính
 
 ### Admin Components
-- **AdminDashboard**: Dashboard quản trị
-- **UserManagement**: Quản lý người dùng
-- **FarmManagement**: Quản lý trang trại
-- **TreeManagement**: Quản lý cây trồng (admin)
-- **ZoneManagement**: Quản lý khu vực
+- **SuperAdminPanel**: Bảng điều khiển quản trị toàn hệ thống
+- **AdminDashboardMobile**: Thống kê nhanh hệ thống cho mobile
+- **UserManagementMobile**: Quản lý tài khoản và phân quyền
+- **FarmManagementMobile**: Quản lý các trang trại trong hệ thống
+- **SystemSettings**: Cấu hình các thông số hệ thống
 
 ### UI Components
-- **BottomSheet**: Sheet trượt từ dưới (mobile)
-- **BottomTabBar**: Thanh tab dưới
-- **LargeTitleHeader**: Header với tiêu đề lớn
-- **Toast**: Thông báo toast
+- **BottomSheet**: Sheet trượt từ dưới lên (tối ưu mobile)
+- **BottomTabBar**: Thanh tab bar dưới cho màn hình mobile
+- **LargeTitleHeader**: Header phong cách lớn (iOS style)
+- **OfflineIndicator**: Chỉ báo trạng thái kết nối offline
+- **Toast**: Thông báo nhanh hiển thị góc màn hình
 
 ## Dịch vụ và Utilities
 
 ### Authentication
-- **simple-auth-context.tsx**: Context quản lý xác thực
-- **simple-auth-service.ts**: Dịch vụ xác thực
-- Sử dụng Firebase Auth
+- **optimized-auth-context.tsx**: Context chính quản lý xác thực bằng Firebase Auth
+- Tích hợp hệ thống cache 3 cấp (Memory, LocalStorage, background refresh)
+- Tự động đồng bộ trạng thái đăng nhập giữa các tabs trình duyệt
 
-### Database Services
-- **farm-service.ts**: Quản lý dữ liệu trang trại
-- **photo-service.ts**: Quản lý ảnh
-- **admin-service.ts**: Dịch vụ admin
-- **audit-service.ts**: Ghi log hoạt động
+### Database Services (Firestore)
+- **farm-service.ts**: Quản lý dữ liệu trang trại và quyền truy cập (`farmAccess`)
+- **photo-service.ts**: Upload ảnh lên Firebase Storage và liên kết metadata trong Firestore
+- **admin-service.ts**: Dịch vụ quản trị hệ thống, cấp quyền admin và tự động thiết lập farm
+- **investment-service.ts**: Ghi nhận và theo dõi các khoản chi phí đầu tư trang trại
+- **audit-service.ts**: Ghi lại lịch sử hoạt động hệ thống phục vụ hậu kiểm
+
+### GPS & Sync Services
+- **gps-tracking-service.ts**: Tính toán khoảng cách, độ chính xác GPS
+- **ios-optimized-gps.ts**: Giải pháp tối ưu GPS chạy nền cho thiết bị iOS Safari
+- **offline-sync-service.ts**: Quản lý hàng đợi đồng bộ dữ liệu khi mất kết nối mạng
 
 ### Utilities
-- **firebase.ts**: Cấu hình Firebase
-- **types.ts**: Định nghĩa TypeScript
-- **logger.ts**: Hệ thống logging
-- **validation-utils.ts**: Tiện ích validation
+- **firebase.ts**: Khởi tạo Firebase App, Auth và Firestore
+- **types.ts** & **types-enhanced.ts**: Định nghĩa kiểu dữ liệu tĩnh cho dự án
+- **logger.ts**: Log thông tin có phân hệ và cảnh báo lỗi
+- **validation-utils.ts**: Tiện ích kiểm tra tính hợp lệ của dữ liệu đầu vào
 
-## API Routes
+## Cách Thức Hoạt Động Của Dữ Liệu (Data Architecture)
 
-### /api (Next.js API Routes)
-- **/api/auth**: Xác thực
-- **/api/farms**: Quản lý trang trại
-- **/api/trees**: Quản lý cây trồng
-- **/api/zones**: Quản lý khu vực
-- **/api/photos**: Quản lý ảnh
+Dự án này là một ứng dụng Serverless hoàn toàn ở phía client. **Không sử dụng các API Routes trung gian (`/api/...`)**. Tất cả các components và services giao tiếp trực tiếp với Firebase Cloud thông qua Firebase Web SDK client-side. Điều này giúp giảm thiểu độ trễ mạng, đơn giản hóa cấu trúc code và tận dụng khả năng offline-first vốn có của Firebase.
 
 ## Cơ sở dữ liệu
 

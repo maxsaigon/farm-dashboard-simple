@@ -1,5 +1,10 @@
 # ✅ Hoàn Tất Migration Sang Optimized Auth System
 
+> **Status:** Historical
+> **Baseline:** `0.1.0` / `7890775`
+> **Reviewed:** 2026-07-15
+> **Historical notice:** Completion claims reflect a point-in-time report. [CURRENT_STATE.md](../CURRENT_STATE.md), [ARCHITECTURE.md](../architecture/ARCHITECTURE.md), and the current code override this document. Active auth reads `farmAccess`, while `FarmService` reads `userFarmAccess`; admin remains partial. The current build passes, but tests are not reliable, so current runtime must not be described as production-ready.
+
 **Ngày hoàn thành:** 2025-10-10  
 **Trạng thái:** ✅ COMPLETED & TESTED
 
@@ -34,33 +39,33 @@
 ## 📁 Files Đã Thay Đổi
 
 ### File Mới
-1. [`lib/optimized-auth-context.tsx`](../lib/optimized-auth-context.tsx) - Hệ thống auth tối ưu
-2. [`docs/AUTH_OPTIMIZATION_GUIDE.md`](./AUTH_OPTIMIZATION_GUIDE.md) - Tài liệu chi tiết (EN)
-3. [`docs/AUTH_OPTIMIZATION_SUMMARY_VI.md`](./AUTH_OPTIMIZATION_SUMMARY_VI.md) - Tóm tắt (VI)
-4. [`docs/AUTH_OPTIMIZATION_TEST_REPORT.md`](./AUTH_OPTIMIZATION_TEST_REPORT.md) - Báo cáo test
+1. [`lib/optimized-auth-context.tsx`](../../lib/optimized-auth-context.tsx) - Hệ thống auth tối ưu
+2. `docs/AUTH_OPTIMIZATION_GUIDE.md` - Tài liệu lịch sử được tham chiếu nhưng không còn trong repository (EN)
+3. `docs/AUTH_OPTIMIZATION_SUMMARY_VI.md` - Tóm tắt lịch sử được tham chiếu nhưng không còn trong repository (VI)
+4. `docs/AUTH_OPTIMIZATION_TEST_REPORT.md` - Báo cáo lịch sử được tham chiếu nhưng không còn trong repository
 
 ### Files Đã Cập Nhật (52 files)
 
 #### Core Files
-- [`app/layout.tsx`](../app/layout.tsx) - Provider chính
-- [`app/page.tsx`](../app/page.tsx) - Home page
-- [`app/login/page.tsx`](../app/login/page.tsx) - Login page
-- [`app/no-access/page.tsx`](../app/no-access/page.tsx) - No access page
+- [`app/layout.tsx`](../../app/layout.tsx) - Provider chính
+- [`app/page.tsx`](../../app/page.tsx) - Home page
+- [`app/login/page.tsx`](../../app/login/page.tsx) - Login page
+- [`app/no-access/page.tsx`](../../app/no-access/page.tsx) - No access page
 
 #### Components (48 files)
-- [`components/Navigation.tsx`](../components/Navigation.tsx)
-- [`components/AuthGuard.tsx`](../components/AuthGuard.tsx)
-- [`components/SimpleAuthGuard.tsx`](../components/SimpleAuthGuard.tsx)
-- [`components/FarmSelectorModal.tsx`](../components/FarmSelectorModal.tsx)
-- [`components/AdminDashboard.tsx`](../components/AdminDashboard.tsx)
+- [`components/Navigation.tsx`](../../components/Navigation.tsx)
+- [`components/AuthGuard.tsx`](../../components/AuthGuard.tsx)
+- `components/SimpleAuthGuard.tsx` (historical file; no longer present)
+- [`components/FarmSelectorModal.tsx`](../../components/FarmSelectorModal.tsx)
+- `components/AdminDashboard.tsx` (historical file; replaced by current admin components)
 - ... và 43 components khác
 
 #### Services
-- [`lib/simple-auth-service.ts`](../lib/simple-auth-service.ts) - Type imports
-- [`lib/hooks/use-data-reconciliation.ts`](../lib/hooks/use-data-reconciliation.ts)
+- `lib/simple-auth-service.ts` (historical file; no longer present)
+- `lib/hooks/use-data-reconciliation.ts` (historical file; no longer present)
 
 #### Tests
-- [`__tests__/auth-user-scenarios.test.ts`](../__tests__/auth-user-scenarios.test.ts)
+- `__tests__/auth-user-scenarios.test.ts` - Historical test path; file is not present in the current repository
 
 ## 🔄 Migration Process
 
@@ -155,14 +160,14 @@ import { SimpleAuthProvider } from "@/lib/simple-auth-context"
 ## 📚 Documentation
 
 ### Tài Liệu Kỹ Thuật
-1. [AUTH_OPTIMIZATION_GUIDE.md](./AUTH_OPTIMIZATION_GUIDE.md) - Chi tiết kỹ thuật (EN)
-2. [AUTH_OPTIMIZATION_SUMMARY_VI.md](./AUTH_OPTIMIZATION_SUMMARY_VI.md) - Tóm tắt (VI)
-3. [AUTH_OPTIMIZATION_TEST_REPORT.md](./AUTH_OPTIMIZATION_TEST_REPORT.md) - Báo cáo test
+1. `docs/AUTH_OPTIMIZATION_GUIDE.md` - Tài liệu lịch sử không còn trong repository (EN)
+2. `docs/AUTH_OPTIMIZATION_SUMMARY_VI.md` - Tài liệu lịch sử không còn trong repository (VI)
+3. `docs/AUTH_OPTIMIZATION_TEST_REPORT.md` - Báo cáo lịch sử không còn trong repository
 
 ### Code References
-- Implementation: [`lib/optimized-auth-context.tsx`](../lib/optimized-auth-context.tsx)
-- Usage: [`app/layout.tsx`](../app/layout.tsx)
-- Types: [`lib/simple-auth-service.ts`](../lib/simple-auth-service.ts)
+- Implementation: [`lib/optimized-auth-context.tsx`](../../lib/optimized-auth-context.tsx)
+- Usage: [`app/layout.tsx`](../../app/layout.tsx)
+- Types: `lib/simple-auth-service.ts` (historical file; no longer present)
 
 ## 🎓 Lessons Learned
 

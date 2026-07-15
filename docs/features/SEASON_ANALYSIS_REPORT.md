@@ -1,5 +1,13 @@
 # Báo cáo Phân tích Logic Mùa vụ và Đề xuất Cải tiến (2025 - 2026)
 
+> Status: Historical
+> Baseline: package `0.1.0`, Git commit `7890775`
+> Last reviewed: 2026-07-15
+
+## Current Implementation Notice
+
+This report predates the implemented season selector and per-season tree/photo fields. Season management now exists, but legacy data migration runs client-side when a farm is selected, so completion depends on client permissions and successful migration; the risks and proposals below remain useful historical context.
+
 Tài liệu này phân tích cơ chế hoạt động của codebase hiện tại liên quan đến việc quản lý mùa vụ (đầu tư, sản lượng, hình ảnh) và đề xuất phương án cải tiến nhằm chuẩn bị cho mùa vụ mới 2026, tránh xung đột hoặc ghi đè lên dữ liệu mùa vụ 2025.
 
 ---

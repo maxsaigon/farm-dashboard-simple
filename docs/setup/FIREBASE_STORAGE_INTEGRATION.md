@@ -1,5 +1,15 @@
 # 🖼️ Firebase Storage Integration for Tree Images
 
+**Document status:** Historical integration summary with current setup caveats
+
+**Baseline:** Repository state verified on 2026-07-15
+
+**Review date:** 2026-07-15
+
+**Current notice:** Firebase Auth, Firestore, and Storage are the active runtime. PocketBase is installed only for standalone client/migration work and is inactive in the application runtime. The implementation claims below are historical and do not prove current production readiness.
+
+> Current safety gap: `../../firebase.json` does not reference Storage rules and the repository has no `storage.rules`. Do not deploy Storage for production until least-privilege rules are added, emulator-tested, reviewed, and wired into `firebase.json`. The stored Playwright result is failed; see [Testing Guide](../testing/TESTING_GUIDE.md) and [Deployment Guide](../deployment/DEPLOYMENT_GUIDE.md).
+
 ## Overview
 Successfully integrated Firebase Storage to display tree photos from your iOS app in the web dashboard. The system supports both Firestore photo metadata and direct storage access.
 

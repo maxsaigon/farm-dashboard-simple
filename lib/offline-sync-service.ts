@@ -80,7 +80,7 @@ export class OfflineSyncService {
             altitude: item.altitude || null,
             uploadedToServer: true,
             serverProcessed: false,
-            needsAIAnalysis: item.photoType === 'fruit',
+            needsAIAnalysis: item.photoType === 'fruit_count',
             compressedPath: storagePath,
             originalPath: storagePath,
             localPath: downloadURL,
