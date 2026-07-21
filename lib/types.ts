@@ -135,6 +135,7 @@ export interface Investment {
   category: string
   subcategory?: string
   date: Date
+  seasonYear?: number
   notes?: string
   quantity?: number
   unit?: string

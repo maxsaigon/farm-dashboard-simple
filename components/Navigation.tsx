@@ -67,6 +67,13 @@ export function Navigation() {
       href: '/money',
       icon: CurrencyDollarIcon,
       emoji: '💰'
+    },
+    {
+      name: 'Thống Kê',
+      description: 'So sánh kết quả các mùa vụ',
+      href: '/statistics',
+      icon: ChartBarIcon,
+      emoji: '📊'
     }
   ]
 

@@ -27,6 +27,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore'
 import { compressImageSmart } from '@/lib/photo-compression'
 import { uploadFiles } from '@/lib/storage'
 import { getModalZClass, MODAL_Z_INDEX } from '@/lib/modal-z-index'
+import { getInvestmentSeasonYear } from '@/lib/season-statistics'
 
 // Helper function to get season info from date
 function getSeasonFromDate(date: Date): { year: number, phase: string } {
@@ -54,6 +55,7 @@ interface Investment {
   category: string
   subcategory?: string
   date: Date
+  seasonYear?: number
   notes?: string
   quantity?: number
   unit?: string
@@ -254,8 +256,7 @@ export default function InvestmentManagement() {
     
     // Filter investments by selectedSeasonYear first
     const seasonInvestments = investments.filter(inv => {
-      const invDate = inv.date instanceof Date ? inv.date : new Date(inv.date)
-      return invDate.getFullYear() === selectedSeasonYear
+      return getInvestmentSeasonYear(inv) === selectedSeasonYear
     })
     
     let filteredInvestments = seasonInvestments
@@ -319,7 +320,7 @@ export default function InvestmentManagement() {
     if (filterCategory !== 'all' && investment.category !== filterCategory) return false
     
     const invDate = investment.date instanceof Date ? investment.date : new Date(investment.date)
-    const invYear = invDate.getFullYear()
+    const invYear = getInvestmentSeasonYear(investment)
     
     // By default, only show investments matching the selected season year
     if (invYear !== selectedSeasonYear) return false
@@ -361,6 +362,7 @@ export default function InvestmentManagement() {
           isRecurring: Boolean(investmentData.isRecurring),
           recurringPeriod: investmentData.recurringPeriod,
           images: investmentData.images,
+          seasonYear: selectedSeasonYear,
           createdBy: user.uid,
           userId: user.uid,
         } as any)
@@ -669,6 +671,7 @@ export default function InvestmentManagement() {
             setSelectedInvestment(null)
           }}
           onSave={handleSaveInvestment}
+          selectedSeasonYear={selectedSeasonYear}
         />
       )}
 
@@ -788,13 +791,11 @@ function SeasonInvestmentCard({ investments, currentSeasonYear }: { investments:
   useEffect(() => {
     // Calculate seasonal investment data from provided investments
     const lastSeasonInvestments = investments.filter(inv => {
-      const invYear = new Date(inv.date).getFullYear()
-      return invYear === currentSeasonYear - 1
+      return getInvestmentSeasonYear(inv) === currentSeasonYear - 1
     })
 
     const currentSeasonInvestments = investments.filter(inv => {
-      const invYear = new Date(inv.date).getFullYear()
-      return invYear === currentSeasonYear
+      return getInvestmentSeasonYear(inv) === currentSeasonYear
     })
 
     setInvestmentData({
@@ -1037,13 +1038,15 @@ function InvestmentModal({
   categories,
   isOpen,
   onClose,
-  onSave
+  onSave,
+  selectedSeasonYear
 }: {
   investment: Investment | null
   categories: string[]
   isOpen: boolean
   onClose: () => void
   onSave: (investment: Partial<Investment>) => void
+  selectedSeasonYear: number
 }) {
   const [formData, setFormData] = useState({
     amount: investment?.amount || 0,
@@ -1083,7 +1086,8 @@ function InvestmentModal({
       onSave({
         ...formData,
         images: imageUrls,
-        date: new Date(formData.date)
+        date: new Date(formData.date),
+        seasonYear: investment?.seasonYear ?? selectedSeasonYear
       })
     } catch (error) {
       console.error('Error uploading images:', error)

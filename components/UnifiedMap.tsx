@@ -1129,8 +1129,8 @@ const UnifiedMap = memo(({
                   size={size}
                   zIndex={isSelected ? 15 : isNearby ? 12 : 10}
                   distanceLabel={nearbyTree ? String(Math.round(nearbyTree.distance)) : ''}
-                  fruitCountStatus={fruitCountState?.status}
-                  fruitCount={fruitCountState?.count}
+                  fruitCountStatus={isZoomedIn ? fruitCountState?.status : undefined}
+                  fruitCount={isZoomedIn ? fruitCountState?.count : undefined}
                   onSelect={handleTreeSelect}
                   isClickable={isZoomedIn}
                 />

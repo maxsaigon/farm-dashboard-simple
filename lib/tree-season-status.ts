@@ -29,7 +29,13 @@ export function getTreeFruitCountState(tree: Tree, seasonYear: number): TreeFrui
 
   return {
     status: hasExplicitRecord || hasLegacyPositiveCount ? 'recorded' : 'missing',
-    count: stats.fruitCountSource === 'ai' || (manualCount === 0 && aiCount > 0) ? aiCount : manualCount,
+    count: stats.fruitCountSource === 'ai'
+      ? aiCount
+      : stats.fruitCountSource === 'manual'
+        ? manualCount
+        : manualCount > 0
+          ? manualCount
+          : aiCount,
     stats
   }
 }

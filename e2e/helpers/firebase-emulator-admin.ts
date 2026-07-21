@@ -50,6 +50,8 @@ export async function seedFirebaseEmulators() {
     name: 'E2E Durian Farm',
     ownerName: 'E2E Farm Owner',
     totalArea: 2,
+    currentSeasonYear: 2026,
+    seasons: [2026, 2025],
     isActive: true,
     createdDate: now
   })
@@ -78,6 +80,48 @@ export async function seedFirebaseEmulators() {
     latitude: 10.762622,
     longitude: 106.660172,
     plantingDate: now,
+    createdAt: now,
+    updatedAt: now,
+    seasonalStats: {
+      2026: {
+        manualFruitCount: 12,
+        aiFruitCount: 3,
+        fruitCountRecordedAt: now,
+        fruitCountSource: 'manual',
+        healthStatus: 'Good',
+        updatedAt: now
+      },
+      2025: {
+        manualFruitCount: 10,
+        aiFruitCount: 0,
+        fruitCountRecordedAt: now,
+        fruitCountSource: 'manual',
+        healthStatus: 'Good',
+        updatedAt: now
+      }
+    }
+  })
+  await db.doc(`farms/${E2E_FARM_ID}/investments/e2e-investment-2026`).set({
+    id: 'e2e-investment-2026',
+    farmId: E2E_FARM_ID,
+    amount: 1_500_000,
+    category: 'Phân bón',
+    date: new Date('2026-05-01T00:00:00.000Z'),
+    seasonYear: 2026,
+    isRecurring: false,
+    createdBy: E2E_USER.uid,
+    createdAt: now,
+    updatedAt: now
+  })
+  await db.doc(`farms/${E2E_FARM_ID}/investments/e2e-investment-2025`).set({
+    id: 'e2e-investment-2025',
+    farmId: E2E_FARM_ID,
+    amount: 1_000_000,
+    category: 'Phân bón',
+    date: new Date('2025-05-01T00:00:00.000Z'),
+    seasonYear: 2025,
+    isRecurring: false,
+    createdBy: E2E_USER.uid,
     createdAt: now,
     updatedAt: now
   })

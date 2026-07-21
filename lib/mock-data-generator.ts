@@ -66,6 +66,7 @@ export function generateMockInvestment(farmId: string, userId: string, override?
     category: 'Phân bón',
     subcategory: 'NPK',
     date: new Date(),
+    seasonYear: new Date().getFullYear(),
     notes: 'Mua phân bón định kỳ',
     quantity: 10,
     unit: 'Bao',

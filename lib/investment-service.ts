@@ -57,6 +57,7 @@ export function subscribeToInvestments(userId: string, farmId: string, callback:
         category: data.category || 'Khác',
         subcategory: data.subcategory || undefined,
         date: toDate(data.date) || new Date(),
+        seasonYear: Number.isInteger(data.seasonYear) ? data.seasonYear : undefined,
         notes: data.notes || undefined,
         quantity: typeof data.quantity === 'number' ? data.quantity : undefined,
         unit: data.unit || undefined,
@@ -91,6 +92,7 @@ export async function addInvestment(userId: string, farmId: string, investment: 
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     date: investment.date instanceof Date ? Timestamp.fromDate(investment.date) : (investment.date || serverTimestamp()),
+    seasonYear: investment.seasonYear,
   }
   await setDoc(ref, payload)
   return ref.id
@@ -178,4 +180,3 @@ export async function migrateLegacyInvestments(userId: string, activeFarmId: str
     return 0
   }
 }
-
