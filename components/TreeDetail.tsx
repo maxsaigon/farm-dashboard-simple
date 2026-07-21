@@ -201,13 +201,27 @@ export function TreeDetail({ tree, onClose, onTreeUpdate, onTreeDelete, classNam
     setSaveStatus('saving')
     
     try {
+      const existingSeasonalStats = tree.seasonalStats?.[selectedSeasonYear]
+      const manualFruitCount = formData.manualFruitCount || 0
+      const fruitCountWasRecorded = Boolean(existingSeasonalStats?.fruitCountRecordedAt)
+      const fruitCountChanged = manualFruitCount !== (existingSeasonalStats?.manualFruitCount || 0)
       const newSeasonalStats = {
         ...(tree.seasonalStats || {}),
         [selectedSeasonYear]: {
-          manualFruitCount: formData.manualFruitCount || 0,
+          ...existingSeasonalStats,
+          manualFruitCount,
           aiFruitCount: formData.aiFruitCount || 0,
           healthStatus: formData.healthStatus || 'Good',
           notes: formData.notes || '',
+          ...((fruitCountWasRecorded || fruitCountChanged || manualFruitCount > 0) && {
+            fruitCountRecordedAt: fruitCountChanged || !existingSeasonalStats?.fruitCountRecordedAt
+              ? new Date()
+              : existingSeasonalStats.fruitCountRecordedAt,
+            fruitCountRecordedBy: fruitCountChanged || !existingSeasonalStats?.fruitCountRecordedBy
+              ? user.uid
+              : existingSeasonalStats.fruitCountRecordedBy,
+            fruitCountSource: 'manual' as const
+          }),
           updatedAt: new Date()
         }
       }

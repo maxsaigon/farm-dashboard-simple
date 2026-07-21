@@ -18,6 +18,7 @@ import { db } from '@/lib/firebase'
 import { AuditService } from '@/lib/audit-service'
 import { savePendingPhoto } from '@/lib/offline-photos-db'
 import { isWifiConnection } from '@/lib/offline-sync-service'
+import { getFruitCountProgress, getTreeFruitCountState } from '@/lib/tree-season-status'
 
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -46,7 +47,7 @@ interface NearbyTree extends Tree {
 // AutoCenterMap helper removed since MapLibre uses direct useEffect centering
 
 export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, onTreeCreated, onTreeUpdated, farmId }: OnFarmWorkModeProps) {
-  const { user, selectedSeasonYear } = useSimpleAuth()
+  const { user, currentFarm, selectedSeasonYear } = useSimpleAuth()
   const gps = useIOSOptimizedGPS()
   const mapRef = useRef<MapRef | null>(null)
   
@@ -77,6 +78,9 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
   const [ambiguousTrees, setAmbiguousTrees] = useState<Tree[] | null>(null)
   const [showAmbiguityResolver, setShowAmbiguityResolver] = useState(false)
   const [quickUpdatingGPS, setQuickUpdatingGPS] = useState<string | null>(null)
+  const [quickCountTreeId, setQuickCountTreeId] = useState<string | null>(null)
+  const [quickFruitCount, setQuickFruitCount] = useState(0)
+  const [savingFruitCount, setSavingFruitCount] = useState(false)
   
   // GPS Calibration (Burst Mode) & Drag-drop fine-tuning states
   const [isCalibrating, setIsCalibrating] = useState(false)
@@ -204,6 +208,9 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
       maximumAge: 0,
       distanceFilter: 3, // Update every 3 meters
       accuracyFilter: 20 // Skip inaccurate cell-tower positions (>20m error)
+    }).catch(error => {
+      console.error('❌ [OnFarmWorkMode] Failed to start GPS tracking:', error)
+      setGpsStatus('error')
     })
 
     return () => {
@@ -232,11 +239,16 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
         )
       }))
       .filter(tree => tree.distance <= 50) // Within 50 meters
-      .sort((a, b) => a.distance - b.distance)
+      .sort((a, b) => {
+        const statusRank = { missing: 0, recorded: 1, not_applicable: 2 } as const
+        const aRank = statusRank[getTreeFruitCountState(a, selectedSeasonYear).status]
+        const bRank = statusRank[getTreeFruitCountState(b, selectedSeasonYear).status]
+        return aRank - bRank || a.distance - b.distance
+      })
       .slice(0, 5) // Top 5 nearest
 
     setNearbyTrees(nearby)
-  }, [userPosition, trees])
+  }, [userPosition, trees, selectedSeasonYear])
 
   // Auto-center map when userPosition updates
   useEffect(() => {
@@ -485,6 +497,47 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
     }
   }
 
+  const handleQuickFruitCountSave = async (tree: Tree) => {
+    if (!user || quickFruitCount < 0) return
+
+    setSavingFruitCount(true)
+    try {
+      const currentSeasonal = tree.seasonalStats?.[selectedSeasonYear]
+      const updatedTree: Tree = {
+        ...tree,
+        ...(selectedSeasonYear === (currentFarm?.currentSeasonYear || 2025) && { manualFruitCount: quickFruitCount }),
+        updatedAt: new Date(),
+        seasonalStats: {
+          ...(tree.seasonalStats || {}),
+          [selectedSeasonYear]: {
+            ...currentSeasonal,
+            manualFruitCount: quickFruitCount,
+            aiFruitCount: currentSeasonal?.aiFruitCount || 0,
+            healthStatus: currentSeasonal?.healthStatus || tree.healthStatus || 'Good',
+            notes: currentSeasonal?.notes || tree.notes || '',
+            fruitCountRecordedAt: new Date(),
+            fruitCountRecordedBy: user.uid,
+            fruitCountSource: 'manual',
+            updatedAt: new Date()
+          }
+        }
+      }
+
+      await updateTree(farmId, tree.id, user.uid, {
+        ...(selectedSeasonYear === (currentFarm?.currentSeasonYear || 2025) && { manualFruitCount: quickFruitCount }),
+        seasonalStats: updatedTree.seasonalStats,
+        updatedAt: updatedTree.updatedAt
+      })
+      onTreeUpdated?.(updatedTree)
+      setQuickCountTreeId(null)
+    } catch (error) {
+      console.error('Quick fruit count update failed:', error)
+      alert('Không thể lưu số trái. Vui lòng thử lại.')
+    } finally {
+      setSavingFruitCount(false)
+    }
+  }
+
   // Handle create new tree with photo upload
   const handleCreateTree = useCallback(async () => {
     if (!user || !newTreeData.variety || !newTreeData.zoneName) {
@@ -717,6 +770,8 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
     }
   }, [userPosition])
 
+  const nearbyFruitCountProgress = getFruitCountProgress(nearbyTrees, selectedSeasonYear)
+
   return (
     <>
       {/* Global styles to hide bottom nav - target the specific BottomTabBar */}
@@ -887,6 +942,7 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
             {nearbyTrees.map(tree => {
               const size = tree.distance < 10 ? 24 : tree.distance < 20 ? 20 : 16
               const color = tree.distance < 10 ? '#ef4444' : tree.distance < 20 ? '#f59e0b' : '#22c55e'
+              const fruitCountState = getTreeFruitCountState(tree, selectedSeasonYear)
               
               return (
                 <Marker
@@ -901,6 +957,8 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
                     size={size}
                     zIndex={12}
                     distanceLabel={String(Math.round(tree.distance))}
+                    fruitCountStatus={fruitCountState.status}
+                    fruitCount={fruitCountState.count}
                     onSelect={handleMarkerClick}
                     isClickable={isZoomedIn}
                   />
@@ -994,39 +1052,82 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
               <MapPinIcon className="h-5 w-5 mr-2 text-blue-600" />
               Cây gần bạn ({nearbyTrees.length})
             </h3>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-1 rounded-lg bg-orange-50 border border-orange-200 px-3 py-2 text-sm">
+              <span className="font-semibold text-gray-700">Niên vụ {selectedSeasonYear}</span>
+              <span className="font-semibold text-orange-700">
+                Còn {nearbyFruitCountProgress.missing}/{nearbyFruitCountProgress.total} cây chưa đếm
+              </span>
+              {nearbyFruitCountProgress.notApplicable > 0 && (
+                <span className="w-full text-xs font-semibold text-yellow-700">
+                  🌱 {nearbyFruitCountProgress.notApplicable} cây non chưa đến tuổi đếm trái
+                </span>
+              )}
+            </div>
             <div className="space-y-2">
               {nearbyTrees.map(tree => {
                 const canQuickUpdate = tree.distance <= 15
+                const fruitCountState = getTreeFruitCountState(tree, selectedSeasonYear)
+                const isQuickCounting = quickCountTreeId === tree.id
                 return (
                   <div
                     key={tree.id}
-                    className="w-full bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-200 rounded-xl p-4 hover:border-blue-300 transition-all flex items-center justify-between"
+                    className={`w-full rounded-xl p-4 transition-all border-2 ${
+                      fruitCountState.status === 'missing'
+                        ? 'bg-orange-50 border-orange-300'
+                        : fruitCountState.status === 'recorded'
+                          ? 'bg-gradient-to-r from-blue-50 to-green-50 border-green-300'
+                          : 'bg-yellow-50 border-yellow-300'
+                    }`}
                   >
-                    {/* Clickable details area */}
-                    <button
-                      onClick={() => onTreeSelect(tree)}
-                      className="flex-1 text-left focus:outline-none min-touch"
-                    >
-                      <div className="font-bold text-gray-900 text-lg">
-                        {tree.name || tree.variety}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {tree.variety} • {tree.zoneName || tree.zoneCode}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1 flex items-center space-x-1">
-                        <span>Khoảng cách:</span>
-                        <span className={`font-semibold ${
-                          tree.distance < 10 ? 'text-red-600' :
-                          tree.distance < 20 ? 'text-orange-600' :
-                          'text-green-600'
-                        }`}>
-                          {tree.distance.toFixed(1)}m
-                        </span>
-                      </div>
-                    </button>
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        onClick={() => onTreeSelect(tree)}
+                        className="flex-1 text-left focus:outline-none min-touch"
+                      >
+                        <div className="font-bold text-gray-900 text-lg">
+                          {tree.name || tree.variety}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {tree.variety} • {tree.zoneName || tree.zoneCode}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                          <span className={`font-semibold ${
+                            tree.distance < 10 ? 'text-red-600' :
+                            tree.distance < 20 ? 'text-orange-600' :
+                            'text-green-600'
+                          }`}>
+                            {tree.distance.toFixed(1)}m
+                          </span>
+                          <span className={`rounded-full px-2 py-0.5 font-semibold ${
+                            fruitCountState.status === 'recorded'
+                              ? 'bg-green-100 text-green-800'
+                              : fruitCountState.status === 'missing'
+                                ? 'bg-orange-100 text-orange-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {fruitCountState.status === 'recorded'
+                              ? `Đã đếm: ${fruitCountState.count} trái`
+                              : fruitCountState.status === 'missing'
+                                ? 'Chưa đếm'
+                                : '🌱 Cây non • Không cần đếm'}
+                          </span>
+                        </div>
+                      </button>
 
-                    {/* Quick GPS update button */}
-                    <div className="flex items-center space-x-2 ml-4">
+                      <div className="flex flex-col gap-2">
+                        {fruitCountState.status !== 'not_applicable' && (
+                          <button
+                            onClick={() => {
+                              setQuickCountTreeId(isQuickCounting ? null : tree.id)
+                              setQuickFruitCount(fruitCountState.count)
+                            }}
+                            className={`px-3 py-2 rounded-lg font-semibold text-xs text-white active:scale-95 ${
+                              fruitCountState.status === 'missing' ? 'bg-orange-600' : 'bg-green-700'
+                            }`}
+                          >
+                            {fruitCountState.status === 'missing' ? 'Đếm trái' : 'Cập nhật'}
+                          </button>
+                        )}
                       <button
                         disabled={!canQuickUpdate || quickUpdatingGPS === tree.id}
                         onClick={() => handleQuickUpdateGPS(tree)}
@@ -1049,7 +1150,29 @@ export default function OnFarmWorkMode({ trees, zones, onClose, onTreeSelect, on
                           </>
                         )}
                       </button>
+                      </div>
                     </div>
+
+                    {isQuickCounting && fruitCountState.status !== 'not_applicable' && (
+                      <div className="mt-3 pt-3 border-t border-orange-200 flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          inputMode="numeric"
+                          value={quickFruitCount}
+                          onChange={(event) => setQuickFruitCount(Math.max(0, Number(event.target.value) || 0))}
+                          className="min-w-0 flex-1 rounded-lg border-2 border-orange-300 px-3 py-2 text-lg font-bold text-center focus:border-orange-500 focus:outline-none"
+                          aria-label="Số trái"
+                        />
+                        <button
+                          onClick={() => handleQuickFruitCountSave(tree)}
+                          disabled={savingFruitCount}
+                          className="rounded-lg bg-green-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                        >
+                          {savingFruitCount ? 'Đang lưu...' : quickFruitCount === 0 ? 'Xác nhận 0 trái' : 'Lưu số trái'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               })}

@@ -16,14 +16,15 @@ interface Props {
 }
 
 export default function TreeShowcase({ tree, onSaved }: Props) {
-  const { user, currentFarm } = useSimpleAuth()
+  const { user, currentFarm, selectedSeasonYear } = useSimpleAuth()
   const { showSuccess, showError, ToastContainer } = useToast()
-  const [count, setCount] = useState<number>(tree?.manualFruitCount || 0)
+  const [count, setCount] = useState<number>(0)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    setCount(tree?.manualFruitCount || 0)
-  }, [tree?.manualFruitCount])
+    const seasonalCount = tree?.seasonalStats?.[selectedSeasonYear]?.manualFruitCount
+    setCount(seasonalCount ?? (selectedSeasonYear === 2025 ? tree?.manualFruitCount || 0 : 0))
+  }, [tree, selectedSeasonYear])
 
   if (!tree) {
     return (
@@ -37,8 +38,27 @@ export default function TreeShowcase({ tree, onSaved }: Props) {
     if (!canSave) return
     try {
       setSaving(true)
-      await updateTree(currentFarm!.id, tree.id, user!.uid, { manualFruitCount: count })
-      onSaved?.({ ...tree, manualFruitCount: count })
+      const currentSeasonal = tree.seasonalStats?.[selectedSeasonYear]
+      const seasonalStats = {
+        ...(tree.seasonalStats || {}),
+        [selectedSeasonYear]: {
+          ...currentSeasonal,
+          manualFruitCount: count,
+          aiFruitCount: currentSeasonal?.aiFruitCount || 0,
+          healthStatus: currentSeasonal?.healthStatus || tree.healthStatus || 'Good',
+          notes: currentSeasonal?.notes || tree.notes || '',
+          fruitCountRecordedAt: new Date(),
+          fruitCountRecordedBy: user!.uid,
+          fruitCountSource: 'manual' as const,
+          updatedAt: new Date()
+        }
+      }
+      const updates: Partial<Tree> = { seasonalStats, updatedAt: new Date() }
+      if (selectedSeasonYear === (currentFarm!.currentSeasonYear || 2025)) {
+        updates.manualFruitCount = count
+      }
+      await updateTree(currentFarm!.id, tree.id, user!.uid, updates)
+      onSaved?.({ ...tree, ...updates })
       showSuccess('Đã lưu', 'Số lượng trái đã được cập nhật')
     } catch (e) {
       showError('Lỗi', 'Không thể lưu. Vui lòng thử lại')

@@ -11,6 +11,7 @@ import { useMobileGestures, triggerHapticFeedback } from '@/lib/use-mobile-gestu
 import { useIOSOptimizedGPS, IOSGPSPosition } from '@/lib/ios-optimized-gps'
 import MapboxDraw from '@mapbox/mapbox-gl-draw'
 import { useControl } from 'react-map-gl/maplibre'
+import { FruitCountStatus, getTreeFruitCountState } from '@/lib/tree-season-status'
 
 // Import MapLibre & Mapbox Draw CSS
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -49,6 +50,7 @@ interface UnifiedMapProps {
   highlightedTreeId?: string | null // ID of tree to highlight with pulsing circle
   mapLayer?: MapLayerType // External control of map layer
   onMapLayerChange?: (layer: MapLayerType) => void // Callback when layer changes
+  seasonYear?: number
 }
 
 // Map layer types
@@ -393,6 +395,8 @@ export const InteractiveMarker = memo(({
   size,
   zIndex,
   distanceLabel,
+  fruitCountStatus,
+  fruitCount,
   onSelect,
   isClickable = true
 }: {
@@ -401,6 +405,8 @@ export const InteractiveMarker = memo(({
   size: number
   zIndex: number
   distanceLabel: string
+  fruitCountStatus?: FruitCountStatus
+  fruitCount?: number
   onSelect: (tree: Tree) => void
   isClickable?: boolean
 }) => {
@@ -445,7 +451,13 @@ export const InteractiveMarker = memo(({
         width: size,
         height: size,
         borderRadius: '50%',
-        border: '1px solid white',
+        border: fruitCountStatus === 'missing'
+          ? '3px solid #f97316'
+          : fruitCountStatus === 'recorded'
+            ? '3px solid #22c55e'
+            : fruitCountStatus === 'not_applicable'
+              ? '3px solid #eab308'
+            : '1px solid white',
         boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
         display: 'flex',
         alignItems: 'center',
@@ -457,10 +469,50 @@ export const InteractiveMarker = memo(({
         zIndex: zIndex,
         pointerEvents: isClickable ? 'auto' : 'none',
         opacity: isClickable ? 1.0 : 0.75, // slightly faded when non-clickable
-        transition: 'opacity 0.2s ease, transform 0.2s ease'
+        transition: 'opacity 0.2s ease, transform 0.2s ease',
+        position: 'relative'
       }}
     >
       {distanceLabel}
+      {fruitCountStatus && (
+        <span
+          aria-label={
+            fruitCountStatus === 'recorded'
+              ? `Đã đếm ${fruitCount || 0} trái`
+              : fruitCountStatus === 'missing'
+                ? 'Chưa đếm trái'
+                : 'Cây non - không cần đếm trái'
+          }
+          title={
+            fruitCountStatus === 'recorded'
+              ? `Đã đếm: ${fruitCount || 0} trái`
+              : fruitCountStatus === 'missing'
+                ? 'Chưa đếm trái'
+                : 'Cây non - chưa đến tuổi đếm trái'
+          }
+          style={{
+            position: 'absolute',
+            right: -7,
+            top: -9,
+            minWidth: 14,
+            height: 14,
+            padding: '0 2px',
+            borderRadius: 7,
+            backgroundColor: fruitCountStatus === 'recorded'
+              ? '#16a34a'
+              : fruitCountStatus === 'missing'
+                ? '#f97316'
+                : '#ca8a04',
+            border: '1px solid white',
+            color: 'white',
+            fontSize: 9,
+            lineHeight: '12px',
+            textAlign: 'center'
+          }}
+        >
+          {fruitCountStatus === 'recorded' ? '✓' : fruitCountStatus === 'missing' ? '!' : '🌱'}
+        </span>
+      )}
     </div>
   )
 })
@@ -486,7 +538,8 @@ const UnifiedMap = memo(({
   proximityRadius: externalProximityRadius = 30,
   highlightedTreeId = null,
   mapLayer: externalMapLayer = 'auto',
-  onMapLayerChange
+  onMapLayerChange,
+  seasonYear
 }: UnifiedMapProps) => {
   const mapRef = useRef<MapRef | null>(null)
   const drawRef = useRef<MapboxDraw | null>(null)
@@ -1033,6 +1086,7 @@ const UnifiedMap = memo(({
         {filters.showTrees && trees
           .filter(tree => tree.latitude && tree.longitude && tree.latitude !== 0 && tree.longitude !== 0)
           .map(tree => {
+            const fruitCountState = seasonYear ? getTreeFruitCountState(tree, seasonYear) : undefined
             const isSelected = selectedTree?.id === tree.id
             const isNearby = proximityData.trees.some(t => t.id === tree.id)
             const nearbyTree = proximityData.trees.find(t => t.id === tree.id)
@@ -1075,6 +1129,8 @@ const UnifiedMap = memo(({
                   size={size}
                   zIndex={isSelected ? 15 : isNearby ? 12 : 10}
                   distanceLabel={nearbyTree ? String(Math.round(nearbyTree.distance)) : ''}
+                  fruitCountStatus={fruitCountState?.status}
+                  fruitCount={fruitCountState?.count}
                   onSelect={handleTreeSelect}
                   isClickable={isZoomedIn}
                 />

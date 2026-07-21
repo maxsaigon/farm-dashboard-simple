@@ -491,10 +491,14 @@ export default function FullscreenTreeShowcase({ tree, isOpen, onClose, onSaved 
       const newSeasonalStats = {
         ...(tree.seasonalStats || {}),
         [selectedSeasonYear]: {
+          ...currentSeasonal,
           manualFruitCount: count,
           aiFruitCount: currentSeasonal?.aiFruitCount || 0,
           healthStatus: currentSeasonal?.healthStatus || tree.healthStatus || 'Good',
           notes: currentSeasonal?.notes || tree.notes || '',
+          fruitCountRecordedAt: new Date(),
+          fruitCountRecordedBy: user.uid,
+          fruitCountSource: 'manual' as const,
           updatedAt: new Date()
         }
       }

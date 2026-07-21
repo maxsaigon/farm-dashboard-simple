@@ -16,6 +16,7 @@ import BottomSheet from '@/components/ui/BottomSheet'
 import AuthGuard from '@/components/AuthGuard'
 import logger from '@/lib/logger'
 import { countTreesByZone } from '@/lib/zone-tree-count'
+import { getFruitCountProgress, getTreeFruitCountState } from '@/lib/tree-season-status'
 
 // Dynamic import OnFarmWorkMode to avoid SSR issues
 const OnFarmWorkMode = dynamic(() => import('@/components/OnFarmWorkMode'), {
@@ -74,7 +75,7 @@ const UnifiedMapNoSSR = dynamic(() => import('@/components/UnifiedMap'), {
 })
 
 function MapPageContent() {
-  const { currentFarm } = useSimpleAuth()
+  const { currentFarm, selectedSeasonYear } = useSimpleAuth()
   const searchParams = useSearchParams()
   const focusZoneId = searchParams?.get('zone')
   const highlightTreeParam = searchParams?.get('highlightTree')
@@ -96,6 +97,7 @@ function MapPageContent() {
   const [highlightedTreeId, setHighlightedTreeId] = useState<string | null>(null)
   const [workModeActive, setWorkModeActive] = useState(false)
   const [mapLayer, setMapLayer] = useState<'auto' | 'street' | 'hybrid'>('auto')
+  const [fruitCountFilter, setFruitCountFilter] = useState<'all' | 'missing' | 'recorded'>('all')
   
   // Tree status filters
   const [filterByStatus, setFilterByStatus] = useState<{
@@ -503,6 +505,11 @@ function MapPageContent() {
   }
 
   const treesInFocusedZone = focusedZone ? getTreesForZone(trees, focusedZone).length : 0
+  const scopedTrees = getFilteredTrees(focusedZone ? getTreesForZone(trees, focusedZone) : trees)
+  const fruitCountProgress = getFruitCountProgress(scopedTrees, selectedSeasonYear)
+  const visibleTrees = fruitCountFilter === 'all'
+    ? scopedTrees
+    : scopedTrees.filter(tree => getTreeFruitCountState(tree, selectedSeasonYear).status === fruitCountFilter)
 
   if (error) {
     return (
@@ -649,6 +656,73 @@ function MapPageContent() {
           {showAdvancedSettings && (
             <div className="mt-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
               <div className="space-y-4">
+                {/* Fruit Count Progress */}
+                {!loading && trees.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center">
+                      <span className="mr-2">🍈</span>
+                      Tiến độ đếm trái
+                    </h3>
+                    <div className="p-3 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <span className="text-sm font-semibold text-gray-800">Niên vụ {selectedSeasonYear}</span>
+                        <span className="text-xs font-medium text-gray-500">
+                          {fruitCountProgress.recorded}/{fruitCountProgress.total} cây đủ tuổi
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-gray-100 mb-3">
+                        <div
+                          className="h-full rounded-full bg-green-600 transition-all"
+                          style={{
+                            width: `${fruitCountProgress.total > 0
+                              ? Math.round((fruitCountProgress.recorded / fruitCountProgress.total) * 100)
+                              : 0}%`
+                          }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                        <div className="rounded-lg bg-green-50 px-2 py-2">
+                          <div className="text-base font-bold text-green-700">{fruitCountProgress.recorded}</div>
+                          <div className="text-[11px] font-medium text-green-700">Đã đếm</div>
+                        </div>
+                        <div className="rounded-lg bg-orange-50 px-2 py-2">
+                          <div className="text-base font-bold text-orange-700">{fruitCountProgress.missing}</div>
+                          <div className="text-[11px] font-medium text-orange-700">Chưa đếm</div>
+                        </div>
+                        <div className="rounded-lg bg-yellow-50 px-2 py-2">
+                          <div className="text-base font-bold text-yellow-700">{fruitCountProgress.notApplicable}</div>
+                          <div className="text-[11px] font-medium text-yellow-700">Cây non</div>
+                        </div>
+                      </div>
+                      <p className="mb-2 text-xs text-gray-500">Hiển thị cây trên bản đồ</p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {([
+                          ['all', 'Tất cả'],
+                          ['missing', 'Chưa đếm'],
+                          ['recorded', 'Đã đếm']
+                        ] as const).map(([value, label]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            aria-pressed={fruitCountFilter === value}
+                            onClick={() => setFruitCountFilter(value)}
+                            className={`rounded-lg px-2 py-2 text-xs font-semibold transition-colors ${
+                              fruitCountFilter === value
+                                ? value === 'missing' ? 'bg-orange-600 text-white' : 'bg-green-700 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-[11px] leading-4 text-gray-500">
+                        Cây non không yêu cầu dữ liệu đếm trái và chỉ xuất hiện khi chọn “Tất cả”.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Display Options */}
                 <div>
                   <h3 className="font-semibold text-gray-900 text-sm mb-3">Hiển thị</h3>
@@ -938,7 +1012,7 @@ function MapPageContent() {
           ) : (
             <>
               <UnifiedMapNoSSR
-                trees={showTrees ? getFilteredTrees(focusedZone ? getTreesForZone(trees, focusedZone) : trees) : []}
+                trees={showTrees ? visibleTrees : []}
                 zones={showZones ? (focusedZone ? [focusedZone] : zones).filter(zone => zone.boundaries.length >= 3) : []}
                 selectedTree={selectedTree}
                 selectedZone={selectedZone}
@@ -956,6 +1030,7 @@ function MapPageContent() {
                 proximityRadius={proximityRadius}
                 highlightedTreeId={highlightedTreeId}
                 mapLayer={mapLayer}
+                seasonYear={selectedSeasonYear}
               />
             </>
           )}
@@ -1070,8 +1145,10 @@ function MapPageContent() {
           <BottomSheet
             isOpen={showAdvancedSettings}
             onClose={() => setShowAdvancedSettings(false)}
-            initialDetent="medium"
-            detents={["large", "medium"]}
+            initialDetent="full"
+            detents={["full"]}
+            snapPoints={{ full: 100 }}
+            className="!rounded-none"
             header={
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center">
@@ -1088,6 +1165,73 @@ function MapPageContent() {
             }
           >
             <div className="p-4 space-y-5 overflow-y-auto pb-10">
+              {/* Fruit Count Progress */}
+              {!loading && trees.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center">
+                    <span className="mr-2">🍈</span>
+                    Tiến độ đếm trái
+                  </h3>
+                  <div className="p-3 bg-white rounded-xl border border-gray-200">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <span className="text-sm font-semibold text-gray-800">Niên vụ {selectedSeasonYear}</span>
+                      <span className="text-xs font-medium text-gray-500">
+                        {fruitCountProgress.recorded}/{fruitCountProgress.total} cây đủ tuổi
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-gray-100 mb-3">
+                      <div
+                        className="h-full rounded-full bg-green-600 transition-all"
+                        style={{
+                          width: `${fruitCountProgress.total > 0
+                            ? Math.round((fruitCountProgress.recorded / fruitCountProgress.total) * 100)
+                            : 0}%`
+                        }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                      <div className="rounded-lg bg-green-50 px-2 py-2">
+                        <div className="text-base font-bold text-green-700">{fruitCountProgress.recorded}</div>
+                        <div className="text-[11px] font-medium text-green-700">Đã đếm</div>
+                      </div>
+                      <div className="rounded-lg bg-orange-50 px-2 py-2">
+                        <div className="text-base font-bold text-orange-700">{fruitCountProgress.missing}</div>
+                        <div className="text-[11px] font-medium text-orange-700">Chưa đếm</div>
+                      </div>
+                      <div className="rounded-lg bg-yellow-50 px-2 py-2">
+                        <div className="text-base font-bold text-yellow-700">{fruitCountProgress.notApplicable}</div>
+                        <div className="text-[11px] font-medium text-yellow-700">Cây non</div>
+                      </div>
+                    </div>
+                    <p className="mb-2 text-xs text-gray-500">Hiển thị cây trên bản đồ</p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {([
+                        ['all', 'Tất cả'],
+                        ['missing', 'Chưa đếm'],
+                        ['recorded', 'Đã đếm']
+                      ] as const).map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          aria-pressed={fruitCountFilter === value}
+                          onClick={() => setFruitCountFilter(value)}
+                          className={`rounded-lg px-2 py-2.5 text-xs font-semibold transition-colors ${
+                            fruitCountFilter === value
+                              ? value === 'missing' ? 'bg-orange-600 text-white' : 'bg-green-700 text-white'
+                              : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[11px] leading-4 text-gray-500">
+                      Cây non không yêu cầu dữ liệu đếm trái và chỉ xuất hiện khi chọn “Tất cả”.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Display Options */}
               <div>
                 <h3 className="font-semibold text-gray-900 text-sm mb-3">Hiển thị</h3>

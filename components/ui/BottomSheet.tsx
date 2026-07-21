@@ -154,7 +154,7 @@ export function BottomSheet({
       {/* Sheet */}
       <motion.div
         ref={sheetRef}
-        className={clsx('absolute left-0 right-0 rounded-t-2xl bg-white shadow-xl', 'touch-none', className)}
+        className={clsx('absolute bottom-0 left-0 right-0 flex flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl', 'touch-none', className)}
         style={{ top, transform: `translateY(${translateY}px)` }}
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1, transition: { type: 'spring', stiffness: 380, damping: 30 } }}
@@ -167,7 +167,7 @@ export function BottomSheet({
           <div className="mx-auto h-1.5 w-10 rounded-full bg-gray-300 mb-2" />
           {header}
         </div>
-        <div className="px-4 pb-safe-bottom">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-safe-bottom">
           {children}
         </div>
       </motion.div>

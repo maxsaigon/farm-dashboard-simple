@@ -44,6 +44,9 @@ export interface Tree {
 export interface TreeSeasonalStats {
   manualFruitCount: number
   aiFruitCount: number
+  fruitCountRecordedAt?: Date
+  fruitCountRecordedBy?: string
+  fruitCountSource?: 'manual' | 'ai'
   healthStatus: 'Excellent' | 'Good' | 'Fair' | 'Poor' | 'Cây Non' | 'Cây Trưởng Thành' | 'Cây Già' | string
   notes?: string
   updatedAt: Date
